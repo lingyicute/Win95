@@ -1,5 +1,6 @@
 import { el, button, field, onDoubleActivate } from './dom.js';
 import { icon } from './icons.js';
+import { combo } from './select.js';
 import { baseName, parentPath, normalizePath } from '@win95/core/filesystem.js';
 export function createDialogs(system) {
     const modal = (title, options = {}) => {
@@ -58,16 +59,15 @@ export function createDialogs(system) {
             path = system.fs.get('C:\\My Documents')?.type === 'folder' ? 'C:\\My Documents' : 'C:\\';
         const save = !!options.save;
         const w = modal(save ? 'Save As' : 'Open', { width: 460, height: 345, owner: options.owner });
-        const dir = el('select', { 'aria-label': 'Look in' });
+        const dir = combo({ ariaLabel: 'Look in' });
         const list = el('div', { class: 'file-dialog-list inset', tabIndex: 0 });
         const name = el('input', { value: options.name || '', 'aria-label': 'File name' });
-        const type = el('select', { 'aria-label': 'Files of type' }, el('option', { text: options.type || 'All Files (*.*)' }));
+        const type = combo({ ariaLabel: 'Files of type', options: [options.type || 'All Files (*.*)'] });
         const render = () => {
             if (system.fs.get(path)?.type !== 'folder')
                 path = 'C:\\';
-            dir.replaceChildren();
-            for (const p of ['C:\\', 'C:\\My Documents', 'C:\\Windows\\Desktop', ...([...system.fs.nodes.values()].filter(n => n.type === 'folder' && n.path !== 'C:\\Recycled').map(n => n.path))].filter((v, i, a) => a.indexOf(v) === i))
-                dir.append(el('option', { value: p, text: p, selected: p === path }));
+            const folders = ['C:\\', 'C:\\My Documents', 'C:\\Windows\\Desktop', ...([...system.fs.nodes.values()].filter(n => n.type === 'folder' && n.path !== 'C:\\Recycled').map(n => n.path))].filter((v, i, a) => a.indexOf(v) === i);
+            dir.setOptions(folders, path);
             list.replaceChildren();
             for (const n of system.fs.list(path)) {
                 const b = el('button', { class: 'file-dialog-item' }, icon(n.type === 'folder' ? 'folder' : 'document', 16), baseName(n.path));

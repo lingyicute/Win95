@@ -1,11 +1,12 @@
 import { el, button, field, download, fileInput, formatSize } from '@win95/ui/dom.js';
 import { icon, fileIcon } from '@win95/ui/icons.js';
 import { menuBar, popup } from '@win95/ui/menu.js';
+import { combo } from '@win95/ui/select.js';
 import { baseName, normalizePath, parentPath } from '@win95/core/filesystem.js';
 export function findFiles(s) {
     const w = s.wm.create({ title: 'Find: All Files', icon: 'find', width: 560, height: 365 });
     w.body.classList.add('find-body');
-    const name = el('input', { value: '', 'aria-label': 'Named', placeholder: '' }), containing = el('input', { 'aria-label': 'Containing text' }), folder = el('select', { 'aria-label': 'Look in' }, ...['C:\\', 'C:\\My Documents', 'C:\\Windows', 'C:\\Windows\\Desktop'].map(p => el('option', { text: p }))), results = el('div', { class: 'find-results inset' });
+    const name = el('input', { value: '', 'aria-label': 'Named', placeholder: '' }), containing = el('input', { 'aria-label': 'Containing text' }), folder = combo({ ariaLabel: 'Look in', options: ['C:\\', 'C:\\My Documents', 'C:\\Windows', 'C:\\Windows\\Desktop'] }), results = el('div', { class: 'find-results inset' });
     const search = () => {
         results.replaceChildren();
         let nodes = s.fs.search(name.value, folder.value);
@@ -64,7 +65,7 @@ export function characterMap(s) {
     w.body.style.padding = '10px';
     w.body.style.gap = '8px';
     let selected = '©';
-    const grid = el('div', { class: 'char-grid inset' }), font = el('select', { 'aria-label': 'Font' }, ...['Arial', 'Times New Roman', 'Courier New', 'W95FA'].map(t => el('option', { text: t }))), copy = el('input', { 'aria-label': 'Characters to copy' }), label = el('span', { text: 'U+00A9 Copyright sign' });
+    const grid = el('div', { class: 'char-grid inset' }), font = combo({ ariaLabel: 'Font', options: ['Arial', 'Times New Roman', 'Courier New', 'W95FA'], value: 'Times New Roman' }), copy = el('input', { 'aria-label': 'Characters to copy' }), label = el('span', { text: 'U+00A9 Copyright sign' });
     for (let i = 160; i < 256; i++) {
         const c = String.fromCharCode(i);
         const b = button(c, () => { selected = c; grid.querySelectorAll('button').forEach(n => n.classList.remove('selected')); b.classList.add('selected'); label.textContent = 'U+' + i.toString(16).toUpperCase().padStart(4, '0') + '   ' + c; }, { ondblclick: () => copy.value += c });
