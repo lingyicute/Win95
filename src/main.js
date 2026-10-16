@@ -13,6 +13,8 @@ import { findFiles, help, characterMap, clipboardViewer, registryEditor, systemM
 import { mediaPlayer, volumeControl, soundRecorder, internet, inbox } from './packages/apps/multimedia.js';
 import { dosPrompt } from './packages/apps/dos.js';
 import { minesweeper, solitaire, hearts } from './packages/games/apps.js';
+const MIN_BOOT_MS = 1000;
+const bootStartedAt = performance.now();
 const s = { fs: new VirtualFileSystem(), settings: new Settings(), wm: new WindowManager(), registry: new Map(), clipboard: null, imageClipboard: null, audio: null, lastActivity: Date.now() };
 s.ui = createDialogs(s);
 s.files = createFileActions(s);
@@ -439,6 +441,9 @@ setInterval(() => {
 s.launch('computer', { x: Math.max(100, Math.round(innerWidth * .14)), y: Math.max(55, Math.round(innerHeight * .12)), width: 575, height: 350 });
 if (s.settings.get('showWelcome', true))
     welcome();
+const bootElapsed = performance.now() - bootStartedAt;
+if (bootElapsed < MIN_BOOT_MS)
+    await new Promise(resolve => setTimeout(resolve, MIN_BOOT_MS - bootElapsed));
 document.querySelector('#boot').classList.add('hidden');
 setTimeout(() => document.querySelector('#boot')?.remove(), 200);
 window.win95 = s;
