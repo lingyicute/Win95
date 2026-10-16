@@ -1,0 +1,13 @@
+{
+  "name": "@win95/core",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Persistent virtual filesystem, settings, RTF and DOS engine",
+  "exports": {
+    "./*.js": "./*.js"
+  },
+  "files": [
+    "*.js"
+  ],
+  "sideEffects": false
+}

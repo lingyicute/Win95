@@ -1,0 +1,13 @@
+{
+  "name": "@win95/graphics",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "WebGPU, WebGL2 and Canvas2D raster presentation",
+  "exports": {
+    "./*.js": "./*.js"
+  },
+  "files": [
+    "*.js"
+  ],
+  "sideEffects": false
+}

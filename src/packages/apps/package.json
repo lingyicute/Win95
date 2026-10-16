@@ -1,0 +1,18 @@
+{
+  "name": "@win95/apps",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Browser implementations of Windows 95 applications",
+  "exports": {
+    "./*.js": "./*.js"
+  },
+  "files": [
+    "*.js"
+  ],
+  "sideEffects": true,
+  "dependencies": {
+    "@win95/core": "^1.0.0",
+    "@win95/ui": "^1.0.0",
+    "@win95/graphics": "^1.0.0"
+  }
+}
