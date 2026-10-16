@@ -1,6 +1,7 @@
 import { htmlToRtf, rtfToHtml } from '@win95/core/rtf.js';
 import { el, button, download, fileInput } from '@win95/ui/dom.js';
 import { menuBar } from '@win95/ui/menu.js';
+import { combo } from '@win95/ui/select.js';
 import { baseName, parentPath } from '@win95/core/filesystem.js';
 const printDocument = (content, html = false) => {
     document.querySelector('.print-area')?.remove();
@@ -281,8 +282,8 @@ export function wordpad(s, args = {}) {
             cmd('insertText', text);
     };
     toolbar.append(button('New', fresh), button('Open', open), button('Save', () => save()), el('div', { class: 'toolbar-divider' }), button('Print', () => printDocument(editor.innerHTML, true)), el('div', { class: 'toolbar-divider' }), button('Cut', () => { copy(); cmd('delete'); }), button('Copy', copy), button('Paste', paste), button('Undo', () => cmd('undo')));
-    const fonts = el('select', { 'aria-label': 'Font family', onchange: e => cmd('fontName', e.target.value) }, ...['Arial', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia'].map(f => el('option', { text: f, selected: f === 'Times New Roman' })));
-    const sizes = el('select', { class: 'font-size', 'aria-label': 'Font size', onchange: e => { cmd('fontSize', '7'); editor.querySelectorAll('font[size="7"]').forEach(n => { n.removeAttribute('size'); n.style.fontSize = e.target.value + 'pt'; }); } }, ...[8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36, 48, 72].map(f => el('option', { text: String(f), selected: f === 12 })));
+    const fonts = combo({ ariaLabel: 'Font family', options: ['Arial', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia'], value: 'Times New Roman', onchange: value => cmd('fontName', value) });
+    const sizes = combo({ class: 'font-size', ariaLabel: 'Font size', options: [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36, 48, 72].map(String), value: '12', onchange: value => { cmd('fontSize', '7'); editor.querySelectorAll('font[size="7"]').forEach(n => { n.removeAttribute('size'); n.style.fontSize = value + 'pt'; }); } });
     format.append(fonts, sizes, button('B', () => cmd('bold'), { title: 'Bold', style: { fontWeight: 'bold' } }), button('I', () => cmd('italic'), { title: 'Italic', style: { fontStyle: 'italic' } }), button('U', () => cmd('underline'), { title: 'Underline', style: { textDecoration: 'underline' } }), el('div', { class: 'toolbar-divider' }), button('≡', () => cmd('justifyLeft'), { title: 'Align left' }), button('≡', () => cmd('justifyCenter'), { title: 'Center', style: { textAlign: 'center' } }), button('≡', () => cmd('justifyRight'), { title: 'Align right', style: { textAlign: 'right' } }), button('•', () => cmd('insertUnorderedList'), { title: 'Bullet list' }), el('input', { type: 'color', value: '#000000', 'aria-label': 'Text color', oninput: e => cmd('foreColor', e.target.value) }));
     format.onpointerdown = e => {
         if (e.target.tagName === 'BUTTON')

@@ -5,6 +5,7 @@ import { el, button, field, onDoubleActivate, setDoubleClickDelay } from './pack
 import { icon, fileIcon } from './packages/ui/icons.js';
 import { popup, closeMenus } from './packages/ui/menu.js';
 import { createDialogs } from './packages/ui/dialogs.js';
+import { combo } from './packages/ui/select.js';
 import { DesktopGraphics } from './packages/graphics/renderer.js';
 import { createFileActions, explorer } from './packages/apps/explorer.js';
 import { notepad, wordpad, calculator } from './packages/apps/documents.js';
@@ -256,9 +257,8 @@ function runDialog() {
 }
 register('run', 'Run', 'run', runDialog);
 function taskman() {
-    const w = s.ui.modal('Close Program', { width: 380, height: 340, icon: 'task' }), list = el('select', { size: 8, 'aria-label': 'Running programs', style: { height: '160px' } });
-    for (const win of s.wm.windows.filter(x => x !== w && !x.options.modal))
-        list.append(el('option', { text: win.title, value: win.id }));
+    const w = s.ui.modal('Close Program', { width: 380, height: 340, icon: 'task' }), list = combo({ mode: 'list', ariaLabel: 'Running programs', style: { height: '160px' } });
+    list.setOptions(s.wm.windows.filter(x => x !== w && !x.options.modal).map(win => ({ value: win.id, label: win.title })));
     w.body.append(list, el('p', { text: 'Select the program you want to close.' }), el('div', { class: 'dialog-buttons' }, button('End Task', () => {
         const win = s.wm.windows.find(x => x.id === list.value);
         if (win)
