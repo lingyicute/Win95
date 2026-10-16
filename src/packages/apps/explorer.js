@@ -1,4 +1,4 @@
-import { el, button, download, fileInput, formatSize, onDoubleActivate } from '@win95/ui/dom.js';
+import { el, button, download, fileInput, formatSize, infoGrid, onDoubleActivate } from '@win95/ui/dom.js';
 import { icon, fileIcon } from '@win95/ui/icons.js';
 import { menuBar, popup } from '@win95/ui/menu.js';
 import { normalizePath, parentPath, baseName } from '@win95/core/filesystem.js';
@@ -12,7 +12,7 @@ export function createFileActions(s) {
         const w = s.ui.modal(baseName(n.path) + ' Properties', { width: 385, height: 340 });
         const size = paths.reduce((a, p) => a + s.fs.size(p), 0);
         const name = el('input', { value: baseName(n.path), 'aria-label': 'File name' });
-        w.body.append(el('div', { class: 'tab-strip' }, button('General', () => { }, { class: 'active' })), el('div', { class: 'tab-panel' }, el('div', { class: 'row', style: { gap: '20px', marginBottom: '15px' } }, icon(fileIcon(n), 32), name), el('div', { class: 'separator' }), el('div', { class: 'info-grid' }, 'Type:', n.type === 'folder' ? 'File Folder' : (n.mime || 'File'), 'Location:', parentPath(n.path), 'Size:', formatSize(size), 'Contains:', n.type === 'folder' ? `${s.fs.list(n.path).length} objects` : `${paths.length} file(s)`, 'Created:', new Date(n.created).toLocaleString(), 'Modified:', new Date(n.modified).toLocaleString()), el('div', { class: 'separator' }), el('label', { class: 'checkbox-label' }, el('input', { type: 'checkbox', checked: !!n.readOnly, onchange: e => { n.readOnly = e.target.checked; s.fs.changed(); } }), 'Read-only')));
+        w.body.append(el('div', { class: 'tab-strip' }, button('General', () => { }, { class: 'active' })), el('div', { class: 'tab-panel' }, el('div', { class: 'row', style: { gap: '20px', marginBottom: '15px' } }, icon(fileIcon(n), 32), name), el('div', { class: 'separator' }), infoGrid([['Type:', n.type === 'folder' ? 'File Folder' : (n.mime || 'File')], ['Location:', parentPath(n.path)], ['Size:', formatSize(size)], ['Contains:', n.type === 'folder' ? `${s.fs.list(n.path).length} objects` : `${paths.length} file(s)`], ['Created:', new Date(n.created).toLocaleString()], ['Modified:', new Date(n.modified).toLocaleString()]]), el('div', { class: 'separator' }), el('label', { class: 'checkbox-label' }, el('input', { type: 'checkbox', checked: !!n.readOnly, onchange: e => { n.readOnly = e.target.checked; s.fs.changed(); } }), 'Read-only')));
         w.body.append(el('div', { class: 'dialog-buttons' }, button('OK', () => {
             try {
                 if (name.value !== baseName(n.path))

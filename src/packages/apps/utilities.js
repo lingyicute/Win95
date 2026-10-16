@@ -100,7 +100,7 @@ export function registryEditor(s) {
     };
     const render = () => {
         tree.replaceChildren();
-        values.replaceChildren(el('div', { class: 'registry-header' }, 'Name', 'Data'));
+        values.replaceChildren(el('div', { class: 'registry-header' }, el('span', { text: 'Name' }), el('span', { text: 'Data' })));
         for (const k of Object.keys(data)) {
             const depth = k.split('\\').length - 1;
             tree.append(el('button', { class: 'tree-item' + (k === key ? ' selected' : ''), style: { paddingLeft: (depth * 10 + 3) + 'px' }, onclick: () => { key = k; selected = null; render(); } }, icon('folder', 16), k.split('\\').at(-1)));
