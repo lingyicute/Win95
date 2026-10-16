@@ -1,4 +1,5 @@
 import { VirtualFileSystem, Settings, baseName, parentPath } from './packages/core/filesystem.js';
+import { installI18n, uiLocale } from './packages/core/i18n.js';
 import { WindowManager } from './packages/shell/window-manager.js';
 import { el, button, field, onDoubleActivate, setDoubleClickDelay } from './packages/ui/dom.js';
 import { icon, fileIcon } from './packages/ui/icons.js';
@@ -22,6 +23,7 @@ const bootProgressEl = bootEl?.querySelector('.boot-progress');
 let bootReady = false;
 let bootPlaying = false;
 const s = { fs: new VirtualFileSystem(), settings: new Settings(), wm: new WindowManager(), registry: new Map(), clipboard: null, imageClipboard: null, audio: null, lastActivity: Date.now() };
+installI18n();
 s.ui = createDialogs(s);
 s.files = createFileActions(s);
 s.graphics = new DesktopGraphics(s);
@@ -296,7 +298,7 @@ s.shutdown = () => {
 };
 s.applyAppearance = () => { const schemes = { 'Windows Standard': ['#c0c0c0', '#000080', '#000000'], 'Desert': ['#d5ccbb', '#008080', '#000000'], 'Marine': ['#a6c2c2', '#004080', '#000000'], 'Plum': ['#c4a6b7', '#400040', '#000000'], 'High Contrast Black': ['#000000', '#800080', '#ffffff'], 'High Contrast White': ['#ffffff', '#000000', '#000000'] }; const a = schemes[s.settings.get('scheme', 'Windows Standard')] || schemes['Windows Standard']; document.documentElement.style.setProperty('--face', a[0]); document.documentElement.style.setProperty('--title', a[1]); document.documentElement.style.setProperty('--text', a[2]); };
 s.updateClock = () => {
-    let locale = s.settings.get('locale', 'en-US'), zone = s.settings.get('timezone', 'Local time');
+    let locale = s.settings.get('locale', uiLocale), zone = s.settings.get('timezone', 'Local time');
     let options = { hour: 'numeric', minute: '2-digit', hour12: !s.settings.get('hour24', false) };
     if (zone !== 'Local time')
         options.timeZone = zone;
