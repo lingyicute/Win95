@@ -192,7 +192,18 @@ export class VirtualFileSystem extends EventTarget {
         this.changed();
         return to;
     }
-    search(pattern, folder = 'C:\\') { const p = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replaceAll('*', '.*').replaceAll('?', '.'); const re = new RegExp(p || '.*', 'i'); return [...this.nodes.values()].filter(n => key(n.path).startsWith(key(folder)) && !key(n.path).startsWith('c:\\recycled') && re.test(baseName(n.path))); }
+    search(pattern, folder = 'C:\\') {
+        const p = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replaceAll('*', '.*').replaceAll('?', '.');
+        const re = new RegExp(p || '.*', 'i');
+        const root = key(folder);
+        const recycleBin = 'c:\\recycled';
+        return [...this.nodes.values()].filter(node => {
+            const path = key(node.path);
+            const inFolder = path === root || path.startsWith(root.endsWith('\\') ? root : root + '\\');
+            const inRecycleBin = path === recycleBin || path.startsWith(recycleBin + '\\');
+            return inFolder && !inRecycleBin && re.test(baseName(node.path));
+        });
+    }
     size(path) { const n = this.get(path); return n?.type === 'file' ? new TextEncoder().encode(n.content || '').length : [...this.nodes.values()].filter(n => key(n.path).startsWith(key(path).replace(/\\$/, '') + '\\') && n.type === 'file').reduce((s, n) => s + new TextEncoder().encode(n.content || '').length, 0); }
     changed() {
         this.revision++;
