@@ -1,0 +1,16 @@
+{
+  "name": "@win95/shell",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Window management, taskbar and keyboard actions",
+  "exports": {
+    "./*.js": "./*.js"
+  },
+  "files": [
+    "*.js"
+  ],
+  "sideEffects": true,
+  "dependencies": {
+    "@win95/ui": "^1.0.0"
+  }
+}

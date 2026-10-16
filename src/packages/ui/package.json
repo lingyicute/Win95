@@ -1,0 +1,16 @@
+{
+  "name": "@win95/ui",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Classic desktop controls, icons, menus and dialogs",
+  "exports": {
+    "./*.js": "./*.js"
+  },
+  "files": [
+    "*.js"
+  ],
+  "sideEffects": true,
+  "dependencies": {
+    "@win95/core": "^1.0.0"
+  }
+}
