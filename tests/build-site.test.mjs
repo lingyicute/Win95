@@ -46,10 +46,10 @@ test('HTML entry points and CSS fonts gain the release version', () => {
     assert.match(output, /logo\.svg\?v=abc1234/);
     assert.doesNotMatch(output, /example\.com\/x\.css\?v=/);
 
-    const css = "@font-face{src:url('./assets/font.woff2')} @font-face{src:url('./assets/tahoma.ttf')} .a{background:url(\"data:image/svg+xml,%3Csvg/%3E\")}";
+    const css = "@font-face{src:url('./assets/font.woff2')} @font-face{src:url('./assets/roboto-regular-ascii.woff2')} .a{background:url(\"data:image/svg+xml,%3Csvg/%3E\")}";
     const styled = versionCss(css, VERSION);
     assert.match(styled, /font\.woff2\?v=abc1234/);
-    assert.match(styled, /tahoma\.ttf\?v=abc1234/);
+    assert.match(styled, /roboto-regular-ascii\.woff2\?v=abc1234/);
     assert.doesNotMatch(styled, /data:image\/svg\+xml,[^)]*\?v=/);
 });
 

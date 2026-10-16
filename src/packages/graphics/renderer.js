@@ -293,7 +293,7 @@ export class DesktopGraphics {
             }
             else if (kind === 'Marquee') {
                 ctx.fillStyle = '#c0c0c0';
-                ctx.font = 'bold 50px Tahoma, "WenQuanYi Bitmap Song 12px", Arial';
+                ctx.font = 'bold 50px Roboto, "WenQuanYi Bitmap Song 12px", Arial';
                 ctx.fillText(safeSaverText(this.system.settings.get('saverText', 'Windows 95')), innerWidth - (time * 3) % (innerWidth + 500), innerHeight / 2);
             }
             else {
