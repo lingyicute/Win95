@@ -64,10 +64,8 @@ const showBootTap = () => {
     bootReady = true;
     if (bootSpinnerEl)
         bootSpinnerEl.hidden = true;
-    if (bootTapEl) {
+    if (bootTapEl)
         bootTapEl.hidden = false;
-        bootTapEl.focus({ preventScroll: true });
-    }
     bootEl.classList.add('boot-ready');
 };
 const startBoot = () => {
