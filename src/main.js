@@ -14,11 +14,83 @@ import { mediaPlayer, volumeControl, soundRecorder, internet, inbox } from './pa
 import { dosPrompt } from './packages/apps/dos.js';
 import { minesweeper, solitaire, hearts } from './packages/games/apps.js';
 const MIN_BOOT_MS = 1000;
-const bootStartedAt = performance.now();
+const bootEl = document.querySelector('#boot');
+const bootSpinnerEl = bootEl?.querySelector('.boot-spinner');
+const bootTapEl = bootEl?.querySelector('.boot-tap');
+const bootLogoEl = bootEl?.querySelector('.boot-logo');
+const bootProgressEl = bootEl?.querySelector('.boot-progress');
+let bootReady = false;
+let bootPlaying = false;
 const s = { fs: new VirtualFileSystem(), settings: new Settings(), wm: new WindowManager(), registry: new Map(), clipboard: null, imageClipboard: null, audio: null, lastActivity: Date.now() };
 s.ui = createDialogs(s);
 s.files = createFileActions(s);
 s.graphics = new DesktopGraphics(s);
+s.sounds = { startup: new Audio('./assets/win95-startup.mp3'), shutdown: new Audio('./assets/win95-shutdown.mp3') };
+for (const audio of Object.values(s.sounds))
+    audio.preload = 'auto';
+s.playSound = name => {
+    if (s.settings.get('muted', false))
+        return null;
+    const audio = s.sounds[name];
+    if (!audio)
+        return null;
+    try {
+        audio.volume = Math.min(1, Math.max(0, s.settings.get('volume', 65) / 100));
+        audio.currentTime = 0;
+        const playing = audio.play();
+        if (playing?.catch)
+            playing.catch(() => { });
+        return audio;
+    }
+    catch {
+        return null;
+    }
+};
+const waitForSoundEnd = audio => {
+    if (!audio || audio.ended)
+        return Promise.resolve();
+    const timeout = Number.isFinite(audio.duration) && audio.duration > 0 ? Math.min(audio.duration * 1000 + 300, 4000) : 2000;
+    return Promise.race([
+        new Promise(resolve => {
+            audio.addEventListener('ended', resolve, { once: true });
+            audio.addEventListener('error', resolve, { once: true });
+        }),
+        new Promise(resolve => setTimeout(resolve, timeout))
+    ]);
+};
+const showBootTap = () => {
+    if (!bootEl || bootReady || bootPlaying)
+        return;
+    bootReady = true;
+    if (bootSpinnerEl)
+        bootSpinnerEl.hidden = true;
+    if (bootTapEl) {
+        bootTapEl.hidden = false;
+        bootTapEl.focus({ preventScroll: true });
+    }
+    bootEl.classList.add('boot-ready');
+};
+const startBoot = () => {
+    if (!bootEl || !bootReady || bootPlaying)
+        return;
+    bootPlaying = true;
+    if (bootSpinnerEl)
+        bootSpinnerEl.hidden = true;
+    if (bootTapEl)
+        bootTapEl.hidden = true;
+    if (bootLogoEl)
+        bootLogoEl.hidden = false;
+    if (bootProgressEl)
+        bootProgressEl.hidden = false;
+    bootEl.classList.remove('boot-ready');
+    bootEl.classList.add('boot-playing');
+    setTimeout(() => {
+        bootEl.classList.add('hidden');
+        s.playSound('startup');
+        setTimeout(() => bootEl.remove(), 200);
+    }, MIN_BOOT_MS);
+};
+bootEl?.addEventListener('click', startBoot);
 s.copyText = text => { s.clipboard = { type: 'text', text: String(text) }; navigator.clipboard?.writeText(String(text)).catch(() => { }); };
 s.pasteText = async () => {
     if (s.clipboard?.type === 'text')
@@ -35,6 +107,10 @@ s.recent = path => { const r = s.settings.get('recentDocuments', []).filter(x =>
 s.beep = (kind = 'click') => {
     if (s.settings.get('muted', false))
         return;
+    if (kind === 'startup' || kind === 'shutdown') {
+        s.playSound(kind);
+        return;
+    }
     try {
         if (!s.audio)
             s.audio = new (window.AudioContext || window.webkitAudioContext)();
@@ -204,7 +280,9 @@ s.shutdown = () => {
             if (!win.options.modal && !await s.wm.close(win))
                 return;
         await s.fs.flush();
+        const shutdownSound = s.playSound('shutdown');
         if (selected === 'restart') {
+            await waitForSoundEnd(shutdownSound);
             location.reload();
             return;
         }
@@ -410,10 +488,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('pointermove', () => s.lastActivity = Date.now(), { passive: true });
 document.addEventListener('pointerdown', () => {
     s.lastActivity = Date.now();
-    if (!s.audio) {
-        s.beep('startup');
-    }
-}, { once: true });
+});
 let fsFrame = 0;
 s.fs.addEventListener('change', () => {
     if (!fsFrame)
@@ -441,11 +516,10 @@ setInterval(() => {
 s.launch('computer', { x: Math.max(100, Math.round(innerWidth * .14)), y: Math.max(55, Math.round(innerHeight * .12)), width: 575, height: 350 });
 if (s.settings.get('showWelcome', true))
     welcome();
-const bootElapsed = performance.now() - bootStartedAt;
-if (bootElapsed < MIN_BOOT_MS)
-    await new Promise(resolve => setTimeout(resolve, MIN_BOOT_MS - bootElapsed));
-document.querySelector('#boot').classList.add('hidden');
-setTimeout(() => document.querySelector('#boot')?.remove(), 200);
+if (document.readyState === 'complete')
+    showBootTap();
+else
+    window.addEventListener('load', showBootTap, { once: true });
 window.win95 = s;
 const model = document.modelContext;
 if (model?.registerTool) {
