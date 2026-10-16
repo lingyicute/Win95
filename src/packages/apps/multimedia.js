@@ -78,12 +78,138 @@ export function mediaPlayer(s, args = {}) {
     }
     return w;
 }
+function win95Trackbar({ label, orientation = 'horizontal', min = 0, max = 100, step = 1, pageStep = 10, value = 0, valueText, onChange }) {
+    const vertical = orientation === 'vertical';
+    const clamp = next => Math.min(max, Math.max(min, Number(next) || 0));
+    let current = clamp(value);
+    const thumb = el('div', { class: 'win95-trackbar-thumb', 'aria-hidden': 'true' });
+    const ticks = el('div', { class: 'win95-trackbar-ticks', 'aria-hidden': 'true' });
+    for (const tickRatio of vertical ? [0, .2, .4, .6, .8, 1] : [0, .5, 1]) {
+        if (vertical) {
+            for (const side of ['left', 'right']) {
+                const tick = el('span', { class: `win95-trackbar-tick ${side}` });
+                tick.style.top = `${(1 - tickRatio) * 100}%`;
+                ticks.append(tick);
+            }
+        }
+        else {
+            const tick = el('span', { class: 'win95-trackbar-tick' });
+            tick.style.left = `${tickRatio * 100}%`;
+            ticks.append(tick);
+        }
+    }
+    const root = el('div', {
+        class: `win95-trackbar ${orientation}`,
+        role: 'slider',
+        tabindex: '0',
+        'aria-label': label,
+        'aria-orientation': orientation,
+        'aria-valuemin': String(min),
+        'aria-valuemax': String(max)
+    }, ticks, el('div', { class: 'win95-trackbar-track', 'aria-hidden': 'true' }), thumb);
+    const ratio = () => (current - min) / (max - min);
+    const render = () => {
+        const r = ratio();
+        if (vertical) {
+            thumb.style.left = '50%';
+            thumb.style.top = root.clientHeight ? `${8 + (1 - r) * (root.clientHeight - 16)}px` : `${(1 - r) * 100}%`;
+        }
+        else {
+            thumb.style.top = '50%';
+            thumb.style.left = root.clientWidth ? `${11 + r * (root.clientWidth - 22)}px` : `${r * 100}%`;
+        }
+        root.setAttribute('aria-valuenow', String(current));
+        root.setAttribute('aria-valuetext', valueText ? valueText(current) : String(current));
+    };
+    const setValue = next => {
+        const stepped = clamp(Math.round((clamp(next) - min) / step) * step + min);
+        const normalized = Object.is(stepped, -0) ? 0 : stepped;
+        if (normalized !== current) {
+            current = normalized;
+            onChange?.(current);
+        }
+        render();
+    };
+    const valueFromPointer = event => {
+        const rect = root.getBoundingClientRect();
+        if (vertical) {
+            const travel = Math.max(1, rect.height - 16);
+            return min + (rect.bottom - 8 - event.clientY) / travel * (max - min);
+        }
+        const travel = Math.max(1, rect.width - 22);
+        return min + (event.clientX - rect.left - 11) / travel * (max - min);
+    };
+    let dragging = false;
+    root.addEventListener('pointerdown', event => {
+        if (event.button !== undefined && event.button !== 0)
+            return;
+        dragging = true;
+        root.setPointerCapture?.(event.pointerId);
+        root.focus({ preventScroll: true });
+        setValue(valueFromPointer(event));
+        event.preventDefault();
+    });
+    root.addEventListener('pointermove', event => {
+        if (dragging)
+            setValue(valueFromPointer(event));
+    });
+    const stopDrag = () => { dragging = false; };
+    root.addEventListener('pointerup', stopDrag);
+    root.addEventListener('pointercancel', stopDrag);
+    root.addEventListener('keydown', event => {
+        const increments = { ArrowLeft: -step, ArrowDown: -step, ArrowRight: step, ArrowUp: step, PageDown: -pageStep, PageUp: pageStep };
+        if (event.key === 'Home') {
+            event.preventDefault();
+            setValue(min);
+        }
+        else if (event.key === 'End') {
+            event.preventDefault();
+            setValue(max);
+        }
+        else if (Object.hasOwn(increments, event.key)) {
+            event.preventDefault();
+            setValue(current + increments[event.key]);
+        }
+    });
+    render();
+    requestAnimationFrame(render);
+    return root;
+}
+function volumeSpeaker(side) {
+    const speaker = el('span', { class: `volume-speaker ${side}`, 'aria-hidden': 'true' });
+    speaker.innerHTML = '<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path d="M1 6h3l4-4v12L4 10H1z" fill="#ffff66" stroke="#000"/><path d="M10 5.5c1.6 1.4 1.6 3.6 0 5" fill="none" stroke="#000"/></svg>';
+    return speaker;
+}
 export function volumeControl(s) {
-    const w = s.wm.create({ title: 'Volume Control', icon: 'volume', width: 395, height: 285, resizable: false });
+    const w = s.wm.create({ title: 'Volume Control', icon: 'volume', width: 395, height: 278, resizable: false });
     const area = el('div', { class: 'volume-controls' });
     for (const [name, key] of [['Volume Control', 'volume'], ['Wave', 'waveVolume'], ['MIDI', 'midiVolume'], ['CD Audio', 'cdVolume']]) {
-        const slider = el('input', { type: 'range', min: 0, max: 100, value: s.settings.get(key, 65), 'aria-label': name, oninput: e => s.settings.set(key, Number(e.target.value)) }), muted = el('input', { type: 'checkbox', checked: s.settings.get(key === 'volume' ? 'muted' : key + 'Muted', false), onchange: e => s.settings.set(key === 'volume' ? 'muted' : key + 'Muted', e.target.checked) });
-        area.append(el('div', { class: 'volume-channel' }, el('b', { text: name }), el('span', { text: 'Volume' }), slider, el('label', {}, muted, 'Mute')));
+        const muteKey = key === 'volume' ? 'muted' : `${key}Muted`;
+        const balanceKey = key === 'volume' ? 'balance' : key.replace(/Volume$/, 'Balance');
+        const balance = win95Trackbar({
+            label: `${name} balance`,
+            orientation: 'horizontal',
+            min: -50,
+            max: 50,
+            value: s.settings.get(balanceKey, 0),
+            valueText: value => value === 0 ? 'Center' : value < 0 ? `Left ${-value}` : `Right ${value}`,
+            onChange: value => s.settings.set(balanceKey, value)
+        });
+        const volume = win95Trackbar({
+            label: `${name} volume`,
+            value: s.settings.get(key, 65),
+            orientation: 'vertical',
+            valueText: value => `${value} percent`,
+            onChange: value => s.settings.set(key, value)
+        });
+        const muted = el('input', { type: 'checkbox', checked: s.settings.get(muteKey, false), 'aria-label': `${name} mute`, onchange: e => s.settings.set(muteKey, e.target.checked) });
+        area.append(el('div', { class: 'volume-channel' },
+            el('div', { class: 'volume-channel-title', text: name }),
+            el('div', { class: 'volume-control-label', text: 'Balance:' }),
+            el('div', { class: 'volume-balance-row' }, volumeSpeaker('left'), balance, volumeSpeaker('right')),
+            el('div', { class: 'volume-control-label', text: 'Volume:' }),
+            volume,
+            el('label', { class: 'volume-mute' }, muted, el('span', { class: 'volume-mute-text', text: key === 'volume' ? 'Mute all' : 'Mute' }))));
     }
     w.body.append(area);
     w.setMenu(menuBar([{ label: 'Options', items: [{ label: 'Properties', action: () => s.launch('sounds') }, { label: 'Exit', action: () => w.close() }] }, { label: 'Help', items: [{ label: 'About Volume Control', action: () => s.about('Volume Control', 'volume') }] }]));
