@@ -63,6 +63,13 @@ export function el(tag, attrs = {}, ...children) {
     return n;
 }
 export const button = (text, action, attrs = {}) => el('button', { text, onclick: action, ...attrs });
+/**
+ * Builds a two-column label/value grid. Each pair becomes its own row, so the
+ * labels stay in the first column and the values in the second. Passing the
+ * text nodes directly to the grid container instead would leave them in a
+ * single anonymous grid item, which stacks every label and value together.
+ */
+export const infoGrid = rows => el('div', { class: 'info-grid' }, ...rows.flatMap(([label, value]) => [el('span', { text: String(label) }), el('span', { text: String(value ?? '') })]));
 export const separator = () => el('div', { class: 'separator', role: 'separator' });
 export const field = (label, input) => el('label', { class: 'field' }, el('span', { text: label }), input);
 export function download(name, content, type = 'text/plain') {

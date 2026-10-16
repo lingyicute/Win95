@@ -1,4 +1,4 @@
-import { el, button, field, download, fileInput, formatSize } from '@win95/ui/dom.js';
+import { el, button, field, download, fileInput, formatSize, infoGrid } from '@win95/ui/dom.js';
 import { icon } from '@win95/ui/icons.js';
 import { menuBar } from '@win95/ui/menu.js';
 const applets = [['display', 'Display', 'display'], ['sounds', 'Sounds', 'volume'], ['keyboard', 'Keyboard', 'keyboard'], ['mouse', 'Mouse', 'mouse'], ['datetime', 'Date/Time', 'clock'], ['regional', 'Regional Settings', 'windows'], ['fonts', 'Fonts', 'font'], ['printers', 'Printers', 'printer'], ['network', 'Network', 'network'], ['system', 'System', 'computer'], ['addremove', 'Add/Remove Programs', 'task'], ['accessibility', 'Accessibility Options', 'control'], ['multimedia', 'Multimedia', 'media'], ['passwords', 'Passwords', 'settings'], ['modems', 'Modems', 'connection'], ['joystick', 'Joystick', 'task'], ['hardware', 'Add New Hardware', 'control'], ['power', 'Power', 'computer']];
@@ -111,14 +111,14 @@ export function dateTime(s) {
 }
 export function systemProperties(s) {
     return propertySheet(s, 'System Properties', 'computer', [
-        ['General', p => p.append(el('div', { class: 'system-logo' }, icon('windows', 64), el('div', {}, el('strong', { text: 'Microsoft' }), el('p', { text: 'Windows 95' }))), el('div', { class: 'info-grid' }, 'System:', 'Browser-native desktop', 'Version:', '1.0.0', 'Registered to:', s.settings.get('owner', 'Windows User'), 'Computer:', `${navigator.hardwareConcurrency || 1} logical processors`, 'Graphics:', s.graphics.presenter.backend, 'File storage:', s.fs.persistence, 'Volume size:', formatSize(s.fs.size('C:\\'))), el('div', { class: 'separator' }), el('p', { text: 'Windows applications here run as JavaScript packages. Native Windows and DOS executable formats are not executed.' }))],
+        ['General', p => p.append(el('div', { class: 'system-logo' }, icon('windows', 64), el('div', {}, el('strong', { text: 'Microsoft' }), el('p', { text: 'Windows 95' }))), infoGrid([['System:', 'Browser-native desktop'], ['Version:', '1.0.0'], ['Registered to:', s.settings.get('owner', 'Windows User')], ['Computer:', `${navigator.hardwareConcurrency || 1} logical processors`], ['Graphics:', s.graphics.presenter.backend], ['File storage:', s.fs.persistence], ['Volume size:', formatSize(s.fs.size('C:\\'))]]), el('div', { class: 'separator' }), el('p', { text: 'Windows applications here run as JavaScript packages. Native Windows and DOS executable formats are not executed.' }))],
         ['Device Manager', p => {
                 const list = el('div', { class: 'inset', style: { padding: '10px', minHeight: '200px' } });
                 for (const [ic, label] of [['computer', 'Computer'], ['display', 'Display adapter — ' + s.graphics.presenter.backend], ['disk', 'Virtual C: drive — ' + s.fs.persistence], ['keyboard', 'Browser keyboard'], ['mouse', 'Browser pointing device'], ['volume', 'Web Audio output'], ['network', navigator.onLine ? 'Network — connected' : 'Network — offline']])
                     list.append(el('div', { class: 'row', style: { padding: '6px' } }, icon(ic, 16), label));
                 p.append(list);
             }],
-        ['Performance', p => p.append(el('div', { class: 'info-grid' }, 'Graphics:', s.graphics.presenter.backend, 'Open windows:', String(s.wm.windows.length), 'Logical CPUs:', String(navigator.hardwareConcurrency || 1), 'Files and folders:', String(s.fs.nodes.size), 'Virtual disk used:', formatSize(s.fs.size('C:\\')), 'Storage revision:', String(s.fs.revision)), button('System Monitor…', () => s.launch('monitor')), button('Export Volume…', () => download('Windows95-Backup.json', s.fs.export(), 'application/json')))]
+        ['Performance', p => p.append(infoGrid([['Graphics:', s.graphics.presenter.backend], ['Open windows:', String(s.wm.windows.length)], ['Logical CPUs:', String(navigator.hardwareConcurrency || 1)], ['Files and folders:', String(s.fs.nodes.size)], ['Virtual disk used:', formatSize(s.fs.size('C:\\'))], ['Storage revision:', String(s.fs.revision)]]), button('System Monitor…', () => s.launch('monitor')), button('Export Volume…', () => download('Windows95-Backup.json', s.fs.export(), 'application/json')))]
     ], 440, 400);
 }
 export function settingsApplet(s, id) {
