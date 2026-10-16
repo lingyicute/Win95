@@ -13,7 +13,7 @@ import { findFiles, help, characterMap, clipboardViewer, registryEditor, systemM
 import { mediaPlayer, volumeControl, soundRecorder, internet, inbox } from './packages/apps/multimedia.js';
 import { dosPrompt } from './packages/apps/dos.js';
 import { minesweeper, solitaire, hearts } from './packages/games/apps.js';
-const MIN_BOOT_MS = 1000;
+const MIN_BOOT_MS = 1700;
 const bootEl = document.querySelector('#boot');
 const bootSpinnerEl = bootEl?.querySelector('.boot-spinner');
 const bootTapEl = bootEl?.querySelector('.boot-tap');
