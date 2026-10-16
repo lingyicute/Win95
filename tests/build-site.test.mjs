@@ -3,9 +3,16 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { buildSite, versionCss, versionHtml, versionJavaScript } from '../tools/build-site.mjs';
+import { buildSite, defaultVersion, versionCss, versionHtml, versionJavaScript } from '../tools/build-site.mjs';
 
 const VERSION = 'abc1234';
+
+test('deployment environments provide the default asset version', () => {
+    assert.equal(defaultVersion({}), 'dev');
+    assert.equal(defaultVersion({ GITHUB_SHA: 'github-sha' }), 'github-sha');
+    assert.equal(defaultVersion({ CF_PAGES_COMMIT_SHA: 'cloudflare-sha', GITHUB_SHA: 'github-sha' }), 'cloudflare-sha');
+    assert.equal(defaultVersion({ APP_VERSION: 'manual', CF_PAGES_COMMIT_SHA: 'cloudflare-sha' }), 'manual');
+});
 
 test('JavaScript module specifiers gain the release version', () => {
     const source = [

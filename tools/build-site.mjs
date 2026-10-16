@@ -11,6 +11,10 @@ export function assertVersion(version) {
     return String(version);
 }
 
+export function defaultVersion(env = process.env) {
+    return env.APP_VERSION || env.CF_PAGES_COMMIT_SHA || env.GITHUB_SHA || 'dev';
+}
+
 function addVersion(reference, version) {
     if (/[?&]v=/.test(reference))
         return reference;
@@ -85,7 +89,7 @@ async function walk(directory) {
     return files;
 }
 
-export async function buildSite({ source = 'src', output = '_site', version } = {}) {
+export async function buildSite({ source = 'src', output = '_site', version = defaultVersion() } = {}) {
     assertVersion(version);
     const sourceDir = path.resolve(source);
     const outputDir = path.resolve(output);
@@ -116,7 +120,7 @@ export async function buildSite({ source = 'src', output = '_site', version } = 
 }
 
 function parseArgs(argv) {
-    const options = { source: 'src', output: '_site', version: process.env.APP_VERSION || 'dev' };
+    const options = { source: 'src', output: '_site', version: defaultVersion() };
     for (let i = 0; i < argv.length; i++) {
         if (argv[i] === '--source')
             options.source = argv[++i];
