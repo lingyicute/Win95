@@ -39,7 +39,6 @@ export function mediaPlayer(s, args = {}) {
             URL.revokeObjectURL(srcUrl);
         srcUrl = url;
         media.src = url;
-        currentName = name;
         w.setTitle(`${name} - ${cd ? 'CD Player' : 'Media Player'}`);
         w.status('Ready');
     };
