@@ -12,5 +12,7 @@ test('a configured Windows password gates the initial desktop behind login', () 
 
 test('password-protected startup defers the startup sound until successful login', () => {
     assert.match(main, /if \(!s\.settings\.get\('loginPassword', ''\)\)\s+s\.playSound\('startup'\);/);
-    assert.match(main, /if \(startup && authenticated\)[\s\S]*?s\.playSound\('startup'\);/);
+    /* A sign-in chimes whether it follows a boot or a log off, so what is
+       pinned down here is that the chime waits for the login to succeed. */
+    assert.match(main, /if \(!authenticated\)[\s\S]*?return;\s*\}\s*document\.body\.classList\.remove\('logged-off'\);[\s\S]*?s\.playSound\('startup'\);/);
 });

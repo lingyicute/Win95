@@ -33,18 +33,17 @@ if (s.settings.get('loginPassword', ''))
    the windows 200 ms after that. Every way into a session - a start without a
    password, a start gated by one, and a log off followed by a new login - goes
    through this one controller, so all three reveal the desktop in the same
-   order. The windows are opened by the last stage rather than up front, so a
-   start-up window is never shown mid-animation behind a bare desktop. */
+   order. The start-up windows are opened by the last stage rather than up
+   front, so a window never shows mid-animation over a bare desktop. */
 const startupWindows = () => {
     s.launch('computer', { x: Math.max(100, Math.round(innerWidth * .14)), y: Math.max(55, Math.round(innerHeight * .12)), width: 575, height: 350 });
     if (s.settings.get('showWelcome', true))
         welcome();
 };
 let desktopReveal = null;
-/** `openWindows` is false after a log off, where no start-up window belongs. */
-s.revealDesktop = (openWindows = false) => {
+s.revealDesktop = () => {
     if (!desktopReveal) {
-        desktopReveal = revealDesktopLayers({ onLayer: layer => { if (layer === 'windows' && openWindows) startupWindows(); } });
+        desktopReveal = revealDesktopLayers({ onLayer: layer => { if (layer === 'windows') startupWindows(); } });
         desktopReveal.then(() => { desktopReveal = null; });
     }
     return desktopReveal;
@@ -121,7 +120,7 @@ const startBoot = () => {
         setTimeout(() => {
             bootEl.remove();
             if (!s.settings.get('loginPassword', ''))
-                s.revealDesktop(true);
+                s.revealDesktop();
         }, 200);
     }, MIN_BOOT_MS);
 };
@@ -416,12 +415,12 @@ function showLoginDialog({ startup = false } = {}) {
         document.body.classList.remove('logged-off');
         renderDesktop();
         s.updateClock();
-        if (startup && authenticated)
-            s.playSound('startup');
-        /* The background was already there behind the login box, so a sign-in
-           starts the reveal at the icons. `startup` keeps the welcome window on
-           a first login only, the way it was before. */
-        s.revealDesktop(startup);
+        /* Signing back in is a sign-in like any other: the chime and the
+           start-up windows belong to it too, not only to the first one after a
+           boot. The background was already painted behind the login box, so the
+           reveal starts at the icons. */
+        s.playSound('startup');
+        s.revealDesktop();
     });
     queueMicrotask(() => password.focus());
     return login;
@@ -664,7 +663,7 @@ if (s.settings.get('loginPassword', ''))
 else if (!bootEl)
     /* Without a boot screen there is nothing to wait for, so the reveal starts
        here; with one, startBoot() runs it the moment the splash is gone. */
-    s.revealDesktop(true);
+    s.revealDesktop();
 if (document.readyState === 'complete')
     showBootTap();
 else

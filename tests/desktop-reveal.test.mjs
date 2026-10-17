@@ -136,18 +136,24 @@ test('the reveal hides the layers through the body classes the stylesheet styles
 });
 
 test('a passwordless start reveals the desktop once the boot screen is gone, not before', () => {
-    assert.match(main, /setTimeout\(\(\) => \{\s*bootEl\.remove\(\);\s*if \(!s\.settings\.get\('loginPassword', ''\)\)\s+s\.revealDesktop\(true\);/, 'the reveal waits for the splash to be removed and skips a sign-in waiting for its password');
+    assert.match(main, /setTimeout\(\(\) => \{\s*bootEl\.remove\(\);\s*if \(!s\.settings\.get\('loginPassword', ''\)\)\s+s\.revealDesktop\(\);/, 'the reveal waits for the splash to be removed and skips a sign-in waiting for its password');
     assert.doesNotMatch(main, /else \{\s*s\.launch\('computer'/, 'the start-up windows are no longer opened behind the boot screen');
-    assert.match(main, /else if \(!bootEl\)\s*[\s\S]{0,200}?s\.revealDesktop\(true\);/, 'without a boot screen the reveal starts straight away');
+    assert.match(main, /else if \(!bootEl\)\s*[\s\S]{0,200}?s\.revealDesktop\(\);/, 'without a boot screen the reveal starts straight away');
 });
 
 test('a sign-in and a log off both run the same staged reveal', () => {
     assert.match(main, /if \(s\.settings\.get\('loginPassword', ''\)\)\s+document\.body\.classList\.add\('logged-off'\);/);
-    assert.match(main, /document\.body\.classList\.remove\('logged-off'\);\s+renderDesktop\(\);\s+s\.updateClock\(\);[\s\S]*?s\.revealDesktop\(startup\);/, 'the desktop is revealed in stages after the password is accepted');
-    assert.match(main, /s\.revealDesktop = \(openWindows = false\) => \{[\s\S]*?if \(layer === 'windows' && openWindows\) startupWindows\(\);/, 'the windows layer opens the start-up windows, and only for a first login');
+    assert.match(main, /document\.body\.classList\.remove\('logged-off'\);\s+renderDesktop\(\);\s+s\.updateClock\(\);[\s\S]*?s\.playSound\('startup'\);\s+s\.revealDesktop\(\);/, 'the desktop is revealed in stages after the password is accepted');
+    assert.match(main, /s\.revealDesktop = \(\) => \{[\s\S]*?if \(layer === 'windows'\) startupWindows\(\);/, 'the windows layer opens the start-up windows of that sign-in, be it a boot or a new login');
 });
 
 test('a reveal already in flight is not restarted by the next sign-in', () => {
     assert.match(main, /if \(!desktopReveal\) \{\s*desktopReveal = revealDesktopLayers\(/);
     assert.match(main, /desktopReveal\.then\(\(\) => \{ desktopReveal = null; \}\);/, 'the finished reveal frees the way for the next one');
+});
+
+test('a log off and a new sign-in open the start-up windows just like a boot does', () => {
+    assert.match(main, /s\.playSound\('startup'\);\s+s\.revealDesktop\(\);/, 'every accepted sign-in chimes and then reveals');
+    assert.doesNotMatch(main, /if \(startup && authenticated\)/, 'no first-login-only gate is left on the windows or the chime');
+    assert.match(main, /const startupWindows = \(\) => \{[\s\S]*?if \(s\.settings\.get\('showWelcome', true\)\)/, 'the Welcome window still obeys its own setting');
 });
