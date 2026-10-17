@@ -295,12 +295,49 @@ export function wordpad(s, args = {}) {
     };
     w.body.append(toolbar, format, el('div', { class: 'ruler' }, ...Array.from({ length: 7 }, (_, i) => el('span', { text: String(i + 1) }))), editor);
     w.status('For Help, press F1');
+    const textNodes = () => {
+        const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        while (walker.nextNode())
+            if (walker.currentNode.nodeValue)
+                nodes.push(walker.currentNode);
+        return nodes;
+    };
+    /* Search and select inside the editor only: a page-wide search matches
+       the whole document and would select its first hit in other windows. */
+    const selectRange = (nodes, from, to) => {
+        let pos = 0, start = null, end = null;
+        for (const n of nodes) {
+            const len = n.nodeValue.length;
+            if (!start && from < pos + len)
+                start = { node: n, offset: from - pos };
+            if (to <= pos + len) {
+                end = { node: n, offset: to - pos };
+                break;
+            }
+            pos += len;
+        }
+        if (!start || !end)
+            return false;
+        const range = document.createRange();
+        range.setStart(start.node, start.offset);
+        range.setEnd(end.node, end.offset);
+        const sel = window.getSelection();
+        if (!sel)
+            return false;
+        sel.removeAllRanges();
+        sel.addRange(range);
+        start.node.parentElement?.scrollIntoView?.({ block: 'nearest' });
+        return true;
+    };
     const find = async () => {
         const str = await s.ui.prompt('Find what:', '', 'Find', { owner: w });
         if (str) {
             editor.focus();
-            window.getSelection()?.collapse(editor, 0);
-            if (!window.find(str))
+            const nodes = textNodes();
+            const text = nodes.map(n => n.nodeValue).join('');
+            const at = text.toLowerCase().indexOf(str.toLowerCase());
+            if (at < 0 || !selectRange(nodes, at, at + str.length))
                 s.ui.message('WordPad has finished searching the document.', 'WordPad', ['OK'], { owner: w });
         }
     };
@@ -396,6 +433,7 @@ export function calculator(s) {
         }
         else if (key === '%') {
             value = format(op === '+' || op === '−' ? acc * Number(value) / 100 : Number(value) / 100);
+            newEntry = true;
         }
         else if (key === 'MC')
             memory = 0;

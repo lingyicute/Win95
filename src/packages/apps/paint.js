@@ -4,7 +4,7 @@ import { baseName } from '@win95/core/filesystem.js';
 import { RasterPresenter } from '@win95/graphics/renderer.js';
 export async function paint(s, args = {}) {
     const w = s.wm.create({ title: 'untitled - Paint', icon: 'paint', width: 720, height: 510, x: args.x, y: args.y });
-    let path = args.path || null, dirty = false, generation = 0, tool = 'pencil', foreground = '#000000', background = '#ffffff', lineWidth = 1, fillShape = false, zoom = 1, selection = null, clip = null, undo = [], redo = [], drawing = false, start = null, snapshot = null, last = null, polygon = [];
+    let path = args.path || null, dirty = false, generation = 0, tool = 'pencil', foreground = '#000000', background = '#ffffff', lineWidth = 1, fillShape = false, zoom = 1, selection = null, clip = null, undo = [], redo = [], drawing = false, start = null, snapshot = null, last = null, polygon = [], curveLine = null;
     const source = document.createElement('canvas');
     source.width = 640;
     source.height = 360;
@@ -135,7 +135,17 @@ export async function paint(s, args = {}) {
         selection = null;
         render();
     };
-    const choose = t => { tool = t; tools.querySelectorAll('[data-tool]').forEach(n => n.classList.toggle('selected', n.dataset.tool === t)); w.status(({ select: 'Select a rectangular area of the picture.', pencil: 'Draws a free-form line one pixel wide.', fill: 'Fills an area with the selected color.', text: 'Click the picture to insert text.', polygon: 'Click to add points. Double-click to complete the polygon.', curve: 'Drag a line, then click to set the curve.' })[t] || `Draw with the ${t} tool.`); };
+    const choose = t => {
+        if (t !== tool) {
+            /* Drafts belong to their tool: a stale curve snapshot would restore
+               the whole canvas on the next curve click and erase everything
+               drawn since, and a stale polygon would connect to its old last
+               point. What is already drawn stays drawn. */
+            curveLine = null;
+            polygon = [];
+        }
+        tool = t;
+        tools.querySelectorAll('[data-tool]').forEach(n => n.classList.toggle('selected', n.dataset.tool === t)); w.status(({ select: 'Select a rectangular area of the picture.', pencil: 'Draws a free-form line one pixel wide.', fill: 'Fills an area with the selected color.', text: 'Click the picture to insert text.', polygon: 'Click to add points. Double-click to complete the polygon.', curve: 'Drag a line, then click to set the curve.' })[t] || `Draw with the ${t} tool.`); };
     const definitions = [['select', '⬚', 'Select'], ['freeSelect', '♧', 'Free-form select'], ['eraser', '▱', 'Eraser'], ['fill', '◩', 'Fill with color'], ['picker', '⌁', 'Pick color'], ['magnifier', '⌕', 'Magnifier'], ['pencil', '╱', 'Pencil'], ['brush', '▰', 'Brush'], ['spray', '⁙', 'Airbrush'], ['text', 'A', 'Text'], ['line', '╲', 'Line'], ['curve', '∿', 'Curve'], ['rectangle', '□', 'Rectangle'], ['polygon', '⬠', 'Polygon'], ['ellipse', '○', 'Ellipse'], ['roundrect', '▢', 'Rounded rectangle']];
     for (const [t, label, title] of definitions)
         tools.append(button(label, () => choose(t), { title, 'aria-label': title, 'data-tool': t, class: t === tool ? 'selected' : '' }));
@@ -173,7 +183,6 @@ export async function paint(s, args = {}) {
         }
         ctx.putImageData(im, 0, 0);
     };
-    let curveLine = null;
     const shape = (a, b) => {
         ctx.strokeStyle = foreground;
         ctx.fillStyle = fillShape ? foreground : background;
@@ -269,7 +278,10 @@ export async function paint(s, args = {}) {
             return;
         }
         drawing = true;
-        canvas.setPointerCapture(e.pointerId);
+        try {
+            canvas.setPointerCapture(e.pointerId);
+        }
+        catch { }
         if (['pencil', 'brush', 'eraser'].includes(tool)) {
             const width = tool === 'eraser' ? Math.max(8, lineWidth * 3) : tool === 'brush' ? Math.max(3, lineWidth * 2) : lineWidth;
             ctx.fillStyle = tool === 'eraser' ? background : foreground;
@@ -282,6 +294,12 @@ export async function paint(s, args = {}) {
         w.status(`${tool[0].toUpperCase() + tool.slice(1)}     ${p.x}, ${p.y} px     ${source.width} × ${source.height} px`);
         if (!drawing)
             return;
+        if (!(e.buttons & 3)) {
+            /* Heal a stroke whose pointer went up without an event (capture
+               lost): finish instead of painting buttonless. */
+            finish(e);
+            return;
+        }
         if (['pencil', 'brush', 'eraser'].includes(tool)) {
             stroke(last, p, tool === 'eraser' ? background : foreground, tool === 'eraser' ? Math.max(8, lineWidth * 3) : tool === 'brush' ? Math.max(3, lineWidth * 2) : lineWidth);
         }
@@ -321,6 +339,7 @@ export async function paint(s, args = {}) {
     };
     surface.addEventListener('pointerup', finish);
     surface.addEventListener('pointercancel', finish);
+    surface.addEventListener('lostpointercapture', finish);
     onDoubleActivate(surface, () => {
         if (tool === 'polygon' && polygon.length > 1) {
             stroke(polygon.at(-1), polygon[0]);
@@ -400,6 +419,7 @@ export async function paint(s, args = {}) {
         dirty = true;
         render();
     };
+    const selectAll = () => { selection = { x: 0, y: 0, width: source.width, height: source.height }; choose('select'); w.status('The entire picture is selected.'); };
     w.setMenu(menuBar([{ label: 'File', items: [{ label: 'New', shortcut: 'Ctrl+N', action: fresh }, { label: 'Open…', shortcut: 'Ctrl+O', action: open }, { label: 'Save', shortcut: 'Ctrl+S', action: () => save() }, { label: 'Save As…', action: () => save(true) }, null, { label: 'From File…', action: () => fileInput('image/*', async (f) => {
                         if (await confirm()) {
                             const data = await new Promise(resolve => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(f); });
@@ -418,7 +438,7 @@ export async function paint(s, args = {}) {
                             dirty = true;
                             render();
                         }
-                    } }, { label: 'Select All', shortcut: 'Ctrl+A', action: () => { selection = { x: 0, y: 0, width: source.width, height: source.height }; choose('select'); w.status('The entire picture is selected.'); } }] }, { label: 'View', items: () => [{ label: 'Tool Box', checked: !tools.hidden, action: () => tools.hidden = !tools.hidden }, { label: 'Color Box', checked: !palette.hidden, action: () => palette.hidden = !palette.hidden }, null, { label: 'Zoom', items: [1, 2, 4, 8].map(n => ({ label: n * 100 + '%', checked: zoom === n, action: () => { zoom = n; render(); } })) }] }, { label: 'Image', items: [{ label: 'Flip Horizontal', action: () => transform('horizontal') }, { label: 'Flip Vertical', action: () => transform('vertical') }, { label: 'Rotate 90°', action: () => transform('rotate') }, { label: 'Invert Colors', shortcut: 'Ctrl+I', action: async () => {
+                    } }, { label: 'Select All', shortcut: 'Ctrl+A', action: selectAll }] }, { label: 'View', items: () => [{ label: 'Tool Box', checked: !tools.hidden, action: () => tools.hidden = !tools.hidden }, { label: 'Color Box', checked: !palette.hidden, action: () => palette.hidden = !palette.hidden }, null, { label: 'Zoom', items: [1, 2, 4, 8].map(n => ({ label: n * 100 + '%', checked: zoom === n, action: () => { zoom = n; render(); } })) }] }, { label: 'Image', items: [{ label: 'Flip Horizontal', action: () => transform('horizontal') }, { label: 'Flip Vertical', action: () => transform('vertical') }, { label: 'Rotate 90°', action: () => transform('rotate') }, { label: 'Invert Colors', shortcut: 'Ctrl+I', action: async () => {
                         checkpoint();
                         try {
                             const image = await presenter.invert(ctx.getImageData(0, 0, source.width, source.height));
@@ -433,11 +453,10 @@ export async function paint(s, args = {}) {
     w.element.addEventListener('keydown', e => {
         if ((e.ctrlKey || e.metaKey) && ['s', 'o', 'n', 'z', 'y', 'c', 'x', 'v', 'a'].includes(e.key.toLowerCase())) {
             e.preventDefault();
-            ({ s: () => save(e.shiftKey), o: open, n: fresh, z: undoAction, y: redoAction, c: () => copySelection(false), x: () => copySelection(true), v: pasteSelection, a: () => selection = { x: 0, y: 0, width: source.width, height: source.height } })[e.key.toLowerCase()]();
+            ({ s: () => save(e.shiftKey), o: open, n: fresh, z: undoAction, y: redoAction, c: () => copySelection(false), x: () => copySelection(true), v: pasteSelection, a: selectAll })[e.key.toLowerCase()]();
         }
     });
     w.onClose = confirm;
-    w.onClosed.push(() => presenter.destroy());
     presenter.onBackendChange = () => { canvas = presenter.canvas; drawing = false; render(); };
     if (path)
         try {
