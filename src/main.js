@@ -25,6 +25,8 @@ const bootProgressEl = bootEl?.querySelector('.boot-progress');
 let bootReady = false;
 let bootPlaying = false;
 const s = { fs: new VirtualFileSystem(), settings: new Settings(), wm: new WindowManager(), registry: new Map(), clipboard: null, imageClipboard: null, audio: null, lastActivity: Date.now() };
+if (s.settings.get('loginPassword', ''))
+    document.body.classList.add('logged-off');
 installI18n();
 s.ui = createDialogs(s);
 s.files = createFileActions(s);
@@ -306,6 +308,49 @@ s.shutdown = () => {
     w.body.append(el('div', { class: 'row', style: { alignItems: 'flex-start', gap: '17px' } }, icon('shutdown', 32), el('div', { class: 'stack' }, el('p', { text: 'Are you sure you want to:' }), opts)), el('div', { class: 'dialog-buttons' }, button('Yes', go, { class: 'default-button' }), button('No', () => w.close()), button('Help', () => s.launch('help', { topic: 'windows' }))));
     return w;
 };
+function showLoginDialog({ startup = false } = {}) {
+    const login = s.ui.modal('Enter Windows Password', { width: 470, height: 250, icon: 'login' });
+    let authenticated = false;
+    const user = el('input', { value: s.settings.get('owner', 'Windows User'), readOnly: true, 'aria-label': 'User name', autocomplete: 'username' });
+    const password = el('input', { type: 'password', 'aria-label': 'Password', autocomplete: 'current-password' });
+    const form = el('form', { class: 'login-layout', onsubmit: async event => {
+        event.preventDefault();
+        const expectedPassword = s.settings.get('loginPassword', '');
+        if (password.value !== expectedPassword) {
+            password.value = '';
+            await s.ui.message('The password you entered is incorrect. Try again.', 'Enter Windows Password', ['OK'], { owner: login, icon: 'help' });
+            password.focus();
+            return;
+        }
+        authenticated = true;
+        await login.close();
+    } }, icon('login', 48),
+    el('div', { class: 'login-copy' },
+        el('div', { text: 'Type a name to identify yourself to Windows. Enter a password if you want to.' }),
+        el('div', { class: 'login-tip', text: "Tip: If you don't enter a password, you won't get this prompt again at startup." })),
+    el('div', { class: 'login-buttons' }, el('button', { type: 'submit', class: 'default-button', text: 'OK' }), button('Cancel', () => login.close(), { type: 'button' })),
+    el('div', { class: 'login-fields' }, el('label', { for: 'login-user', text: 'User name:' }), user, el('label', { for: 'login-password', text: 'Password:' }), password));
+    user.id = 'login-user';
+    password.id = 'login-password';
+    login.body.append(form);
+    login.onClosed.push(() => {
+        if (startup && !authenticated) {
+            document.body.classList.add('logged-off');
+            queueMicrotask(() => showLoginDialog({ startup: true }));
+            return;
+        }
+        document.body.classList.remove('logged-off');
+        renderDesktop();
+        s.updateClock();
+        if (startup && authenticated) {
+            s.launch('computer', { x: Math.max(100, Math.round(innerWidth * .14)), y: Math.max(55, Math.round(innerHeight * .12)), width: 575, height: 350 });
+            if (s.settings.get('showWelcome', true))
+                welcome();
+        }
+    });
+    queueMicrotask(() => password.focus());
+    return login;
+}
 s.logoff = () => {
     const confirm = s.ui.modal('Log Off Windows', { width: 300, height: 140, icon: 'logoff' });
     const logoffNow = async () => {
@@ -316,34 +361,7 @@ s.logoff = () => {
         }
         await s.fs.flush();
         document.body.classList.add('logged-off');
-        const login = s.ui.modal('Enter Windows Password', { width: 470, height: 250, icon: 'login' });
-        const user = el('input', { value: s.settings.get('owner', 'Windows User'), readOnly: true, 'aria-label': 'User name', autocomplete: 'username' });
-        const password = el('input', { type: 'password', 'aria-label': 'Password', autocomplete: 'current-password' });
-        const form = el('form', { class: 'login-layout', onsubmit: async event => {
-            event.preventDefault();
-            const expectedPassword = s.settings.get('loginPassword', '');
-            if (password.value !== expectedPassword) {
-                password.value = '';
-                await s.ui.message('The password you entered is incorrect. Try again.', 'Enter Windows Password', ['OK'], { owner: login, icon: 'help' });
-                password.focus();
-                return;
-            }
-            await login.close();
-        } }, icon('login', 48),
-        el('div', { class: 'login-copy' },
-            el('div', { text: 'Type a name to identify yourself to Windows. Enter a password if you want to.' }),
-            el('div', { class: 'login-tip', text: "Tip: If you don't enter a password, you won't get this prompt again at startup." })),
-        el('div', { class: 'login-buttons' }, el('button', { type: 'submit', class: 'default-button', text: 'OK' }), button('Cancel', () => login.close(), { type: 'button' })),
-        el('div', { class: 'login-fields' }, el('label', { for: 'login-user', text: 'User name:' }), user, el('label', { for: 'login-password', text: 'Password:' }), password));
-        user.id = 'login-user';
-        password.id = 'login-password';
-        login.body.append(form);
-        login.onClosed.push(() => {
-            document.body.classList.remove('logged-off');
-            renderDesktop();
-            s.updateClock();
-        });
-        queueMicrotask(() => password.focus());
+        showLoginDialog();
     };
     confirm.body.append(el('div', { class: 'row', style: { alignItems: 'center', gap: '18px', padding: '12px 16px 8px' } }, icon('logoff', 32), el('p', { text: 'Are you sure you want to log off?' })),
         el('div', { class: 'dialog-buttons' }, button('Yes', logoffNow, { class: 'default-button' }), button('No', () => confirm.close())));
@@ -566,9 +584,13 @@ setInterval(() => {
     if (minutes > 0 && kind !== 'None' && !document.querySelector('.screensaver') && Date.now() - s.lastActivity > minutes * 60000)
         s.graphics.screensaver(kind);
 }, 5000);
-s.launch('computer', { x: Math.max(100, Math.round(innerWidth * .14)), y: Math.max(55, Math.round(innerHeight * .12)), width: 575, height: 350 });
-if (s.settings.get('showWelcome', true))
-    welcome();
+if (s.settings.get('loginPassword', ''))
+    showLoginDialog({ startup: true });
+else {
+    s.launch('computer', { x: Math.max(100, Math.round(innerWidth * .14)), y: Math.max(55, Math.round(innerHeight * .12)), width: 575, height: 350 });
+    if (s.settings.get('showWelcome', true))
+        welcome();
+}
 if (document.readyState === 'complete')
     showBootTap();
 else
