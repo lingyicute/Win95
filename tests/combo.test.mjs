@@ -233,13 +233,43 @@ test('each converted call site uses the drawn control', async () => {
         'src/packages/apps/utilities.js': 2,
         'src/packages/apps/documents.js': 2,
         'src/packages/ui/dialogs.js': 2,
-        'src/main.js': 1
+        'src/main.js': 2
     };
     for (const [file, count] of Object.entries(sites)) {
         const text = await readFile(path.join(root, file), 'utf8');
         assert.equal([...text.matchAll(/\bcombo\(\{/g)].length, count, file);
         assert.match(text, /from '@win95\/ui\/select\.js'|from '\.\.\/ui\/select\.js'|from '\.\/packages\/ui\/select\.js'|from '\.\/select\.js'/, `${file} must import the control`);
     }
+});
+
+test('the editable combo keeps typed text and commits list choices through the drawn popup', () => {
+    const node = combo({ editable: true, ariaLabel: 'Open', value: 'notepad' });
+    document.body.append(node);
+    node.setOptions(['notepad', 'calc', 'mspaint']);
+    const inputEl = node.querySelector('.win95-combo-input');
+    assert.ok(inputEl, 'a real text field sits inside the drawn combo');
+    assert.equal(node.value, 'notepad');
+    node.value = 'calc';
+    assert.equal(inputEl.value, 'calc', 'the field follows the value');
+    node.value = 'regedit';
+    node.setOptions(['notepad', 'calc']);
+    assert.equal(node.value, 'regedit', 'typed text is never snapped onto the suggestion list');
+
+    keydown(inputEl, 'ArrowDown');
+    assert.equal(node.getAttribute('aria-expanded'), 'true', 'the arrow key opens the drawn list, not a browser one');
+    keydown(inputEl, 'ArrowDown');
+    keydown(inputEl, 'Enter');
+    assert.equal(node.value, 'notepad', 'Enter commits the highlighted suggestion');
+    assert.equal(node.getAttribute('aria-expanded'), 'false');
+    node.remove();
+});
+
+test('no dialog falls back to the browser datalist suggestions', async () => {
+    const offenders = [];
+    for (const file of await sourceFiles(path.join(root, 'src')))
+        if ((await readFile(file, 'utf8')).includes('datalist'))
+            offenders.push(path.relative(root, file));
+    assert.deepEqual(offenders, []);
 });
 
 test('the file dialog fills its folder list through the control, not with native options', async () => {

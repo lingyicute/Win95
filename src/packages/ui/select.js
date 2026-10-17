@@ -26,19 +26,24 @@ const toItem = item => (typeof item === 'string' || typeof item === 'number')
 
 export function combo(options = {}) {
     const listMode = options.mode === 'list';
+    // `editable` draws the Windows 95 editable combo box: a text field inside
+    // the sunken box with the drop-down list of suggestions behind the arrow,
+    // so no dialog ever needs the browser's own suggestion pop-up.
+    const editable = !!options.editable && !listMode;
     const state = { items: [], value: '', disabled: !!options.disabled, change: options.onchange || null };
     let popup = null, highlighted = null, typeAhead = '', typeTimer = 0;
 
-    const valueLabel = listMode ? null : el('span', { class: 'win95-combo-value' });
+    const valueLabel = listMode || editable ? null : el('span', { class: 'win95-combo-value' });
+    const valueInput = editable ? el('input', { class: 'win95-combo-input', type: 'text', spellcheck: false, autocomplete: 'off', 'aria-label': options.ariaLabel }) : null;
     const node = el('div', {
-        class: 'win95-combo' + (listMode ? ' win95-combo-list' : '') + (options.class ? ' ' + options.class : ''),
-        tabIndex: state.disabled ? -1 : 0,
+        class: 'win95-combo' + (listMode ? ' win95-combo-list' : '') + (editable ? ' win95-combo-editable' : '') + (options.class ? ' ' + options.class : ''),
+        tabIndex: state.disabled || editable ? -1 : 0,
         role: listMode ? 'listbox' : 'combobox',
-        'aria-label': options.ariaLabel,
+        'aria-label': editable ? undefined : options.ariaLabel,
         'aria-expanded': listMode ? undefined : 'false'
     });
     if (!listMode)
-        node.append(valueLabel, el('span', { class: 'win95-combo-arrow', 'aria-hidden': 'true' }));
+        node.append(valueInput || valueLabel, el('span', { class: 'win95-combo-arrow', 'aria-hidden': 'true' }));
     if (options.style)
         Object.assign(node.style, options.style);
 
@@ -48,6 +53,8 @@ export function combo(options = {}) {
     const paint = () => {
         if (valueLabel)
             valueLabel.textContent = itemFor(state.value)?.label ?? '';
+        if (valueInput && valueInput.value !== state.value)
+            valueInput.value = state.value;
         for (const row of node.children) {
             if (row.dataset.value === undefined)
                 continue;
@@ -107,13 +114,19 @@ export function combo(options = {}) {
         }
     };
 
+    const focusBack = () => {
+        if (valueInput)
+            valueInput.focus();
+        else
+            node.focus();
+    };
     const buildPopup = () => {
         const list = el('div', { class: 'win95-combo-popup', role: 'listbox', 'aria-label': options.ariaLabel });
         for (const item of state.items) {
             const row = el('div', { class: 'win95-combo-option', role: 'option', 'data-value': item.value }, item.label);
             row.addEventListener('pointerdown', e => e.preventDefault());
             row.addEventListener('pointerenter', () => { highlighted = item.value; highlightRow(); });
-            row.addEventListener('click', () => { choose(item.value); closePopup(); node.focus(); });
+            row.addEventListener('click', () => { choose(item.value); closePopup(); focusBack(); });
             list.append(row);
         }
         return list;
@@ -165,9 +178,9 @@ export function combo(options = {}) {
             entry.text = typeof item === 'string' ? item : String(item.label ?? item.value ?? '');
             return entry;
         });
-        if (selected !== undefined && state.items.some(i => i.value === String(selected)))
+        if (selected !== undefined && (editable || state.items.some(i => i.value === String(selected))))
             state.value = String(selected);
-        if (!state.items.some(i => i.value === state.value))
+        if (!editable && !state.items.some(i => i.value === state.value))
             state.value = state.items[0]?.value ?? '';
         highlighted = state.value;
         if (listMode) {
@@ -238,14 +251,50 @@ export function combo(options = {}) {
     node.addEventListener('pointerdown', event => {
         if (state.disabled || listMode)
             return;
+        if (valueInput && event.target === valueInput)
+            return;
         event.preventDefault();
-        node.focus();
+        focusBack();
         if (popup)
             closePopup();
         else
             openPopup();
     });
     node.addEventListener('blur', () => closePopup());
+    if (valueInput) {
+        valueInput.addEventListener('input', () => { state.value = valueInput.value; });
+        valueInput.addEventListener('keydown', event => {
+            if (state.disabled)
+                return;
+            const open = !!popup;
+            if (event.key === 'Escape' && open) {
+                event.preventDefault();
+                event.stopPropagation();
+                closePopup();
+                return;
+            }
+            if (event.key === 'Tab') {
+                closePopup();
+                return;
+            }
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (!open) {
+                    openPopup();
+                    return;
+                }
+                move(event.key === 'ArrowDown' ? 1 : -1);
+                return;
+            }
+            if (event.key === 'Enter' && open) {
+                event.preventDefault();
+                if (highlighted !== null)
+                    choose(highlighted);
+                closePopup();
+            }
+        });
+        valueInput.addEventListener('blur', () => closePopup());
+    }
 
     Object.defineProperty(node, 'value', {
         get: () => state.value,
@@ -259,7 +308,9 @@ export function combo(options = {}) {
         get: () => state.disabled,
         set: value => {
             state.disabled = !!value;
-            node.tabIndex = state.disabled ? -1 : 0;
+            node.tabIndex = state.disabled || editable ? -1 : 0;
+            if (valueInput)
+                valueInput.disabled = state.disabled;
             node.classList.toggle('disabled', state.disabled);
             if (state.disabled)
                 closePopup();
@@ -267,6 +318,13 @@ export function combo(options = {}) {
     });
     node.setOptions = setOptions;
     node.closeMenu = closePopup;
+    if (valueInput) {
+        node.focus = () => valueInput.focus();
+        node.select = () => {
+            valueInput.focus();
+            valueInput.select();
+        };
+    }
 
     setOptions(options.options, options.value);
     return node;
