@@ -24,7 +24,7 @@ const bootLogoEl = bootEl?.querySelector('.boot-logo');
 const bootProgressEl = bootEl?.querySelector('.boot-progress');
 let bootReady = false;
 let bootPlaying = false;
-const s = { fs: new VirtualFileSystem(), settings: new Settings(), wm: new WindowManager(), registry: new Map(), clipboard: null, imageClipboard: null, audio: null, lastActivity: Date.now() };
+const s = { fs: new VirtualFileSystem(), settings: new Settings(), wm: new WindowManager(), registry: new Map(), clipboard: null, imageClipboard: null, audio: null, lastActivity: Date.now(), resettingData: false };
 if (s.settings.get('loginPassword', ''))
     document.body.classList.add('logged-off');
 installI18n();
@@ -310,9 +310,47 @@ s.shutdown = () => {
 };
 function showLoginDialog({ startup = false } = {}) {
     const login = s.ui.modal('Enter Windows Password', { width: 470, height: 250, icon: 'login' });
-    let authenticated = false;
+    let authenticated = false, resetting = false;
     const user = el('input', { value: s.settings.get('owner', 'Windows User'), readOnly: true, 'aria-label': 'User name', autocomplete: 'username' });
     const password = el('input', { type: 'password', 'aria-label': 'Password', autocomplete: 'current-password' });
+    const resetData = async () => {
+        const answer = await s.ui.message('Resetting Windows will erase all files and settings. Continue?', 'Reset Windows', ['Yes', 'No'], { owner: login, icon: 'help' });
+        if (answer !== 'Yes')
+            return;
+        resetting = true;
+        s.resettingData = true;
+        try {
+            clearTimeout(s.fs.saveTimer);
+            s.fs.db?.close();
+            s.fs.db = null;
+            if (typeof indexedDB !== 'undefined') {
+                await new Promise((resolve, reject) => {
+                    const request = indexedDB.deleteDatabase('win95-desktop');
+                    request.onsuccess = resolve;
+                    request.onerror = () => reject(request.error || new Error('Could not delete the virtual disk.'));
+                    request.onblocked = () => reject(new Error('Close other Windows 95 tabs before resetting.'));
+                });
+            }
+            for (const key of ['win95-settings', 'win95-volume', 'win95-journal']) {
+                try { localStorage.removeItem(key); } catch { }
+            }
+            s.settings.values = {};
+            s.fs.nodes.clear();
+            s.fs.revision = 0;
+            s.fs.lastSaved = 0;
+            s.fs.persistence = 'memory';
+            await login.close();
+            await waitForSoundEnd(s.playSound('shutdown'));
+            location.reload();
+        }
+        catch (error) {
+            resetting = false;
+            s.resettingData = false;
+            if (!s.fs.db)
+                await s.fs.init().catch(() => { });
+            await s.ui.message(error.message || 'Windows could not reset its data.', 'Reset Windows', ['OK'], { owner: login, icon: 'help' });
+        }
+    };
     const form = el('form', { class: 'login-layout', onsubmit: async event => {
         event.preventDefault();
         const expectedPassword = s.settings.get('loginPassword', '');
@@ -328,12 +366,14 @@ function showLoginDialog({ startup = false } = {}) {
     el('div', { class: 'login-copy' },
         el('div', { text: 'Type a name to identify yourself to Windows. Enter a password if you want to.' }),
         el('div', { class: 'login-tip', text: "Tip: If you don't enter a password, you won't get this prompt again at startup." })),
-    el('div', { class: 'login-buttons' }, el('button', { type: 'submit', class: 'default-button', text: 'OK' }), button('Cancel', () => login.close(), { type: 'button' })),
+    el('div', { class: 'login-buttons' }, el('button', { type: 'submit', class: 'default-button', text: 'OK' }), button('Cancel', () => login.close(), { type: 'button' }), button('Reset', resetData, { type: 'button' })),
     el('div', { class: 'login-fields' }, el('label', { for: 'login-user', text: 'User name:' }), user, el('label', { for: 'login-password', text: 'Password:' }), password));
     user.id = 'login-user';
     password.id = 'login-password';
     login.body.append(form);
     login.onClosed.push(() => {
+        if (resetting)
+            return;
         if (startup && !authenticated) {
             document.body.classList.add('logged-off');
             queueMicrotask(() => showLoginDialog({ startup: true }));
@@ -567,9 +607,9 @@ s.fs.addEventListener('change', () => {
 });
 s.fs.addEventListener('storageerror', () => s.ui.message('The browser could not save your virtual drive. Export a backup to keep a copy of your files.', 'Storage Full', ['OK'], { height: 190 }));
 window.addEventListener('error', event => { console.error('Windows desktop error:', event.error); });
-window.addEventListener('pagehide', () => s.fs.flush().catch(() => { }));
+window.addEventListener('pagehide', () => { if (!s.resettingData) s.fs.flush().catch(() => { }); });
 document.addEventListener('visibilitychange', () => {
-    if (document.hidden)
+    if (document.hidden && !s.resettingData)
         s.fs.flush().catch(() => { });
 });
 await s.fs.init();

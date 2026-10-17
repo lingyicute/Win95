@@ -54,7 +54,7 @@ const ZH = {
     'The browser could not save your virtual drive. Export a backup to keep a copy of your files.': '浏览器无法保存您的虚拟驱动器。请导出备份以保留文件副本。',
     'Storage Full': '存储空间已满',
     // Common controls and dialogs
-    'OK': '确定', 'Yes': '是', 'No': '否', 'Cancel': '取消', 'Close': '关闭', 'Open': '打开',
+    'OK': '确定', 'Yes': '是', 'No': '否', 'Cancel': '取消', 'Close': '关闭', 'Open': '打开', 'Reset': '重置', 'Reset Windows': '重置 Windows', 'Resetting Windows will erase all files and settings. Continue?': '重置 Windows 将清除所有文件和设置。是否继续？', 'Close other Windows 95 tabs before resetting.': '请先关闭其他 Windows 95 标签页，然后再重置。', 'Windows could not reset its data.': 'Windows 无法重置数据。',
     'Save': '保存', 'Apply': '应用', 'Print': '打印', 'Help Topics': '帮助主题', 'About': '关于',
     'Properties': '属性', 'Rename': '重命名', 'Refresh': '刷新', 'Delete': '删除', 'Explore': '浏览',
     'General': '常规', 'File Folder': '文件夹', 'Read-only': '只读', 'Type a new name:': '键入新名称：',
