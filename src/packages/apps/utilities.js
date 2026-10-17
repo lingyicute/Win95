@@ -307,7 +307,10 @@ export function backup(s) {
             s.ui.error(e, w);
         }
     });
-    w.body.append(el('div', { class: 'tab-strip' }, button('Backup', () => { }, { class: 'active' }), button('Restore', restore)), el('p', { text: 'Back up your files to a single archive on your computer.' }), list, el('div', { class: 'dialog-buttons' }, button('Start Backup', () => { download('Windows95-Backup-' + new Date().toISOString().slice(0, 10) + '.json', s.fs.export(), 'application/json'); w.status('Backup exported.'); }, { class: 'default-button' }), button('Restore…', restore), button('Close', () => w.close())));
+    /* No tab strip: its "Backup" page never moved and its "Restore" page was a
+       second copy of the button at the bottom, so the two cards only made the
+       dialog look like it had modes it did not have. */
+    w.body.append(el('p', { text: 'Back up your files to a single archive on your computer.' }), list, el('div', { class: 'dialog-buttons' }, button('Start Backup', () => { download('Windows95-Backup-' + new Date().toISOString().slice(0, 10) + '.json', s.fs.export(), 'application/json'); w.status('Backup exported.'); }, { class: 'default-button' }), button('Restore…', restore), button('Close', () => w.close())));
     w.status(`${s.fs.nodes.size} objects on the virtual volume`);
     return w;
 }
