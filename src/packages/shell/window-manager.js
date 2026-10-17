@@ -249,8 +249,10 @@ export class WindowManager extends EventTarget {
         for (const w of this.windows) {
             w.rect.x = Math.max(0, Math.min(w.rect.x, innerWidth - 80));
             w.rect.y = Math.max(0, Math.min(w.rect.y, innerHeight - 70));
-            w.rect.width = Math.min(w.rect.width, innerWidth);
-            w.rect.height = Math.min(w.rect.height, innerHeight - 30);
+            if (!w.options.allowOverflow) {
+                w.rect.width = Math.min(w.rect.width, innerWidth);
+                w.rect.height = Math.min(w.rect.height, innerHeight - 30);
+            }
             this.layout(w);
         }
     }

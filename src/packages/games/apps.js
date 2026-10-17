@@ -25,7 +25,8 @@ function cardNode(card, { selected = false, onClick, onDoubleClick, top = 0 } = 
 }
 export function minesweeper(s) {
     let rows = 8, cols = 8, mines = 10, game = new Minesweeper(rows, cols, mines), startTime = 0, seconds = 0, best = s.settings.get('minesBest', {}), timer, pressed = false;
-    const w = s.wm.create({ title: 'Minesweeper', icon: 'minesweeper', width: 212, height: 287, resizable: false });
+    const w = s.wm.create({ title: 'Minesweeper', icon: 'minesweeper', width: 212, height: 287, resizable: false, allowOverflow: true });
+    w.element.classList.add('mines-window');
     w.body.classList.add('mines-body');
     const frame = el('div', { class: 'mines-frame' }), count = el('div', { class: 'mines-counter', role: 'img' }), time = el('div', { class: 'mines-counter', role: 'img' }), face = button('', () => reset(), { class: 'mines-face', 'aria-label': 'New game' }), header = el('div', { class: 'mines-header' }, count, face, time), board = el('div', { class: 'mines-board', 'aria-label': 'Minesweeper board' });
     frame.append(header, board);
