@@ -2,6 +2,7 @@ import { el, button, field, download, fileInput, formatSize, infoGrid } from '@w
 import { icon } from '@win95/ui/icons.js';
 import { menuBar } from '@win95/ui/menu.js';
 import { combo } from '@win95/ui/select.js';
+import { saverWaitMinutes, saverWaitOptions } from './saver-wait.js';
 const applets = [['display', 'Display', 'display'], ['sounds', 'Sounds', 'volume'], ['keyboard', 'Keyboard', 'keyboard'], ['mouse', 'Mouse', 'mouse'], ['datetime', 'Date/Time', 'clock'], ['regional', 'Regional Settings', 'windows'], ['fonts', 'Fonts', 'font'], ['printers', 'Printers', 'printer'], ['network', 'Network', 'network'], ['system', 'System', 'computer'], ['addremove', 'Add/Remove Programs', 'task'], ['accessibility', 'Accessibility Options', 'control'], ['multimedia', 'Multimedia', 'media'], ['passwords', 'Passwords', 'settings'], ['modems', 'Modems', 'connection'], ['joystick', 'Joystick', 'task'], ['hardware', 'Add New Hardware', 'control'], ['power', 'Power', 'computer']];
 export function controlPanel(s) {
     const w = s.wm.create({ title: 'Control Panel', icon: 'control', width: 573, height: 388 });
@@ -47,26 +48,58 @@ function propertySheet(s, title, ic, tabs, width = 420, height = 420) {
     return w;
 }
 export function displayProperties(s) {
-    let wallpaper = s.settings.get('wallpaper', 'None'), color = s.settings.get('desktopColor', '#008080'), saver = s.settings.get('screensaver', 'Mystify'), saverMinutes = s.settings.get('saverMinutes', 0), scheme = s.settings.get('scheme', 'Windows Standard'), backend = s.settings.get('renderer', 'auto');
+    let wallpaper = s.settings.get('wallpaper', 'None'), color = s.settings.get('desktopColor', '#008080'), saver = s.settings.get('screensaver', 'Mystify'), saverMinutes = saverWaitMinutes(s.settings.get('saverMinutes', 0)), scheme = s.settings.get('scheme', 'Windows Standard'), backend = s.settings.get('renderer', 'auto');
     // Each page keeps its own monitor: a shared reference would be overwritten by the
     // Appearance page, whose preview is detached while the Background tab is active.
     const makeMonitor = () => { const preview = el('div', { class: 'display-preview', style: { background: color } }, el('div', { class: 'mini-window' })); return { element: el('div', { class: 'display-monitor' }, preview), preview }; };
     const w = propertySheet(s, 'Display Properties', 'display', [
         ['Background', p => { const monitor = makeMonitor(); p.append(monitor.element); const list = combo({ mode: 'list', ariaLabel: 'Wallpaper', options: ['None', 'Bricks', 'Clouds', 'Tiles', 'Weave'], value: wallpaper }); list.onchange = () => { wallpaper = list.value; monitor.preview.style.backgroundImage = wallpaper === 'Weave' ? 'repeating-linear-gradient(45deg,transparent 0 2px,#004040 2px 4px)' : wallpaper === 'Bricks' ? 'repeating-linear-gradient(0deg,transparent 0 15px,#004040 15px 16px)' : 'none'; }; p.append(el('div', { class: 'display-options' }, el('div', {}, el('p', { text: 'Wallpaper' }), list), el('div', { class: 'stack' }, button('Browse…', () => fileInput('image/*', f => { const reader = new FileReader(); reader.onload = () => { wallpaper = String(reader.result); sample.style.backgroundImage = `url(${wallpaper})`; sample.style.backgroundSize = 'cover'; }; reader.readAsDataURL(f); })), el('label', {}, 'Color:', el('input', { type: 'color', value: color, 'aria-label': 'Desktop color', oninput: e => { color = e.target.value; sample.style.backgroundColor = color; } }))))); p.append(el('div', { class: 'color-swatches' }, ...['#008080', '#004040', '#000080', '#008000', '#800000', '#800080', '#000000', '#808080', '#c0c0c0', '#ffffff'].map(c => button('', () => { color = c; sample.style.backgroundColor = c; }, { style: { background: c }, 'aria-label': 'Desktop color ' + c })))); }],
-        ['Screen Saver', p => {
+        ['Screen Saver', (p, win) => {
                 p.append(el('div', { class: 'display-monitor' }, el('div', { class: 'display-preview', style: { background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00ffff' }, text: 'Windows 95' })));
                 const choose = combo({ ariaLabel: 'Screen saver', options: ['None', 'Mystify', 'Starfield', 'Marquee'], value: saver, onchange: value => saver = value });
-                const wait = el('input', { type: 'number', min: 0, max: 120, value: saverMinutes, 'aria-label': 'Wait minutes', oninput: e => saverMinutes = Math.max(0, Math.min(120, Number(e.target.value) || 0)), style: { width: '60px' } });
+                const wait = el('input', { type: 'number', min: 0, max: 120, value: saverMinutes, 'aria-label': 'Wait minutes', oninput: e => saverMinutes = Math.min(120, saverWaitMinutes(e.target.value)), style: { width: '60px' } });
                 p.append(field('Screen Saver:', choose), el('div', { class: 'row' }, button('Preview', () => s.graphics.screensaver(saver === 'None' ? 'Mystify' : saver)), button('Settings…', async () => {
                     const text = await s.ui.prompt('Text:', s.settings.get('saverText', 'Windows 95'), 'Marquee Settings', { owner: w });
                     if (text !== null)
                         s.settings.set('saverText', text);
                 })), field('Wait (minutes):', wait), el('p', { class: 'muted', text: 'Set the wait time to 0 to turn off the automatic screen saver.' }));
+                const sync = event => {
+                    if (event.detail?.name !== 'saverMinutes')
+                        return;
+                    saverMinutes = saverWaitMinutes(event.detail.value);
+                    wait.value = String(saverMinutes);
+                };
+                s.settings.addEventListener?.('change', sync);
+                win.onClosed.push(() => s.settings.removeEventListener?.('change', sync));
             }],
         ['Appearance', p => { const monitor = makeMonitor(); p.append(monitor.element); const select = combo({ ariaLabel: 'Color scheme', options: ['Windows Standard', 'Desert', 'Marine', 'Plum', 'High Contrast Black', 'High Contrast White'], value: scheme, onchange: value => scheme = value }); p.append(field('Scheme:', select), el('p', { text: 'Choose the colors used for window titles, menus, and controls.' }), el('fieldset', {}, el('legend', { text: 'Item' }), el('div', { class: 'row' }, icon('windows', 32), el('span', { text: 'Active Title Bar' })), el('p', { style: { marginTop: '12px' }, text: 'Windows Standard uses the original Windows 95 colors.' }))); }],
         ['Settings', p => { p.append(el('div', { class: 'row', style: { marginBottom: '10px' } }, icon('display', 32), el('div', {}, el('b', { text: 'Display' }), el('p', { text: 'Browser display adapter' }))), el('fieldset', {}, el('legend', { text: 'Desktop area' }), el('p', { text: `${innerWidth} by ${innerHeight} pixels` }), el('p', { text: `Scale: ${devicePixelRatio}× device pixels` })), el('fieldset', {}, el('legend', { text: 'Graphics acceleration' }), el('p', { text: 'Current renderer: ' + s.graphics.presenter.backend }), field('Preferred:', combo({ ariaLabel: 'Renderer', options: [['auto', 'Automatic'], ['webgpu', 'WebGPU'], ['webgl2', 'WebGL2'], ['canvas2d', 'Canvas 2D']].map(([value, label]) => ({ value, label })), value: backend, onchange: value => backend = value }))), el('p', { text: 'A change to the renderer takes effect after restarting.' }), button('Full Screen', () => document.documentElement.requestFullscreen?.().catch(() => { }))); }]
     ], 430, 438);
     w.apply = () => { s.settings.set('desktopColor', color); s.settings.set('wallpaper', wallpaper); s.settings.set('screensaver', saver); s.settings.set('saverMinutes', saverMinutes); s.settings.set('scheme', scheme); s.settings.set('renderer', backend); s.applyAppearance(); };
+    return w;
+}
+export function powerProperties(s) {
+    let minutes = saverWaitMinutes(s.settings.get('saverMinutes', 0));
+    const w = propertySheet(s, 'Power Properties', 'computer', [
+        ['Power', (p, win) => {
+                const wait = combo({
+                    ariaLabel: 'Screen saver wait',
+                    options: saverWaitOptions(minutes),
+                    value: String(minutes),
+                    onchange: value => minutes = saverWaitMinutes(value)
+                });
+                p.append(field('Screen saver wait:', wait), el('p', { class: 'muted', text: 'This is the same wait time as the Screen Saver tab in Display Properties; host sleep stays under your computer’s control.' }));
+                const sync = event => {
+                    if (event.detail?.name !== 'saverMinutes')
+                        return;
+                    minutes = saverWaitMinutes(event.detail.value);
+                    wait.setOptions(saverWaitOptions(minutes), String(minutes));
+                };
+                s.settings.addEventListener?.('change', sync);
+                win.onClosed.push(() => s.settings.removeEventListener?.('change', sync));
+            }]
+    ], 430, 390);
+    w.apply = () => s.settings.set('saverMinutes', minutes);
     return w;
 }
 export function dateTime(s) {
@@ -130,6 +163,8 @@ export function settingsApplet(s, id) {
         return dateTime(s);
     if (id === 'system')
         return systemProperties(s);
+    if (id === 'power')
+        return powerProperties(s);
     const meta = applets.find(a => a[0] === id) || [id, id[0].toUpperCase() + id.slice(1), 'settings'];
     const draft = { ...s.settings.get('applet-' + id, {}) };
     const commits = [];
@@ -187,9 +222,6 @@ export function settingsApplet(s, id) {
     }
     else if (id === 'joystick') {
         pages.push(['General', p => { const list = el('div', { class: 'inset', style: { minHeight: '100px', padding: '10px' } }); const scan = () => { const pads = [...(navigator.getGamepads?.() || [])].filter(Boolean); list.replaceChildren(...(pads.length ? pads.map(g => el('p', { text: g.id })) : [el('p', { text: 'No game controller detected. Connect a controller and press a button.' })])); }; p.append(list, button('Refresh', scan)); scan(); }]);
-    }
-    else if (id === 'power') {
-        pages.push(['Power', p => { select(p, 'Screen saver wait:', 'wait', ['Never', '1 minute', '5 minutes', '10 minutes', '30 minutes'], 'Never'); p.append(el('p', { text: 'This setting controls the desktop screen saver. Host sleep and power settings stay under your computer’s control.' })); commits.push(() => s.settings.set('saverMinutes', parseInt(draft.wait) || 0)); }]);
     }
     else if (id === 'modems' || id === 'hardware') {
         pages.push(['General', p => p.append(el('div', { class: 'row' }, icon('computer', 32), el('p', { text: 'Browser hardware services' })), el('p', { text: 'The desktop uses your browser’s display, keyboard, pointer, audio, and network connection.' }), el('p', { text: id === 'modems' ? 'Serial modems and telephone calls require a physical device bridge, which is not installed.' : 'Native Windows drivers cannot be installed in this JavaScript environment.' }), button('Device Manager…', () => s.launch('system')))]);

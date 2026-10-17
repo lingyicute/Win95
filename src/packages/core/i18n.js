@@ -189,7 +189,7 @@ const ZH = {
     'No game controller detected. Connect a controller and press a button.': '未检测到游戏控制器。连接控制器并按一个按钮。',
     'Screen saver wait:': '屏幕保护等待：', 'Never': '从不', '1 minute': '1 分钟', '5 minutes': '5 分钟',
     '10 minutes': '10 分钟', '30 minutes': '30 分钟',
-    'This setting controls the desktop screen saver. Host sleep and power settings stay under your computer’s control.': '此设置控制桌面屏幕保护程序。主机的睡眠和电源设置仍由您的计算机控制。',
+    'This is the same wait time as the Screen Saver tab in Display Properties; host sleep stays under your computer’s control.': '这与“显示属性”中的“屏幕保护程序”选项卡使用相同的等待时间；主机的睡眠仍由您的计算机控制。',
     'Browser hardware services': '浏览器硬件服务',
     'The desktop uses your browser’s display, keyboard, pointer, audio, and network connection.': '桌面使用您浏览器的显示器、键盘、指针、音频和网络连接。',
     'Serial modems and telephone calls require a physical device bridge, which is not installed.': '串行调制解调器和电话呼叫需要物理设备桥接，该桥接未安装。',
@@ -340,6 +340,7 @@ function applyPatterns(core) {
     if ((m = /^(\d+) cards$/.exec(core))) return `${m[1]} 张牌`;
     if ((m = /^(\d+) logical processors$/.exec(core))) return `${m[1]} 个逻辑处理器`;
     if ((m = /^([\d.]+) bytes$/.exec(core))) return `${m[1]} 字节`;
+    if ((m = /^([\d.]+) minutes \(custom\)$/.exec(core))) return `${m[1]} 分钟（自定义）`;
     if ((m = /^(.+): (\d+) \(\+(\d+)\)$/.exec(core))) return `${name(m[1])}：${m[2]}（+${m[3]}）`;
     if ((m = /^Cannot find '(.+)'\. Make sure the name is correct and try again\.$/.exec(core))) return `找不到“${m[1]}”。请确认名称正确后重试。`;
     if ((m = /^Cannot find "(.+)"$/.exec(core))) return `找不到“${m[1]}”`;
