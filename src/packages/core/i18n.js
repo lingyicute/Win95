@@ -102,7 +102,7 @@ const ZH = {
     'Native Windows and DOS binaries require a machine emulator. This desktop runs its built-in JavaScript applications.': '原生 Windows 和 DOS 二进制文件需要机器模拟器。此桌面运行其内置的 JavaScript 应用程序。',
     'The file could not be found:': '找不到此文件：',
     // Welcome and About
-    'Windows 95 desktop recreation': 'Windows 95 桌面复刻', 'Version 1.0.0': '版本 1.0.0',
+    'Pure Javascript recreation of Windows 95 desktop experience': '纯 Javascript 复刻的经典 Windows 95 桌面体验', 'Version 1.0.0': '版本 1.0.0',
     'Registered to:': '授权给：', 'Windows User': 'Windows 用户', 'System Info…': '系统信息…',
     'Where do you want': '今天您想去', 'to go': '', 'today?': '哪里？',
     'Welcome to Windows 95. There’s a whole new world waiting on your desktop.': '欢迎使用 Windows 95。一个全新的世界正在您的桌面上等待着您。',
