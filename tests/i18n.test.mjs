@@ -28,4 +28,6 @@ test('dynamic UI strings are translated by pattern', () => {
     assert.equal(translateText('Are you sure you want to send to the Recycle Bin these 4 items?', 'zh'), '确实要将这 4 个项目发送到回收站吗？');
     assert.equal(translateText('About Notepad', 'zh'), '关于记事本');
     assert.equal(translateText('Beginner: 42 seconds\nExpert: — seconds', 'zh'), '初级：42 秒\n高级：— 秒');
+    assert.equal(translateText('45 minutes (custom)', 'zh'), '45 分钟（自定义）');
+    assert.equal(translateText('This is the same wait time as the Screen Saver tab in Display Properties; host sleep stays under your computer’s control.', 'zh'), '这与“显示属性”中的“屏幕保护程序”选项卡使用相同的等待时间；主机的睡眠仍由您的计算机控制。');
 });

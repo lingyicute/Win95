@@ -229,7 +229,7 @@ test('styles.css drops the native select rules and styles the drawn control', as
 
 test('each converted call site uses the drawn control', async () => {
     const sites = {
-        'src/packages/apps/control-panel.js': 7,
+        'src/packages/apps/control-panel.js': 8,
         'src/packages/apps/utilities.js': 2,
         'src/packages/apps/documents.js': 2,
         'src/packages/ui/dialogs.js': 2,
