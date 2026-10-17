@@ -4,7 +4,7 @@ import { icon } from '@win95/ui/icons.js';
 import { menuBar } from '@win95/ui/menu.js';
 import { combo } from '@win95/ui/select.js';
 import { saverWaitMinutes, saverWaitOptions } from './saver-wait.js';
-const applets = [['display', 'Display', 'display'], ['sounds', 'Sounds', 'volume'], ['keyboard', 'Keyboard', 'keyboard'], ['mouse', 'Mouse', 'mouse'], ['datetime', 'Date/Time', 'clock'], ['regional', 'Regional Settings', 'windows'], ['fonts', 'Fonts', 'font'], ['printers', 'Printers', 'printer'], ['network', 'Network', 'network'], ['system', 'System', 'computer'], ['addremove', 'Add/Remove Programs', 'task'], ['accessibility', 'Accessibility Options', 'control'], ['multimedia', 'Multimedia', 'media'], ['passwords', 'Passwords', 'settings'], ['modems', 'Modems', 'connection'], ['joystick', 'Joystick', 'task'], ['hardware', 'Add New Hardware', 'control'], ['power', 'Power', 'computer']];
+const applets = [['display', 'Display', 'display'], ['sounds', 'Sounds', 'volume'], ['keyboard', 'Keyboard', 'keyboard'], ['mouse', 'Mouse', 'mouse'], ['datetime', 'Date/Time', 'clock'], ['regional', 'Regional Settings', 'regional'], ['fonts', 'Fonts', 'font'], ['printers', 'Printers', 'printer'], ['network', 'Network', 'network'], ['system', 'System', 'computer'], ['addremove', 'Add/Remove Programs', 'task'], ['accessibility', 'Accessibility Options', 'control'], ['multimedia', 'Multimedia', 'media'], ['passwords', 'Passwords', 'settings'], ['modems', 'Modems', 'connection'], ['joystick', 'Joystick', 'task'], ['hardware', 'Add New Hardware', 'control'], ['power', 'Power', 'power']];
 export function controlPanel(s) {
     const w = s.wm.create({ title: 'Control Panel', icon: 'control', width: 573, height: 388 });
     w.setMenu(menuBar([{ label: 'File', items: [{ label: 'Close', action: () => w.close() }] }, { label: 'View', items: [{ label: 'Large Icons', checked: true }, { label: 'Refresh', action: () => { } }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'settings' }) }, { label: 'About Windows 95', action: () => s.about() }] }]));
@@ -81,7 +81,7 @@ export function displayProperties(s) {
 }
 export function powerProperties(s) {
     let minutes = saverWaitMinutes(s.settings.get('saverMinutes', 0));
-    const w = propertySheet(s, 'Power Properties', 'computer', [
+    const w = propertySheet(s, 'Power Properties', 'power', [
         ['Power', (p, win) => {
                 const wait = combo({
                     ariaLabel: 'Screen saver wait',
