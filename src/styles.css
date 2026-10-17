@@ -23,3 +23,4 @@
 .pointer-trail{position:fixed;left:0;top:0;width:12px;height:20px;will-change:transform}
 .win95-trackbar-disabled{pointer-events:none;opacity:.45;filter:grayscale(1)}
 .trail-emblem{flex:none}
+.reveal-icons #desktop-icons,.reveal-taskbar #taskbar,.reveal-windows #windows{visibility:hidden}

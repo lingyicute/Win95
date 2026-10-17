@@ -2,6 +2,7 @@ import { VirtualFileSystem, Settings, baseName, parentPath } from './packages/co
 import { installI18n, uiLocale } from './packages/core/i18n.js';
 import { WindowManager } from './packages/shell/window-manager.js';
 import { pointerTrails } from './packages/shell/pointer-trails.js';
+import { revealDesktopLayers } from './packages/shell/desktop-reveal.js';
 import { el, button, field, onDoubleActivate, setDoubleClickDelay } from './packages/ui/dom.js';
 import { icon, fileIcon } from './packages/ui/icons.js';
 import { popup, closeMenus } from './packages/ui/menu.js';
@@ -27,6 +28,26 @@ let bootPlaying = false;
 const s = { fs: new VirtualFileSystem(), settings: new Settings(), wm: new WindowManager(), registry: new Map(), clipboard: null, imageClipboard: null, audio: null, lastActivity: Date.now(), resettingData: false };
 if (s.settings.get('loginPassword', ''))
     document.body.classList.add('logged-off');
+/* Wallpaper first, desktop icons 150 ms later, taskbar 100 ms after that and
+   the windows 200 ms after that. Every way into a session - a start without a
+   password, a start gated by one, and a log off followed by a new login - goes
+   through this one controller, so all three reveal the desktop in the same
+   order. The windows are opened by the last stage rather than up front, so a
+   start-up window is never shown mid-animation behind a bare desktop. */
+const startupWindows = () => {
+    s.launch('computer', { x: Math.max(100, Math.round(innerWidth * .14)), y: Math.max(55, Math.round(innerHeight * .12)), width: 575, height: 350 });
+    if (s.settings.get('showWelcome', true))
+        welcome();
+};
+let desktopReveal = null;
+/** `openWindows` is false after a log off, where no start-up window belongs. */
+s.revealDesktop = (openWindows = false) => {
+    if (!desktopReveal) {
+        desktopReveal = revealDesktopLayers({ onLayer: layer => { if (layer === 'windows' && openWindows) startupWindows(); } });
+        desktopReveal.then(() => { desktopReveal = null; });
+    }
+    return desktopReveal;
+};
 installI18n();
 s.ui = createDialogs(s);
 s.files = createFileActions(s);
@@ -92,7 +113,13 @@ const startBoot = () => {
         bootEl.classList.add('hidden');
         if (!s.settings.get('loginPassword', ''))
             s.playSound('startup');
-        setTimeout(() => bootEl.remove(), 200);
+        /* The staged reveal waits for the boot screen to be gone: a layer that
+           is hidden behind an opaque splash has nothing to reveal. */
+        setTimeout(() => {
+            bootEl.remove();
+            if (!s.settings.get('loginPassword', ''))
+                s.revealDesktop(true);
+        }, 200);
     }, MIN_BOOT_MS);
 };
 bootEl?.addEventListener('click', startBoot);
@@ -384,12 +411,12 @@ function showLoginDialog({ startup = false } = {}) {
         document.body.classList.remove('logged-off');
         renderDesktop();
         s.updateClock();
-        if (startup && authenticated) {
-            s.launch('computer', { x: Math.max(100, Math.round(innerWidth * .14)), y: Math.max(55, Math.round(innerHeight * .12)), width: 575, height: 350 });
-            if (s.settings.get('showWelcome', true))
-                welcome();
+        if (startup && authenticated)
             s.playSound('startup');
-        }
+        /* The background was already there behind the login box, so a sign-in
+           starts the reveal at the icons. `startup` keeps the welcome window on
+           a first login only, the way it was before. */
+        s.revealDesktop(startup);
     });
     queueMicrotask(() => password.focus());
     return login;
@@ -629,11 +656,10 @@ setInterval(() => {
 }, 5000);
 if (s.settings.get('loginPassword', ''))
     showLoginDialog({ startup: true });
-else {
-    s.launch('computer', { x: Math.max(100, Math.round(innerWidth * .14)), y: Math.max(55, Math.round(innerHeight * .12)), width: 575, height: 350 });
-    if (s.settings.get('showWelcome', true))
-        welcome();
-}
+else if (!bootEl)
+    /* Without a boot screen there is nothing to wait for, so the reveal starts
+       here; with one, startBoot() runs it the moment the splash is gone. */
+    s.revealDesktop(true);
 if (document.readyState === 'complete')
     showBootTap();
 else
