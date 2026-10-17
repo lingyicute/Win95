@@ -171,7 +171,7 @@ const ZH = {
     'Repeat delay:': '重复延迟：', 'Repeat rate:': '重复率：', 'Click here to test:': '单击此处测试：',
     'Keyboard test': '键盘测试',
     'Key repeat for browser text fields follows your computer’s keyboard settings.': '浏览器文本字段的按键重复遵循您计算机的键盘设置。',
-    'Language': '语言', 'Display language:': '显示语言：', 'English': '英语', 'Chinese (Simplified)': '简体中文', 'The system will restart to apply the language change. Restart now?': '系统即将重新启动以应用语言更改。现在重新启动吗？', 'Language Change': '语言更改', 'English (United States)': '英语（美国）', 'en-US': '英语（美国）', 'en-GB': '英语（英国）', 'pl-PL': '波兰语（波兰）', 'de-DE': '德语（德国）', 'fr-FR': '法语（法国）', 'ja-JP': '日语（日本）', 'zh-CN': '中文（简体，中国）', 'Samples': '示例',
+    'Language': '语言', 'Display language:': '显示语言：', 'English': '英语', 'Chinese (Simplified)': '简体中文', 'The system will restart to apply the language change. Restart now?': '系统即将重新启动以应用语言更改。现在重新启动吗？', 'Language Change': '语言更改', 'Restart Windows': '重新启动 Windows', 'Restart was canceled because an open window could not close. Save your work and try again.': '有窗口未能关闭，系统重启已取消。请保存工作后重试。', 'English (United States)': '英语（美国）', 'en-US': '英语（美国）', 'en-GB': '英语（英国）', 'pl-PL': '波兰语（波兰）', 'de-DE': '德语（德国）', 'fr-FR': '法语（法国）', 'ja-JP': '日语（日本）', 'zh-CN': '中文（简体，中国）', 'Samples': '示例',
     'Number:': '数字：', 'Date:': '日期：', 'Locale:': '区域：', 'Use 24-hour time': '使用 24 小时制',
     'Audio': '音频', 'Windows Default': 'Windows 默认', 'No Sounds': '无声',
     'Mute all sounds': '所有声音静音', 'Test': '测试', 'Volume Control…': '音量控制…',
