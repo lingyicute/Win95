@@ -21,7 +21,7 @@ const validName = name => {
     return name;
 };
 export class VirtualFileSystem extends EventTarget {
-    constructor() { super(); this.nodes = new Map(); this.db = null; this.revision = 0; this.lastSaved = 0; this.persistence = 'memory'; this.saveTimer = 0; }
+    constructor() { super(); this.nodes = new Map(); this.db = null; this.revision = 0; this.lastSaved = 0; this.persistence = 'memory'; }
     async init() {
         try {
             this.db = await new Promise((resolve, reject) => { const r = indexedDB.open('win95-desktop', 1); r.onupgradeneeded = () => r.result.createObjectStore('volume'); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
@@ -33,6 +33,11 @@ export class VirtualFileSystem extends EventTarget {
             this.persistence = 'IndexedDB';
         }
         catch {
+            try {
+                this.db?.close();
+            }
+            catch { }
+            this.db = null;
             try {
                 const d = JSON.parse(localStorage.getItem('win95-volume') || 'null');
                 if (d?.nodes) {
@@ -114,11 +119,11 @@ export class VirtualFileSystem extends EventTarget {
         this.changed();
         return path;
     }
-    unique(path) {
+    unique(path, folder = this.get(path)?.type === 'folder') {
         path = normalizePath(path);
         if (!this.exists(path))
             return path;
-        const dot = path.lastIndexOf('.'), hasExt = dot > path.lastIndexOf('\\');
+        const dot = path.lastIndexOf('.'), hasExt = !folder && dot > path.lastIndexOf('\\');
         const name = hasExt ? path.slice(0, dot) : path, ext = hasExt ? path.slice(dot) : '';
         let n = 2;
         while (this.exists(`${name} (${n})${ext}`))
@@ -171,7 +176,7 @@ export class VirtualFileSystem extends EventTarget {
         if (path.length <= 3 || ['c:\\recycled', 'c:\\windows'].includes(key(path)))
             throw new Error('This system folder cannot be deleted.');
         if (!permanent && !key(path).startsWith('c:\\recycled\\')) {
-            const dest = this.unique('C:\\Recycled\\' + baseName(path));
+            const dest = this.unique('C:\\Recycled\\' + baseName(path), node.type === 'folder');
             this.move(path, dest);
             this.get(dest).originalPath = path;
             this.changed();
@@ -186,7 +191,7 @@ export class VirtualFileSystem extends EventTarget {
         const n = this.get(path);
         if (!n?.originalPath)
             throw new Error('This file is not in the Recycle Bin.');
-        const to = this.unique(n.originalPath);
+        const to = this.unique(n.originalPath, n.type === 'folder');
         this.move(path, to);
         delete this.get(to).originalPath;
         this.changed();
@@ -215,7 +220,6 @@ export class VirtualFileSystem extends EventTarget {
         void this.flush().catch(() => { });
     }
     async flush() {
-        clearTimeout(this.saveTimer);
         const revision = this.revision, data = { revision, nodes: [...this.nodes] };
         try {
             if (this.db)

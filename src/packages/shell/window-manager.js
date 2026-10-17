@@ -183,14 +183,17 @@ export class WindowManager extends EventTarget {
         closeMenus();
         const start = { ...w.rect, x0: e.clientX, y0: e.clientY };
         const target = e.currentTarget;
-        target.setPointerCapture(e.pointerId);
+        try {
+            target.setPointerCapture(e.pointerId);
+        }
+        catch { }
         // The pointer keeps the scheme's Move/Resize cursor for the whole
         // drag, even when the pointer leaves the title bar or the handle.
         if (direction === 'move')
             document.body.classList.add('dragging-cursor');
         else
             document.body.dataset.resize = direction;
-        let raf = 0, last = null;
+        let raf = 0, last = null, done = false;
         const apply = () => {
             raf = 0;
             if (!last)
@@ -224,12 +227,18 @@ export class WindowManager extends EventTarget {
                 raf = requestAnimationFrame(apply);
         };
         const up = () => {
+            if (done)
+                return;
+            done = true;
             if (raf)
                 cancelAnimationFrame(raf);
             apply();
             target.removeEventListener('pointermove', move);
             target.removeEventListener('pointerup', up);
             target.removeEventListener('pointercancel', up);
+            /* A drag interrupted by a vanishing capture target must still give
+               the body its cursor back. */
+            target.removeEventListener('lostpointercapture', up);
             document.body.classList.remove('dragging-cursor');
             delete document.body.dataset.resize;
             try {
@@ -240,6 +249,7 @@ export class WindowManager extends EventTarget {
         target.addEventListener('pointermove', move);
         target.addEventListener('pointerup', up);
         target.addEventListener('pointercancel', up);
+        target.addEventListener('lostpointercapture', up);
     }
     systemMenu(w, x = w.rect.x + 3, y = w.rect.y + 21) { popup([{ label: 'Restore', disabled: !w.maximized && !w.minimized, action: () => w.restore() }, { label: 'Move', disabled: w.maximized, action: () => { w.element.focus(); w.moveKeys = true; } }, { label: 'Size', disabled: w.maximized || !w.options.resizable, action: () => { w.element.focus(); w.sizeKeys = true; } }, { label: 'Minimize', disabled: !!w.options.modal, action: () => w.minimize() }, { label: 'Maximize', disabled: w.maximized || !w.options.resizable, action: () => w.maximize() }, null, { label: 'Close', shortcut: 'Alt+F4', disabled: w.options.closable === false, action: () => w.close() }], x, y); }
     cascade() {

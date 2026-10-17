@@ -19,6 +19,17 @@ export function popup(items, x, y, options = {}) {
     const inner = el('div', { class: 'menu-items' });
     menu.append(inner);
     let currentChild = null;
+    const closeChild = () => {
+        if (!currentChild)
+            return;
+        const idx = openMenus.indexOf(currentChild);
+        /* A child that is already gone must not splice away the menus that
+           are still open (`splice(-1)` removes the last one). */
+        if (idx >= 0)
+            for (const m of openMenus.splice(idx))
+                m.remove();
+        currentChild = null;
+    };
     const rows = [];
     for (const item of items) {
         if (!item || item.separator) {
@@ -36,12 +47,7 @@ export function popup(items, x, y, options = {}) {
         if (item.items)
             row.append(el('span', { class: 'submenu-arrow', text: '▶' }));
         const showChild = () => {
-            if (currentChild) {
-                const idx = openMenus.indexOf(currentChild);
-                for (const m of openMenus.splice(idx))
-                    m.remove();
-                currentChild = null;
-            }
+            closeChild();
             if (item.items) {
                 const r = row.getBoundingClientRect();
                 currentChild = popup(typeof item.items === 'function' ? item.items() : item.items, r.right - 2, r.top - 3, { child: true });
@@ -74,6 +80,7 @@ export function popup(items, x, y, options = {}) {
                 currentChild?.querySelector('button:not(:disabled)')?.focus();
             }
             if (e.key === 'ArrowLeft' && options.child) {
+                closeChild();
                 menu.remove();
                 openMenus = openMenus.filter(m => m !== menu);
                 origin?.focus();

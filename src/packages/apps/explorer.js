@@ -54,7 +54,11 @@ export function createFileActions(s) {
             return;
         for (const src of [...s.clipboard.paths])
             try {
-                const to = s.fs.unique(path + '\\' + baseName(src));
+                /* A cut item already in this folder stays where it is instead
+                   of being renamed to a " (2)" copy of itself. */
+                if (s.clipboard.cut && parentPath(src).toLowerCase() === normalizePath(path).toLowerCase())
+                    continue;
+                const to = s.fs.unique(path + '\\' + baseName(src), s.fs.get(src)?.type === 'folder');
                 if (s.clipboard.cut)
                     s.fs.move(src, to);
                 else
@@ -88,12 +92,21 @@ export function createFileActions(s) {
     };
     const importFiles = async (files, path) => {
         for (const f of files) {
-            if (f.size > 16 * 1024 * 1024) {
-                s.ui.message('This file is larger than the 16 MB import limit.', 'Import');
-                continue;
+            try {
+                if (f.size > 16 * 1024 * 1024) {
+                    await s.ui.message('This file is larger than the 16 MB import limit.', 'Import');
+                    continue;
+                }
+                /* Host file names can carry characters the volume rejects, so
+                   they are mangled into a legal name instead of failing the
+                   whole import. */
+                const name = f.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[. ]+$/, '') || 'Document';
+                const text = f.type.startsWith('text/') || /\.(txt|ini|bat|sys|csv|json|rtf|md)$/i.test(f.name) ? await f.text() : await new Promise((r, j) => { const reader = new FileReader(); reader.onload = () => r(reader.result); reader.onerror = j; reader.readAsDataURL(f); });
+                s.fs.write(s.fs.unique(path + '\\' + name), text, f.type || 'application/octet-stream');
             }
-            const text = f.type.startsWith('text/') || /\.(txt|ini|bat|sys|csv|json|rtf|md)$/i.test(f.name) ? await f.text() : await new Promise((r, j) => { const reader = new FileReader(); reader.onload = () => r(reader.result); reader.onerror = j; reader.readAsDataURL(f); });
-            s.fs.write(s.fs.unique(path + '\\' + f.name), text, f.type || 'application/octet-stream');
+            catch (e) {
+                s.ui.error(e);
+            }
         }
     };
     const menu = (paths, path) => [{ label: 'Open', disabled: paths.length !== 1, action: () => s.open(paths[0]) }, { label: 'Explore', disabled: paths.length !== 1 || s.fs.get(paths[0])?.type !== 'folder', action: () => s.launch('explorer', { path: paths[0], tree: true }) }, null, { label: 'Cut', shortcut: 'Ctrl+X', disabled: !paths.length, action: () => copy(paths, true) }, { label: 'Copy', shortcut: 'Ctrl+C', disabled: !paths.length, action: () => copy(paths) }, { label: 'Paste', shortcut: 'Ctrl+V', disabled: s.clipboard?.type !== 'files', action: () => paste(path) }, null, { label: 'Create Shortcut', disabled: !paths.length, action: () => {
@@ -227,7 +240,7 @@ export function explorer(s, args = {}) {
                 for (const p of JSON.parse(data)) {
                     if (parentPath(p).toLowerCase() === to.toLowerCase() && !ev.ctrlKey)
                         continue;
-                    const dest = s.fs.unique(to + '\\' + baseName(p));
+                    const dest = s.fs.unique(to + '\\' + baseName(p), s.fs.get(p)?.type === 'folder');
                     ev.ctrlKey ? s.fs.copy(p, dest) : s.fs.move(p, dest);
                 }
             }
