@@ -296,8 +296,10 @@ export function settingsApplet(s, id) {
         }
         s.settings.set('applet-' + id, draft);
         commits.forEach(f => f());
-        if (languageChanged)
-            await s.restart(w);
+        if (languageChanged && !await s.restart(w)) {
+            s.settings.set('ui-language', currentLanguage);
+            await s.ui.message('Restart was canceled because an open window could not close. Save your work and try again.', 'Restart Windows', ['OK'], { icon: 'help' });
+        }
     };
     return w;
 }

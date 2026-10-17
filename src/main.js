@@ -273,14 +273,15 @@ function taskman() {
 }
 register('taskman', 'Close Program', 'task', taskman);
 s.restart = async (ownerWindow = null) => {
-    if (ownerWindow)
-        await ownerWindow.close();
+    if (ownerWindow && !await ownerWindow.close())
+        return false;
     for (const win of [...s.wm.windows])
         if (!win.options.modal && !await s.wm.close(win))
-            return;
+            return false;
     await s.fs.flush();
     await waitForSoundEnd(s.playSound('shutdown'));
     location.reload();
+    return true;
 };
 s.shutdown = () => {
     const w = s.ui.modal('Shut Down Windows', { width: 385, height: 259, icon: 'shutdown' });
