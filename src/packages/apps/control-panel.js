@@ -181,7 +181,14 @@ export function settingsApplet(s, id) {
             trail.disabled = !trailsOn;
             const box = el('input', { type: 'checkbox', checked: trailsOn, onchange: e => { draft.pointerTrails = e.target.checked; trail.disabled = !e.target.checked; } });
             const emblem = el('span', { class: 'trail-emblem', 'aria-hidden': 'true' });
-            emblem.innerHTML = '<svg viewBox="0 0 36 26" width="36" height="26"><g fill="#fff" stroke="#000"><path d="M2 24V10l3 3 2 5 2-1-2-5h4z" transform="rotate(-36 2 24)"/><path d="M2 24V10l3 3 2 5 2-1-2-5h4z" transform="rotate(-24 2 24)"/><path d="M2 24V10l3 3 2 5 2-1-2-5h4z" transform="rotate(-12 2 24)"/><path d="M2 24V10l3 3 2 5 2-1-2-5h4z"/></g></svg>';
+            emblem.innerHTML = '<svg viewBox="0 0 40 28" width="36" height="25" aria-hidden="true">'
+                + '<g fill="#fff" stroke="#000" stroke-width="0.9">'
+                + '<path transform="translate(5 3)" d="M0 0v15l3.4-3.2 2.4 5.6 2.7-1.2-2.4-5.5h4.8z"/>'
+                + '<path transform="translate(10 4.5)" d="M0 0v15l3.4-3.2 2.4 5.6 2.7-1.2-2.4-5.5h4.8z"/>'
+                + '<path transform="translate(15 6)" d="M0 0v15l3.4-3.2 2.4 5.6 2.7-1.2-2.4-5.5h4.8z"/>'
+                + '<path transform="translate(20 7.5)" d="M0 0v15l3.4-3.2 2.4 5.6 2.7-1.2-2.4-5.5h4.8z"/>'
+                + '<path transform="translate(25 9)" d="M0 0v15l3.4-3.2 2.4 5.6 2.7-1.2-2.4-5.5h4.8z"/>'
+                + '</g></svg>';
             p.append(el('fieldset', {}, el('legend', { text: 'Pointer Trail' }), el('div', { class: 'row', style: { gap: '16px', alignItems: 'center' } }, emblem, el('div', { class: 'stack', style: { flex: '1', gap: '10px' } }, el('label', { class: 'checkbox-label' }, box, el('span', { text: 'Show pointer trails' })), el('div', { class: 'row', style: { gap: '8px', alignItems: 'center' } }, el('span', { text: 'Short' }), trail, el('span', { text: 'Long' }))))));
             commits.push(() => {
                 s.settings.set('pointerTrails', !!draft.pointerTrails);
