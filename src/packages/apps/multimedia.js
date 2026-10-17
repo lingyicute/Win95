@@ -1,4 +1,5 @@
 import { el, button, field, fileInput, download, uniqueId } from '@win95/ui/dom.js';
+import { trackbar } from '@win95/ui/trackbar.js';
 import { icon } from '@win95/ui/icons.js';
 import { menuBar } from '@win95/ui/menu.js';
 import { baseName } from '@win95/core/filesystem.js';
@@ -30,7 +31,12 @@ export function mediaPlayer(s, args = {}) {
     const cd = !!args.cd;
     const w = s.wm.create({ title: cd ? 'CD Player' : 'Media Player', icon: cd ? 'cd' : 'media', width: 440, height: 315 });
     w.body.classList.add('media-body');
-    const media = el('video', { preload: 'metadata', playsInline: true }), display = el('div', { class: 'media-display' }, media), slider = el('input', { type: 'range', min: 0, max: 1000, value: 0, 'aria-label': 'Playback position' }), time = el('span', { text: '00:00 / 00:00' });
+    let scale = 'time';
+    const media = el('video', { preload: 'metadata', playsInline: true }), display = el('div', { class: 'media-display' }, media), slider = trackbar({
+            label: 'Playback position', min: 0, max: 1, value: 0, channel: true,
+            ruler: at => scale === 'frames' ? String(Math.round(at * 30)) : at.toFixed(2),
+            onChange: next => { if (Number.isFinite(media.duration)) media.currentTime = next; }
+        }), time = el('span', { class: 'media-time', text: '00:00' });
     let srcUrl = null;
     const applyVolume = () => { media.volume = s.settings.get('muted', false) ? 0 : s.settings.get('volume', 65) / 100; };
     applyVolume();
@@ -41,6 +47,7 @@ export function mediaPlayer(s, args = {}) {
         media.src = url;
         w.setTitle(`${name} - ${cd ? 'CD Player' : 'Media Player'}`);
         w.status('Ready');
+        refresh();
     };
     const play = () => media.play().then(() => w.status('Playing')).catch(() => s.ui.message('This media cannot be played. Choose an audio or video file supported by your browser.', 'Media Player', ['OK'], { owner: w }));
     const stop = () => { media.pause(); media.currentTime = 0; w.status('Stopped'); };
@@ -51,15 +58,95 @@ export function mediaPlayer(s, args = {}) {
         }
     };
     const format = x => !Number.isFinite(x) ? '00:00' : String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(Math.floor(x % 60)).padStart(2, '0');
-    media.ontimeupdate = () => { slider.value = String(media.duration ? media.currentTime / media.duration * 1000 : 0); time.textContent = `${format(media.currentTime)} / ${format(media.duration)}`; };
-    media.onloadedmetadata = media.ontimeupdate;
-    slider.oninput = () => {
-        if (Number.isFinite(media.duration))
-            media.currentTime = Number(slider.value) / 1000 * media.duration;
+    let selStart = null, selEnd = null, view = null;
+    const GLYPHS = {
+        play: '<path d="M5 0 11 6 5 12z"/>',
+        stop: '<rect x="3" y="2" width="8" height="8"/>',
+        eject: '<path d="M7 0 12 6H2z"/><rect x="2" y="8" width="10" height="2"/>',
+        prev: '<rect x="1" y="1" width="2" height="10"/><path d="M8 1v10L4 6z"/><path d="M13 1v10L9 6z"/>',
+        rew: '<path d="M7 1v10L2 6z"/><path d="M13 1v10L8 6z"/>',
+        ff: '<path d="M1 1v10l5-5z"/><path d="M7 1v10l5-5z"/>',
+        next: '<path d="M1 1v10l5-5z"/><path d="M7 1v10l5-5z"/><rect x="11" y="1" width="2" height="10"/>',
+        selStart: '<path d="M2 1h10L7 6z"/><rect x="1" y="4" width="2" height="6"/><rect x="11" y="4" width="2" height="6"/><rect x="1" y="8" width="12" height="2"/>',
+        selEnd: '<path d="M2 6h10L7 1z"/><rect x="1" y="4" width="2" height="6"/><rect x="11" y="4" width="2" height="6"/><rect x="1" y="8" width="12" height="2"/>'
     };
-    media.onended = () => w.status('Stopped');
-    w.body.append(display, slider, el('div', { class: 'media-controls' }, button('▶', play, { 'aria-label': 'Play' }), button('Ⅱ', () => { media.pause(); w.status('Paused'); }, { 'aria-label': 'Pause' }), button('■', stop, { 'aria-label': 'Stop' }), button('◀◀', () => media.currentTime = Math.max(0, media.currentTime - 10), { 'aria-label': 'Rewind' }), button('▶▶', () => media.currentTime = Math.min(media.duration || 0, media.currentTime + 10), { 'aria-label': 'Fast forward' }), el('span', { class: 'spacer' }), time));
-    w.setMenu(menuBar([{ label: 'File', items: [{ label: 'Open…', shortcut: 'Ctrl+O', action: open }, { label: 'Import from Computer…', action: () => fileInput('audio/*,video/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'Play sample', action: () => { load(waveTone(), 'Windows Chimes'); play(); } }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Device', items: [{ label: 'Wave Audio', action: () => fileInput('audio/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'Video', action: () => fileInput('video/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'CD Audio', action: () => { load(waveTone(), 'Track 01 — Windows Chimes'); } }] }, { label: 'Options', items: () => [{ label: 'Repeat', checked: media.loop, action: () => media.loop = !media.loop }, { label: 'Volume Control…', action: () => s.launch('volume') }] }, { label: 'Help', items: [{ label: 'About Media Player', action: () => s.about(cd ? 'CD Player' : 'Media Player', 'media') }] }]));
+    const tbtn = (name, label, action) => {
+        const b = el('button', { class: 'transport-btn', type: 'button', 'aria-label': label });
+        b.innerHTML = `<svg viewBox="0 0 14 12" width="14" height="12" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true">${GLYPHS[name]}</svg>`;
+        b.addEventListener('click', action);
+        return b;
+    };
+    const step = dir => {
+        const dur = Number.isFinite(media.duration) ? media.duration : 0;
+        media.currentTime = Math.min(dur, Math.max(0, media.currentTime + dir * Math.max(1, dur * .1)));
+    };
+    const playB = tbtn('play', 'Play', () => {
+        if (!srcUrl)
+            return;
+        if (media.paused)
+            play();
+        else {
+            media.pause();
+            w.status('Paused');
+        }
+    });
+    const stopB = tbtn('stop', 'Stop', stop);
+    const ejectB = tbtn('eject', 'Eject', () => { });
+    const prevB = tbtn('prev', 'Previous', () => { media.currentTime = 0; });
+    const rewB = tbtn('rew', 'Rewind', () => step(-1));
+    const ffB = tbtn('ff', 'Fast forward', () => step(1));
+    const nextB = tbtn('next', 'Next', () => { if (Number.isFinite(media.duration)) media.currentTime = media.duration; });
+    const selSB = tbtn('selStart', 'Start selection', () => {
+        selStart = media.currentTime;
+        if (selEnd != null && selEnd <= selStart)
+            selEnd = null;
+        refresh();
+    });
+    const selEB = tbtn('selEnd', 'End selection', () => {
+        selEnd = media.currentTime;
+        if (selStart != null && selEnd <= selStart)
+            selStart = null;
+        refresh();
+    });
+    const scrollBtn = dir => {
+        const b = el('button', { class: 'media-scroll', type: 'button', 'aria-label': dir < 0 ? 'Scroll back' : 'Scroll forward' });
+        b.innerHTML = `<svg viewBox="0 0 10 10" width="8" height="8" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true"><path d="${dir < 0 ? 'M8 1v8L3 5z' : 'M2 1v8l5-4z'}"/></svg>`;
+        b.addEventListener('click', () => {
+            if (!view)
+                return;
+            const span = view[1] - view[0];
+            const a = Math.max(0, Math.min(view[0] + dir * span / 2, (Number.isFinite(media.duration) ? media.duration : 0) - span));
+            view = [a, a + span];
+            slider.min = a;
+            slider.max = a + span;
+        });
+        return b;
+    };
+    const refresh = () => {
+        const loaded = !!srcUrl;
+        playB.disabled = prevB.disabled = rewB.disabled = ffB.disabled = nextB.disabled = !loaded;
+        selSB.disabled = selEB.disabled = !loaded || media.paused;
+        ejectB.disabled = true;
+        stopB.disabled = !loaded || (media.paused && media.currentTime === 0);
+    };
+    media.ontimeupdate = () => {
+        slider.value = media.currentTime;
+        time.textContent = format(media.currentTime);
+        if (!media.paused && selStart != null && selEnd != null && selEnd > selStart && media.currentTime >= selEnd - .05)
+            media.currentTime = selStart;
+        refresh();
+    };
+    media.onloadedmetadata = () => { slider.max = Number.isFinite(media.duration) ? media.duration : 1; media.ontimeupdate(); };
+    media.onended = () => { w.status('Stopped'); refresh(); };
+    media.onplay = refresh;
+    media.onpause = refresh;
+    w.body.append(display, el('div', { class: 'row media-seek' }, slider, scrollBtn(-1), scrollBtn(1)), el('div', { class: 'media-transport' }, el('div', { class: 'tgroup' }, playB, stopB, ejectB), el('div', { class: 'tgroup' }, prevB, rewB, ffB, nextB), el('div', { class: 'tgroup' }, selSB, selEB), el('span', { class: 'etch-v', 'aria-hidden': 'true' }), time));
+    const setScale = next => {
+        scale = next;
+        slider.ruler = at => scale === 'frames' ? String(Math.round(at * 30)) : at.toFixed(2);
+    };
+    w.setMenu(menuBar([{ label: 'File', items: [{ label: 'Open…', shortcut: 'Ctrl+O', action: open }, { label: 'Import from Computer…', action: () => fileInput('audio/*,video/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'Play sample', action: () => { load(waveTone(), 'Windows Chimes'); play(); } }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [{ label: 'Select All', disabled: !Number.isFinite(media.duration), action: () => { selStart = 0; selEnd = media.duration; } }, { label: 'Clear Selection', disabled: selStart == null && selEnd == null, action: () => { selStart = selEnd = null; } }] }, { label: 'Device', items: [{ label: 'Wave Audio', action: () => fileInput('audio/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'Video', action: () => fileInput('video/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'CD Audio', action: () => { load(waveTone(), 'Track 01 — Windows Chimes'); } }, null, { label: 'Volume Control…', action: () => s.launch('volume') }] }, { label: 'Scale', items: () => [{ label: 'Seconds', checked: scale === 'time', action: () => setScale('time') }, { label: 'Frames', checked: scale === 'frames', action: () => setScale('frames') }] }, { label: 'Help', items: [{ label: 'About Media Player', action: () => s.about(cd ? 'CD Player' : 'Media Player', 'media') }] }]));
+    refresh();
     const change = () => applyVolume();
     s.settings.addEventListener('change', change);
     w.onClosed.push(() => {
@@ -77,106 +164,19 @@ export function mediaPlayer(s, args = {}) {
     }
     return w;
 }
-function win95Trackbar({ label, orientation = 'horizontal', min = 0, max = 100, step = 1, pageStep = 10, value = 0, valueText, onChange }) {
-    const vertical = orientation === 'vertical';
-    const clamp = next => Math.min(max, Math.max(min, Number(next) || 0));
-    let current = clamp(value);
-    const thumb = el('div', { class: 'win95-trackbar-thumb', 'aria-hidden': 'true' });
-    const ticks = el('div', { class: 'win95-trackbar-ticks', 'aria-hidden': 'true' });
-    for (const tickRatio of vertical ? [0, .2, .4, .6, .8, 1] : [0, .5, 1]) {
-        if (vertical) {
-            for (const side of ['left', 'right']) {
-                const tick = el('span', { class: `win95-trackbar-tick ${side}` });
-                tick.style.top = `${(1 - tickRatio) * 100}%`;
-                ticks.append(tick);
-            }
-        }
-        else {
-            const tick = el('span', { class: 'win95-trackbar-tick' });
-            tick.style.left = `${tickRatio * 100}%`;
-            ticks.append(tick);
-        }
-    }
-    const root = el('div', {
-        class: `win95-trackbar ${orientation}`,
-        role: 'slider',
-        tabindex: '0',
-        'aria-label': label,
-        'aria-orientation': orientation,
-        'aria-valuemin': String(min),
-        'aria-valuemax': String(max)
-    }, ticks, el('div', { class: 'win95-trackbar-track', 'aria-hidden': 'true' }), thumb);
-    const ratio = () => (current - min) / (max - min);
-    const render = () => {
-        const r = ratio();
-        if (vertical) {
-            thumb.style.left = '50%';
-            thumb.style.top = root.clientHeight ? `${8 + (1 - r) * (root.clientHeight - 16)}px` : `${(1 - r) * 100}%`;
-        }
-        else {
-            thumb.style.top = '50%';
-            thumb.style.left = root.clientWidth ? `${11 + r * (root.clientWidth - 22)}px` : `${r * 100}%`;
-        }
-        root.setAttribute('aria-valuenow', String(current));
-        root.setAttribute('aria-valuetext', valueText ? valueText(current) : String(current));
-    };
-    const setValue = next => {
-        const stepped = clamp(Math.round((clamp(next) - min) / step) * step + min);
-        const normalized = Object.is(stepped, -0) ? 0 : stepped;
-        if (normalized !== current) {
-            current = normalized;
-            onChange?.(current);
-        }
-        render();
-    };
-    const valueFromPointer = event => {
-        const rect = root.getBoundingClientRect();
-        if (vertical) {
-            const travel = Math.max(1, rect.height - 16);
-            return min + (rect.bottom - 8 - event.clientY) / travel * (max - min);
-        }
-        const travel = Math.max(1, rect.width - 22);
-        return min + (event.clientX - rect.left - 11) / travel * (max - min);
-    };
-    let dragging = false;
-    root.addEventListener('pointerdown', event => {
-        if (event.button !== undefined && event.button !== 0)
-            return;
-        dragging = true;
-        root.setPointerCapture?.(event.pointerId);
-        root.focus({ preventScroll: true });
-        setValue(valueFromPointer(event));
-        event.preventDefault();
-    });
-    root.addEventListener('pointermove', event => {
-        if (dragging)
-            setValue(valueFromPointer(event));
-    });
-    const stopDrag = () => { dragging = false; };
-    root.addEventListener('pointerup', stopDrag);
-    root.addEventListener('pointercancel', stopDrag);
-    root.addEventListener('keydown', event => {
-        const increments = { ArrowLeft: -step, ArrowDown: -step, ArrowRight: step, ArrowUp: step, PageDown: -pageStep, PageUp: pageStep };
-        if (event.key === 'Home') {
-            event.preventDefault();
-            setValue(min);
-        }
-        else if (event.key === 'End') {
-            event.preventDefault();
-            setValue(max);
-        }
-        else if (Object.hasOwn(increments, event.key)) {
-            event.preventDefault();
-            setValue(current + increments[event.key]);
-        }
-    });
-    render();
-    requestAnimationFrame(render);
-    return root;
-}
 function volumeSpeaker(side) {
+    // The two speakers face outward, with the facing baked into the path
+    // coordinates. The glyph is deliberately NOT shape-rendering:crispEdges:
+    // the volume window sits on half-pixel coordinates, and crisp edges get
+    // snapped per edge there, so the two mirrored cones rasterised at
+    // different sizes (the 1px stroke ate further into one cone than the
+    // other). Antialiased geometry renders both congruent, and matches the
+    // soft diagonals of the original screenshot.
+    const flip = side === 'left';
+    const body = flip ? 'M15 6h-3l-4-4v12l4-4h3z' : 'M1 6h3l4-4v12L4 10H1z';
+    const arc = flip ? 'M6 5.5c-1.6 1.4-1.6 3.6 0 5' : 'M10 5.5c1.6 1.4 1.6 3.6 0 5';
     const speaker = el('span', { class: `volume-speaker ${side}`, 'aria-hidden': 'true' });
-    speaker.innerHTML = '<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path d="M1 6h3l4-4v12L4 10H1z" fill="#ffff66" stroke="#000"/><path d="M10 5.5c1.6 1.4 1.6 3.6 0 5" fill="none" stroke="#000"/></svg>';
+    speaker.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="${body}" fill="#ffff66" stroke="#000"/><path d="${arc}" fill="none" stroke="#000"/></svg>`;
     return speaker;
 }
 export function volumeControl(s) {
@@ -185,8 +185,9 @@ export function volumeControl(s) {
     for (const [name, key] of [['Volume Control', 'volume'], ['Wave', 'waveVolume'], ['MIDI', 'midiVolume'], ['CD Audio', 'cdVolume']]) {
         const muteKey = key === 'volume' ? 'muted' : `${key}Muted`;
         const balanceKey = key === 'volume' ? 'balance' : key.replace(/Volume$/, 'Balance');
-        const balance = win95Trackbar({
+        const balance = trackbar({
             label: `${name} balance`,
+            balance: true,
             orientation: 'horizontal',
             min: -50,
             max: 50,
@@ -194,7 +195,7 @@ export function volumeControl(s) {
             valueText: value => value === 0 ? 'Center' : value < 0 ? `Left ${-value}` : `Right ${value}`,
             onChange: value => s.settings.set(balanceKey, value)
         });
-        const volume = win95Trackbar({
+        const volume = trackbar({
             label: `${name} volume`,
             value: s.settings.get(key, 65),
             orientation: 'vertical',
