@@ -3,6 +3,7 @@ import { trackbar } from '@win95/ui/trackbar.js';
 import { icon } from '@win95/ui/icons.js';
 import { menuBar } from '@win95/ui/menu.js';
 import { combo } from '@win95/ui/select.js';
+import { POINTER_ROLES, SCHEMES, currentSchemeName, cursorArt, listSchemes, parseCursorFile, resolveScheme, svgDataUrl } from '@win95/shell/cursors.js';
 import { saverWaitMinutes, saverWaitOptions } from './saver-wait.js';
 const applets = [['display', 'Display', 'display'], ['sounds', 'Sounds', 'volume'], ['keyboard', 'Keyboard', 'keyboard'], ['mouse', 'Mouse', 'mouse'], ['datetime', 'Date/Time', 'clock'], ['regional', 'Regional Settings', 'regional'], ['fonts', 'Fonts', 'font'], ['printers', 'Printers', 'printer'], ['network', 'Network', 'network'], ['system', 'System', 'computer'], ['addremove', 'Add/Remove Programs', 'task'], ['accessibility', 'Accessibility Options', 'accessibility'], ['multimedia', 'Multimedia', 'media'], ['passwords', 'Passwords', 'passwords'], ['modems', 'Modems', 'connection'], ['joystick', 'Joystick', 'joystick'], ['hardware', 'Add New Hardware', 'control'], ['power', 'Power', 'power']];
 export function controlPanel(s) {
@@ -195,7 +196,75 @@ export function settingsApplet(s, id) {
                 s.settings.set('pointerTrails', !!draft.pointerTrails);
                 s.settings.set('trailLength', draft.trailLength ?? s.settings.get('trailLength', 50));
             });
-        }], ['Pointers', p => { select(p, 'Scheme:', 'cursor', ['Windows Standard', 'Large', 'Crosshair'], 'Windows Standard'); commits.push(() => { document.body.style.cursor = draft.cursor === 'Crosshair' ? 'crosshair' : 'default'; document.body.classList.toggle('large-pointer', draft.cursor === 'Large'); }); }]);
+        }], ['Pointers', p => {
+            // The Pointers tab: a scheme list, the fifteen cursor roles with a
+            // live preview of the selected role, and per-role file overrides
+            // through Browse…, plus Save As…/Delete for user schemes. Nothing
+            // reaches the desktop until Apply/OK commits both settings keys.
+            let schemeName = currentSchemeName(s);
+            let custom = { ...(s.settings.get('cursorCustom', null) || {}) };
+            const savedSchemes = () => s.settings.get('cursorUserSchemes', {}) || {};
+            const isUserScheme = name => Object.prototype.hasOwnProperty.call(savedSchemes(), name);
+            const roleNow = () => POINTER_ROLES.find(r => r.label === roles.value) || POINTER_ROLES[0];
+            const refresh = () => {
+                const role = roleNow(), mine = custom[role.id];
+                const source = mine?.url || svgDataUrl(cursorArt(role.id, resolveScheme(s, schemeName)).svg);
+                previewBox.replaceChildren(el('img', { src: source, alt: role.label }));
+                previewName.textContent = mine?.name || role.file;
+                deleteBtn.disabled = !isUserScheme(schemeName);
+            };
+            const schemeCombo = combo({ ariaLabel: 'Scheme', options: listSchemes(s), value: schemeName, onchange: name => { schemeName = name; custom = { ...(savedSchemes()[name]?.custom || {}) }; refresh(); } });
+            const roles = combo({ mode: 'list', class: 'pointer-role-list', ariaLabel: 'Customize', options: POINTER_ROLES.map(r => r.label), value: POINTER_ROLES[0].label, onchange: refresh });
+            const previewBox = el('div', { class: 'inset pointer-preview' });
+            const previewName = el('p', { class: 'pointer-file' });
+            const browseBtn = button('Browse…', () => fileInput('.cur,.ico,.ani,.png,.gif,.jpg,.svg', async file => {
+                try {
+                    custom[roleNow().id] = await parseCursorFile(file);
+                    refresh();
+                }
+                catch (error) {
+                    await s.ui.message(error.message || String(error), 'Pointers', ['OK'], { owner: w });
+                }
+            }), { style: { minWidth: '75px' } });
+            const saveBtn = button('Save As…', async () => {
+                const answer = await s.ui.prompt('Save this cursor scheme as:', schemeName, 'Save As', { owner: w });
+                if (answer === null || !answer.trim())
+                    return;
+                const name = answer.trim();
+                if (SCHEMES.some(x => x.name === name)) {
+                    await s.ui.message('That name is used by a Windows scheme. Choose another name.', 'Save As', ['OK'], { owner: w });
+                    return;
+                }
+                const base = resolveScheme(s, schemeName);
+                s.settings.set('cursorUserSchemes', { ...savedSchemes(), [name]: { fill: base.fill, outline: base.outline, accent: base.accent, scale: base.scale, variant: base.variant, custom: { ...custom } } });
+                schemeName = name;
+                schemeCombo.setOptions(listSchemes(s), schemeName);
+                refresh();
+            }, { style: { minWidth: '75px' } });
+            const deleteBtn = button('Delete', async () => {
+                if (!isUserScheme(schemeName))
+                    return;
+                if (await s.ui.message(`Delete the '${schemeName}' cursor scheme?`, 'Pointers', ['Yes', 'No'], { owner: w }) !== 'Yes')
+                    return;
+                const all = { ...savedSchemes() };
+                delete all[schemeName];
+                s.settings.set('cursorUserSchemes', all);
+                schemeName = 'Windows Standard';
+                custom = {};
+                schemeCombo.setOptions(listSchemes(s), schemeName);
+                refresh();
+            }, { style: { minWidth: '75px' } });
+            p.append(field('Scheme:', schemeCombo),
+                el('div', { class: 'row', style: { gap: '10px', alignItems: 'stretch' } },
+                    el('div', { style: { flex: '1', minWidth: '0' } }, el('p', { style: { margin: '0 0 5px' }, text: 'Customize:' }), roles),
+                    el('div', { style: { width: '138px', flex: 'none' } }, el('fieldset', { style: { margin: '0' } }, el('legend', { text: 'Preview' }), previewBox, previewName))),
+                el('div', { class: 'row', style: { gap: '6px' } }, browseBtn, saveBtn, deleteBtn));
+            refresh();
+            commits.push(() => {
+                s.settings.set('cursorCustom', { ...custom });
+                s.settings.set('cursorScheme', schemeName);
+            });
+        }]);
     }
     else if (id === 'keyboard') {
         pages.push(['Speed', p => { range(p, 'Repeat delay:', 'delay'); range(p, 'Repeat rate:', 'repeat'); p.append(field('Click here to test:', el('input', { 'aria-label': 'Keyboard test', placeholder: '' })), el('p', { class: 'muted', text: 'Key repeat for browser text fields follows your computer’s keyboard settings.' })); }], ['Language', p => select(p, 'Language:', 'language', ['English (United States)', 'Polski', 'Deutsch', 'Français'], 'English (United States)')]);

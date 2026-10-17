@@ -3,6 +3,7 @@ import { installI18n, uiLocale } from './packages/core/i18n.js';
 import { WindowManager } from './packages/shell/window-manager.js';
 import { pointerTrails } from './packages/shell/pointer-trails.js';
 import { revealDesktopLayers } from './packages/shell/desktop-reveal.js';
+import { installCursors, setPointerBusy } from './packages/shell/cursors.js';
 import { el, button, field, onDoubleActivate, setDoubleClickDelay } from './packages/ui/dom.js';
 import { icon, fileIcon } from './packages/ui/icons.js';
 import { popup, closeMenus } from './packages/ui/menu.js';
@@ -99,6 +100,7 @@ const startBoot = () => {
     if (!bootEl || !bootReady || bootPlaying)
         return;
     bootPlaying = true;
+    setPointerBusy(true);
     if (bootSpinnerEl)
         bootSpinnerEl.hidden = true;
     if (bootTapEl)
@@ -111,6 +113,7 @@ const startBoot = () => {
     bootEl.classList.add('boot-playing');
     setTimeout(() => {
         bootEl.classList.add('hidden');
+        setPointerBusy(false);
         if (!s.settings.get('loginPassword', ''))
             s.playSound('startup');
         /* The staged reveal waits for the boot screen to be gone: a layer that
@@ -322,10 +325,12 @@ s.shutdown = () => {
             await s.restart();
             return;
         }
+        setPointerBusy(true);
         for (const win of [...s.wm.windows])
             if (!win.options.modal && !await s.wm.close(win))
-                return;
+                return setPointerBusy(false);
         await s.fs.flush();
+        setPointerBusy(false);
         s.playSound('shutdown');
         if (selected === 'dos') {
             s.launch('dos', { fullscreen: true });
@@ -665,6 +670,7 @@ if (document.readyState === 'complete')
 else
     window.addEventListener('load', showBootTap, { once: true });
 pointerTrails(s);
+installCursors(s);
 // The left-handed configuration swaps the roles of the two buttons: the
 // physical left button becomes the secondary one (context menus) and the
 // physical right button becomes the primary one (select, activate, drag).

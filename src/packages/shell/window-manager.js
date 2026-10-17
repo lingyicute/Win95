@@ -182,6 +182,12 @@ export class WindowManager extends EventTarget {
         const start = { ...w.rect, x0: e.clientX, y0: e.clientY };
         const target = e.currentTarget;
         target.setPointerCapture(e.pointerId);
+        // The pointer keeps the scheme's Move/Resize cursor for the whole
+        // drag, even when the pointer leaves the title bar or the handle.
+        if (direction === 'move')
+            document.body.classList.add('dragging-cursor');
+        else
+            document.body.dataset.resize = direction;
         let raf = 0, last = null;
         const apply = () => {
             raf = 0;
@@ -222,6 +228,8 @@ export class WindowManager extends EventTarget {
             target.removeEventListener('pointermove', move);
             target.removeEventListener('pointerup', up);
             target.removeEventListener('pointercancel', up);
+            document.body.classList.remove('dragging-cursor');
+            delete document.body.dataset.resize;
             try {
                 target.releasePointerCapture(e.pointerId);
             }

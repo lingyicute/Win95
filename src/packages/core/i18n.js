@@ -168,6 +168,23 @@ const ZH = {
     'Motion': '移动', 'Pointer Trail': '鼠标轨迹', 'Show pointer trails': '显示鼠标轨迹', 'Short': '短', 'Long': '长',
     'Double-click to test': '双击此处测试', 'Folder opened': '文件夹已打开', 'Test area': '测试区域',
     'Pointers': '指针', 'Large': '大', 'Crosshair': '十字线', 'Speed': '速度',
+    'Customize:': '自定义：',
+    'Normal Select': '正常选择', 'Help Select': '帮助选择', 'Working In Background': '后台运行', 'Busy': '忙',
+    'Precision Select': '精确定位', 'Text Select': '文本选择', 'Handwriting': '手写',
+    'Vertical Resize': '垂直调整', 'Horizontal Resize': '水平调整',
+    'Diagonal Resize 1': '对角线调整 1', 'Diagonal Resize 2': '对角线调整 2',
+    'Alternate Select': '备选选择', 'Unavailable': '不可用', 'Link Select': '链接选择',
+    'Save this cursor scheme as:': '将此指针方案保存为：',
+    'That name is used by a Windows scheme. Choose another name.': '该名称已被 Windows 方案占用，请换一个名称。',
+    'Animated cursors (.ani) are not supported here. Save the cursor as a .cur or .png file and try again.': '此处不支持动态光标（.ani）。请将光标另存为 .cur 或 .png 文件后重试。',
+    'That file is larger than 300 KB. Cursor files are usually only a few kilobytes.': '该文件超过 300 KB，光标文件通常只有几十 KB。',
+    'This cursor file has no images.': '此光标文件中没有图像。',
+    'This cursor file is truncated.': '此光标文件已损坏或不完整。',
+    'This cursor file uses an unsupported bitmap header.': '此光标文件使用了不受支持的位图头。',
+    'This cursor file has an invalid bitmap size.': '此光标文件的位图尺寸无效。',
+    'This cursor file uses a compressed bitmap.': '此光标文件使用了压缩位图。',
+    'This image file could not be read.': '无法读取此图像文件。',
+    'That file is not a cursor. Choose a .cur, .png, .gif, .jpg or .svg file.': '该文件不是光标。请选择 .cur、.png、.gif、.jpg 或 .svg 文件。',
     'Repeat delay:': '重复延迟：', 'Repeat rate:': '重复率：', 'Click here to test:': '单击此处测试：',
     'Keyboard test': '键盘测试',
     'Key repeat for browser text fields follows your computer’s keyboard settings.': '浏览器文本字段的按键重复遵循您计算机的键盘设置。',
@@ -361,6 +378,7 @@ function applyPatterns(core) {
     if ((m = /^Exploring - (.+)$/.exec(core))) return `正在浏览 - ${name(m[1])}`;
     if ((m = /^The text in the (.+) file has changed\.$/.exec(core))) return `“${m[1]}”文件中的文本已更改。`;
     if (/^Do you want to save the changes\?$/.test(core)) return '是否保存更改？';
+    if ((m = /^Delete the '(.+)' cursor scheme\?$/.exec(core))) return `确实要删除“${m[1]}”指针方案吗？`;
     if ((m = /^Save changes to (.+)\??$/.exec(core))) return `保存对“${m[1]}”的更改？`;
     if ((m = /^Are you sure you want to (permanently delete|send to the Recycle Bin) (.+)\?$/.exec(core))) {
         const what = /^these (\d+) items$/.test(m[2]) ? `这 ${m[2].match(/\d+/)[0]} 个项目` : m[2];
