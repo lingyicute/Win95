@@ -2,7 +2,7 @@ import { el, onDoubleActivate } from '@win95/ui/dom.js';
 import { icon } from '@win95/ui/icons.js';
 import { popup, closeMenus } from '@win95/ui/menu.js';
 export class WindowManager extends EventTarget {
-    constructor() { super(); this.windows = []; this.sequence = 0; this.z = 10; this.active = null; this.host = document.querySelector('#windows'); this.tasks = document.querySelector('#tasks'); window.addEventListener('resize', () => this.fit()); document.addEventListener('keydown', e => this.keydown(e)); }
+    constructor() { super(); this.primary = null; this.windows = []; this.sequence = 0; this.z = 10; this.active = null; this.host = document.querySelector('#windows'); this.tasks = document.querySelector('#tasks'); window.addEventListener('resize', () => this.fit()); document.addEventListener('keydown', e => this.keydown(e)); }
     create(options = {}) {
         const o = { width: 500, height: 350, minWidth: 230, minHeight: 130, resizable: true, ...options };
         const id = o.id || 'window-' + (++this.sequence);
@@ -61,7 +61,7 @@ export class WindowManager extends EventTarget {
             w.lastFocused = event.target; });
         node.addEventListener('pointerdown', () => this.focus(w), true);
         title.addEventListener('pointerdown', e => {
-            if (e.button !== 0 || controls.contains(e.target) || sys.contains(e.target) || w.maximized)
+            if (!(this.primary ? this.primary(e) : e.button === 0) || controls.contains(e.target) || sys.contains(e.target) || w.maximized)
                 return;
             this.drag(w, e, 'move');
         });

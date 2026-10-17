@@ -10,13 +10,14 @@
  */
 import { el, uniqueId } from './dom.js';
 
-export function trackbar({ label, orientation = 'horizontal', min = 0, max = 100, step = 1, pageStep = 10, value = 0, valueText, onChange, channel = false, balance = false, ruler = null }) {
+export function trackbar({ label, orientation = 'horizontal', min = 0, max = 100, step = 1, pageStep = 10, value = 0, valueText, onChange, channel = false, balance = false, ruler = null, ticks: tickCount = 0 }) {
     const vertical = orientation === 'vertical';
     const clamp = next => Math.min(max, Math.max(min, Number(next) || 0));
     let current = clamp(value);
     const thumb = el('div', { class: 'win95-trackbar-thumb', 'aria-hidden': 'true' });
     const ticks = el('div', { class: 'win95-trackbar-ticks', 'aria-hidden': 'true' });
-    for (const tickRatio of vertical ? [0, .2, .4, .6, .8, 1] : balance ? [.25, .5, .75] : [0, .5, 1]) {
+    const tickRatios = tickCount > 1 ? Array.from({ length: tickCount }, (_, i) => i / (tickCount - 1)) : vertical ? [0, .2, .4, .6, .8, 1] : balance ? [.25, .5, .75] : [0, .5, 1];
+    for (const tickRatio of tickRatios) {
         if (vertical) {
             for (const side of ['left', 'right']) {
                 const tick = el('span', { class: `win95-trackbar-tick ${side}` });
@@ -177,6 +178,15 @@ export function trackbar({ label, orientation = 'horizontal', min = 0, max = 100
             render();
             paintRuler();
         }).observe(root);
+    Object.defineProperty(root, 'disabled', {
+        get: () => root.classList.contains('win95-trackbar-disabled'),
+        set: on => {
+            root.classList.toggle('win95-trackbar-disabled', !!on);
+            root.tabIndex = on ? -1 : 0;
+            root.setAttribute('aria-disabled', on ? 'true' : 'false');
+        },
+        enumerable: true
+    });
     Object.defineProperty(root, 'ruler', {
         get: () => ruler,
         set: next => {
