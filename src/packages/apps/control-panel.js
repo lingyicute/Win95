@@ -148,14 +148,14 @@ export function dateTime(s) {
 }
 export function systemProperties(s) {
     return propertySheet(s, 'System Properties', 'computer', [
-        ['General', p => p.append(el('div', { class: 'system-logo' }, icon('windows', 64), el('div', {}, el('strong', { text: 'Microsoft' }), el('p', { text: 'Windows 95' }))), infoGrid([['System:', 'Browser-native desktop'], ['Version:', '1.0.0'], ['Registered to:', s.settings.get('owner', 'Windows User')], ['Computer:', `${navigator.hardwareConcurrency || 1} logical processors`], ['Graphics:', s.graphics.presenter.backend], ['File storage:', s.fs.persistence], ['Volume size:', formatSize(s.fs.size('C:\\'))]]), el('div', { class: 'separator' }), el('p', { text: 'Windows applications here run as JavaScript packages. Native Windows and DOS executable formats are not executed.' }))],
+        ['General', p => p.append(el('div', { class: 'system-logo' }, icon('windows', 64), el('div', {}, el('strong', { text: 'Microsoft' }), el('p', { text: 'Windows 95' }))), infoGrid([['Hardware architecture:', 'Browser'], ['Version:', '1.0.0'], ['Registered to:', s.settings.get('owner', 'Windows User')], ['Processors:', `${navigator.hardwareConcurrency || 1} logical cores`], ['Display adapter:', s.graphics.presenter.backend], ['Disk:', s.fs.persistence], ['Volume size:', formatSize(s.fs.size('C:\\'))]]), el('div', { class: 'separator' }), el('p', { text: 'Windows applications here run as JavaScript packages. Native Windows and DOS executable formats are not executed.' }))],
         ['Device Manager', p => {
                 const list = el('div', { class: 'inset', style: { padding: '10px', minHeight: '200px' } });
                 for (const [ic, label] of [['computer', 'Computer'], ['display', 'Display adapter — ' + s.graphics.presenter.backend], ['disk', 'Virtual C: drive — ' + s.fs.persistence], ['keyboard', 'Browser keyboard'], ['mouse', 'Browser pointing device'], ['volume', 'Web Audio output'], ['network', navigator.onLine ? 'Network — connected' : 'Network — offline']])
                     list.append(el('div', { class: 'row', style: { padding: '6px' } }, icon(ic, 16), label));
                 p.append(list);
             }],
-        ['Performance', p => p.append(infoGrid([['Graphics:', s.graphics.presenter.backend], ['Open windows:', String(s.wm.windows.length)], ['Logical CPUs:', String(navigator.hardwareConcurrency || 1)], ['Files and folders:', String(s.fs.nodes.size)], ['Virtual disk used:', formatSize(s.fs.size('C:\\'))], ['Storage revision:', String(s.fs.revision)]]), button('System Monitor…', () => s.launch('monitor')), button('Export Volume…', () => download('Windows95-Backup.json', s.fs.export(), 'application/json')))]
+        ['Performance', p => p.append(infoGrid([['Display adapter:', s.graphics.presenter.backend], ['Open windows:', String(s.wm.windows.length)], ['Logical CPUs:', String(navigator.hardwareConcurrency || 1)], ['Files and folders:', String(s.fs.nodes.size)], ['Virtual disk used:', formatSize(s.fs.size('C:\\'))], ['Storage revision:', String(s.fs.revision)]]), button('System Monitor…', () => s.launch('monitor')), button('Export Volume…', () => download('Windows95-Backup.json', s.fs.export(), 'application/json')))]
     ], 440, 400);
 }
 export function settingsApplet(s, id) {

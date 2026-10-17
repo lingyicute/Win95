@@ -154,8 +154,8 @@ const ZH = {
     'Changes apply to the clock on this desktop.': '更改将应用到此桌面的时钟。',
     'Time Zone': '时区', 'Time Zone:': '时区：', 'Time zone': '时区',
     'Choose how the taskbar clock displays the time.': '选择任务栏时钟显示时间的方式。',
-    'System Properties': '系统属性', 'Browser-native desktop': '浏览器原生桌面',
-    'File storage:': '文件存储：', 'Volume size:': '卷大小：',
+    'System Properties': '系统属性', 'Browser': '浏览器',
+    'Disk:': '磁盘：', 'Volume size:': '卷大小：',
     'Windows applications here run as JavaScript packages. Native Windows and DOS executable formats are not executed.': '此处的 Windows 应用程序以 JavaScript 包形式运行。不会执行原生的 Windows 和 DOS 可执行文件格式。',
     'Device Manager': '设备管理器', 'Computer': '计算机', 'Browser keyboard': '浏览器键盘',
     'Browser pointing device': '浏览器指针设备', 'Web Audio output': 'Web 音频输出',
@@ -328,8 +328,8 @@ const ZH = {
     'Hint: move the selected card to a foundation.': '提示：将所选牌移到回收堆。',
     // Remaining labels, fields and properties titles
     'Volume:': '音量：', 'Font:': '字体：', 'Named:': '名称：', 'Address:': '地址：', 'Home': '主页',
-    'Wave': '波形', 'Open:': '打开：', 'Version:': '版本：', 'System:': '系统：', 'Computer:': '计算机：',
-    'Graphics:': '图形：', 'Backspace': '退格', 'U+00A9 Copyright sign': 'U+00A9 版权符号',
+    'Wave': '波形', 'Open:': '打开：', 'Version:': '版本：', 'Hardware architecture:': '硬件架构：', 'Processors:': '处理器：',
+    'Display adapter:': '显示适配器：', 'Backspace': '退格', 'U+00A9 Copyright sign': 'U+00A9 版权符号',
     'Welcome to your Inbox': '欢迎使用收件箱', 'Windows 95 (D:)': 'Windows 95 (D:)',
     'Folder Options': '文件夹选项', 'Folder-options': '文件夹选项', 'Windows Chimes': 'Windows 钟声',
     'Sound - Sound Recorder': '声音 - 录音机', 'End': '末尾', 'How to Play': '游戏说明',
@@ -369,7 +369,7 @@ function applyPatterns(core) {
     if ((m = /^(\d+) objects on the virtual volume$/.exec(core))) return `虚拟卷上有 ${m[1]} 个对象`;
     if ((m = /^(\d+) item\(s\)$/.exec(core))) return `${m[1]} 个项目`;
     if ((m = /^(\d+) cards$/.exec(core))) return `${m[1]} 张牌`;
-    if ((m = /^(\d+) logical processors$/.exec(core))) return `${m[1]} 个逻辑处理器`;
+    if ((m = /^(\d+) logical cores$/.exec(core))) return `${m[1]} 个逻辑核心`;
     if ((m = /^([\d.]+) bytes$/.exec(core))) return `${m[1]} 字节`;
     if ((m = /^([\d.]+) minutes \(custom\)$/.exec(core))) return `${m[1]} 分钟（自定义）`;
     if ((m = /^(.+): (\d+) \(\+(\d+)\)$/.exec(core))) return `${name(m[1])}：${m[2]}（+${m[3]}）`;
