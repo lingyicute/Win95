@@ -31,6 +31,6 @@ test('the explorer remembers where it has been', () => {
 test('the Chinese wording follows the current choice', () => {
     assert.match(i18nSrc, /'Registered to:': '授权给：'/, 'the registration line reads 授权给');
     assert.doesNotMatch(i18nSrc, /注册给/, 'no 注册给 remains');
-    assert.match(i18nSrc, /'Go': '跳转'/, 'the Go menu is 跳转');
+    assert.match(i18nSrc, /'Go': '转到'/, 'the Go menu is 转到');
     assert.match(i18nSrc, /'Up One Level': '向上一级'/, 'Up One Level keeps its wording');
 });
