@@ -9,3 +9,8 @@ test('a configured Windows password gates the initial desktop behind login', () 
     assert.match(main, /if \(s\.settings\.get\('loginPassword', ''\)\)\s+showLoginDialog\(\{ startup: true \}\);/);
     assert.match(main, /if \(!authenticated\)\s*\{\s*document\.body\.classList\.add\('logged-off'\);\s*queueMicrotask\(\(\) => showLoginDialog\(\{ startup \}\)\);/);
 });
+
+test('password-protected startup defers the startup sound until successful login', () => {
+    assert.match(main, /if \(!s\.settings\.get\('loginPassword', ''\)\)\s+s\.playSound\('startup'\);/);
+    assert.match(main, /if \(startup && authenticated\)[\s\S]*?s\.playSound\('startup'\);/);
+});

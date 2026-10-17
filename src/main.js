@@ -90,7 +90,8 @@ const startBoot = () => {
     bootEl.classList.add('boot-playing');
     setTimeout(() => {
         bootEl.classList.add('hidden');
-        s.playSound('startup');
+        if (!s.settings.get('loginPassword', ''))
+            s.playSound('startup');
         setTimeout(() => bootEl.remove(), 200);
     }, MIN_BOOT_MS);
 };
@@ -386,6 +387,7 @@ function showLoginDialog({ startup = false } = {}) {
             s.launch('computer', { x: Math.max(100, Math.round(innerWidth * .14)), y: Math.max(55, Math.round(innerHeight * .12)), width: 575, height: 350 });
             if (s.settings.get('showWelcome', true))
                 welcome();
+            s.playSound('startup');
         }
     });
     queueMicrotask(() => password.focus());
