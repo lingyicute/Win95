@@ -19,7 +19,8 @@ export class WindowManager extends EventTarget {
             if (o.resizable)
                 controls.append(max);
         }
-        controls.append(close);
+        if (o.closable !== false)
+            controls.append(close);
         title.append(sys, label, controls);
         const body = el('div', { class: 'window-body' });
         node.append(title, body);
@@ -48,7 +49,8 @@ export class WindowManager extends EventTarget {
             w.statusbar.textContent = text;
         };
         sys.addEventListener('click', e => { e.stopPropagation(); const r = sys.getBoundingClientRect(); this.systemMenu(w, r.left, r.bottom); });
-        onDoubleActivate(sys, () => w.close());
+        if (o.closable !== false)
+            onDoubleActivate(sys, () => w.close());
         title.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); this.systemMenu(w, e.clientX, e.clientY); };
         close.onclick = () => w.close();
         min.onclick = () => w.minimize();
@@ -239,7 +241,7 @@ export class WindowManager extends EventTarget {
         target.addEventListener('pointerup', up);
         target.addEventListener('pointercancel', up);
     }
-    systemMenu(w, x = w.rect.x + 3, y = w.rect.y + 21) { popup([{ label: 'Restore', disabled: !w.maximized && !w.minimized, action: () => w.restore() }, { label: 'Move', disabled: w.maximized, action: () => { w.element.focus(); w.moveKeys = true; } }, { label: 'Size', disabled: w.maximized || !w.options.resizable, action: () => { w.element.focus(); w.sizeKeys = true; } }, { label: 'Minimize', disabled: !!w.options.modal, action: () => w.minimize() }, { label: 'Maximize', disabled: w.maximized || !w.options.resizable, action: () => w.maximize() }, null, { label: 'Close', shortcut: 'Alt+F4', action: () => w.close() }], x, y); }
+    systemMenu(w, x = w.rect.x + 3, y = w.rect.y + 21) { popup([{ label: 'Restore', disabled: !w.maximized && !w.minimized, action: () => w.restore() }, { label: 'Move', disabled: w.maximized, action: () => { w.element.focus(); w.moveKeys = true; } }, { label: 'Size', disabled: w.maximized || !w.options.resizable, action: () => { w.element.focus(); w.sizeKeys = true; } }, { label: 'Minimize', disabled: !!w.options.modal, action: () => w.minimize() }, { label: 'Maximize', disabled: w.maximized || !w.options.resizable, action: () => w.maximize() }, null, { label: 'Close', shortcut: 'Alt+F4', disabled: w.options.closable === false, action: () => w.close() }], x, y); }
     cascade() {
         let i = 0;
         for (const w of this.windows.filter(w => !w.options.modal)) {
@@ -268,7 +270,8 @@ export class WindowManager extends EventTarget {
         const w = this.active;
         if (e.altKey && e.key === 'F4' && w) {
             e.preventDefault();
-            w.close();
+            if (w.options.closable !== false)
+                w.close();
         }
         else if (e.altKey && e.code === 'Space' && w) {
             e.preventDefault();
