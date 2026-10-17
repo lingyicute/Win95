@@ -48,6 +48,16 @@ function selectChineseLanguage(sheet) {
     assert.equal(language.value, 'zh');
 }
 
+test('Apply without changing the UI language does not prompt or restart', async () => {
+    const s = makeSystem('OK');
+    const sheet = settingsApplet(s, 'regional');
+    sheet.body.children[2].children[2].dispatchEvent({ type: 'click' });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(s.messages, []);
+    assert.deepEqual(s.restarts, []);
+    assert.equal(s.settings.get('ui-language'), 'en');
+});
+
 test('Apply prompts and restarts when the UI language changes', async () => {
     const s = makeSystem('OK');
     const sheet = settingsApplet(s, 'regional');
