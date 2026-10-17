@@ -226,7 +226,7 @@ export function systemMonitor(s) {
 }
 export function diskUtility(s, args = {}) {
     const defrag = !!args.defrag;
-    const w = s.wm.create({ title: defrag ? 'Disk Defragmenter' : 'ScanDisk', icon: 'disk', width: 475, height: 380, resizable: false });
+    const w = s.wm.create({ title: defrag ? 'Disk Defragmenter' : 'ScanDisk', icon: defrag ? 'defrag' : 'scandisk', width: 475, height: 380, resizable: false });
     w.body.style.padding = '12px';
     w.body.style.gap = '10px';
     const map = el('div', { class: 'disk-map' }), progress = el('div', { class: 'progress' }, el('div', { style: { width: '0%' } })), result = el('p', { text: 'Select Start to check the virtual C: drive.' }), nodes = [...s.fs.nodes.values()].filter(n => n.path.startsWith('C:'));
@@ -266,7 +266,7 @@ export function diskUtility(s, args = {}) {
     return w;
 }
 export function backup(s) {
-    const w = s.wm.create({ title: 'Microsoft Backup', icon: 'disk', width: 540, height: 355 });
+    const w = s.wm.create({ title: 'Microsoft Backup', icon: 'backup', width: 540, height: 355 });
     w.body.style.padding = '12px';
     w.body.style.gap = '12px';
     const list = el('div', { class: 'inset', style: { flex: 1, overflow: 'auto', padding: '9px' } });
