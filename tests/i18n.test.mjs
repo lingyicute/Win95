@@ -113,3 +113,12 @@ test('every translation key matches text the shell actually renders', async () =
     const orphans = keys.filter(key => key && !rendered.includes(key) && !UNRUNLIT_KEYS.includes(key));
     assert.deepEqual(orphans, [], 'unreferenced ZH keys: ' + JSON.stringify(orphans));
 });
+
+test('System Properties names each hardware line in both languages', async () => {
+    for (const [en, zh] of [['Hardware architecture:', '硬件架构：'], ['Browser', '浏览器'], ['Processors:', '处理器：'], ['8 logical cores', '8 个逻辑核心'], ['Display adapter:', '显示适配器：'], ['Disk:', '磁盘：']])
+        assert.equal(translateText(en, 'zh'), zh, en);
+    const source = await readFile(path.join(root, 'src/packages/apps/control-panel.js'), 'utf8');
+    for (const label of ["'Hardware architecture:'", "'Processors:'", "'Display adapter:'", "'Disk:'"])
+        assert.ok(source.includes(label), `${label} is the label the dictionary translates`);
+    assert.doesNotMatch(source, /logical processors|'File storage:'|'System:'|'Computer:'|'Graphics:'/, 'the old labels are gone, so no dictionary entry is left behind');
+});
