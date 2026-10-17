@@ -26,7 +26,7 @@ export function createDialogs(system) {
     };
     const message = (text, title = 'Windows', choices = ['OK'], options = {}) => new Promise(resolve => {
         const w = modal(title, options);
-        const row = el('div', { class: 'message-content' }, icon(options.icon || 'help', 32), el('div', { text }));
+        const row = el('div', { class: 'message-content' }, icon(options.icon || 'help', 32), el('div', {}, text));
         const buttons = el('div', { class: 'dialog-buttons' });
         for (const [i, c] of choices.entries())
             buttons.append(button(c, () => { w.result = c; w.close(); }, { class: i === 0 ? 'default-button' : '' }));

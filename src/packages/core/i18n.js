@@ -1,11 +1,12 @@
+import { readSettingsValues } from './filesystem.js';
 /**
  * Startup UI language selection.
  *
- * The display language is chosen once per launch from the browser language:
- * Chinese browsers (zh-*) get the Chinese UI, everything else gets English.
- * There is deliberately no settings entry for this. Help text and document
- * content are not translated yet; the translator below only rewrites UI
- * strings rendered into the DOM (and skips help/document/content regions).
+ * The display language is chosen once per launch: an explicit Regional
+ * Settings choice ('ui-language') wins, otherwise the browser language decides
+ * (Chinese browsers (zh-*) get the Chinese UI, everything else English).
+ * Help text and document content are not translated yet; the translator below
+ * only rewrites UI strings rendered into the DOM (and skips help/document/content regions).
  */
 export function detectLanguage(input) {
     return String(input || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
@@ -16,23 +17,19 @@ const browserLanguage = typeof navigator !== 'undefined'
     : 'en';
 // An explicit Regional Settings choice takes precedence over browser detection.
 // Reloading applies it consistently to both the static desktop and later UI.
-let savedUiLanguage = '';
-try {
-    savedUiLanguage = localStorage.getItem('win95-settings')
-        ? JSON.parse(localStorage.getItem('win95-settings'))['ui-language'] || ''
-        : '';
-}
-catch { }
+const savedUiLanguage = readSettingsValues()['ui-language'] || '';
 export const uiLang = savedUiLanguage === 'zh' || savedUiLanguage === 'en'
     ? savedUiLanguage
     : detectLanguage(browserLanguage);
-export const uiLocale = uiLang === 'zh' ? 'zh-CN' : browserLanguage || 'en-US';
+// An explicit English choice pins the clock to en-US; otherwise the browser
+// region still formats dates and numbers for the display language.
+export const uiLocale = uiLang === 'zh' ? 'zh-CN' : savedUiLanguage === 'en' ? 'en-US' : browserLanguage || 'en-US';
 
 const ZH = {
     // Shell, taskbar, boot, start menu
     'Start': '开始', 'Tap to start': '点击开始', 'Windows 95 desktop': 'Windows 95 桌面', 'Accessories': '附件', 'Games': '游戏', 'Communications': '通讯', 'System Tools': '系统工具',
     'Programs': '程序', 'Documents': '文档', 'Settings': '设置', 'Find': '查找', 'Help': '帮助',
-    'Run': '运行', 'Run…': '运行…', 'Log Off...': '注销...', 'Log Off Windows': '注销 Windows', 'Are you sure you want to log off?': '确定要注销吗？', 'Enter Windows Password': '输入 Windows 密码', 'The password you entered is incorrect. Try again.': '您输入的密码不正确，请重试。', 'Click this button to change your Windows password.': '单击此按钮更改 Windows 密码。', 'Type a name to identify yourself to Windows. Enter a password if you want to.': '输入您的名称以标识 Windows 用户。如有密码，请输入密码。', "Tip: If you don't enter a password, you won't get this prompt again at startup.": '提示：如果用户没有密码，下次启动时将不再显示此质询。', 'User name:': '用户名：', 'Password:': '密码：', 'Shut Down…': '关闭系统…', 'Shut Down Windows': '关闭 Windows',
+    'Run': '运行', 'Run…': '运行…', 'Log Off…': '注销…', 'Log Off Windows': '注销 Windows', 'Are you sure you want to log off?': '确定要注销吗？', 'Enter Windows Password': '输入 Windows 密码', 'The password you entered is incorrect. Try again.': '您输入的密码不正确，请重试。', 'Leaving the new password empty removes your Windows password. You will not be asked for a password at startup. Continue?': '新密码留空将删除 Windows 密码，启动时将不再要求输入密码。是否继续？', 'Click this button to change your Windows password.': '单击此按钮更改 Windows 密码。', 'Type a name to identify yourself to Windows. Enter a password if you want to.': '输入您的名称以标识 Windows 用户。如有密码，请输入密码。', "Tip: If you don't enter a password, you won't get this prompt again at startup.": '提示：如果用户没有密码，下次启动时将不再显示此质询。', 'User name:': '用户名：', 'Password:': '密码：', 'Shut Down…': '关闭系统…', 'Shut Down Windows': '关闭 Windows',
     'Shut down the computer?': '关闭计算机？', 'Restart the computer?': '重新启动计算机？',
     'Restart the computer in MS-DOS mode?': '重新启动计算机并进入 MS-DOS 模式？',
     'It is now safe to turn off your computer.': '现在可以安全地关闭计算机了。',
@@ -54,7 +51,7 @@ const ZH = {
     'The browser could not save your virtual drive. Export a backup to keep a copy of your files.': '浏览器无法保存您的虚拟驱动器。请导出备份以保留文件副本。',
     'Storage Full': '存储空间已满',
     // Common controls and dialogs
-    'OK': '确定', 'Yes': '是', 'No': '否', 'Cancel': '取消', 'Close': '关闭', 'Open': '打开', 'Reset': '重置', 'Reset Windows': '重置 Windows', 'Resetting Windows will erase all files and settings. Continue?': '重置 Windows 将清除所有文件和设置。是否继续？', 'Close other Windows 95 tabs before resetting.': '请先关闭其他 Windows 95 标签页，然后再重置。', 'Windows could not reset its data.': 'Windows 无法重置数据。',
+    'OK': '确定', 'Yes': '是', 'No': '否', 'Cancel': '取消', 'Close': '关闭', 'Open': '打开', 'Reset': '重置', 'Reset Windows': '重置 Windows', 'Resetting Windows will erase all files and settings. Continue?': '重置 Windows 将清除所有文件和设置。是否继续？', 'This is your last warning: every file and setting will be permanently erased. This cannot be undone.': '这是最后警告：所有文件和设置都将被永久清除，此操作无法撤销。', 'Really reset Windows?': '真的要重置 Windows 吗？', 'Close other Windows 95 tabs before resetting.': '请先关闭其他 Windows 95 标签页，然后再重置。', 'Windows could not reset its data.': 'Windows 无法重置数据。',
     'Save': '保存', 'Apply': '应用', 'Print': '打印', 'Help Topics': '帮助主题', 'About': '关于',
     'Properties': '属性', 'Rename': '重命名', 'Refresh': '刷新', 'Delete': '删除', 'Explore': '浏览',
     'General': '常规', 'File Folder': '文件夹', 'Read-only': '只读', 'Type a new name:': '键入新名称：',

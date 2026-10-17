@@ -33,9 +33,9 @@ function propertySheet(s, title, ic, tabs, width = 420, height = 420) {
     const render = () => { [...strip.children].forEach((b, i) => b.classList.toggle('active', i === tabIndex)); panel.replaceChildren(panels[tabIndex]); };
     buttons.append(button('OK', async () => {
         if (w.apply)
-            await w.apply('ok');
+            await w.apply();
         w.close();
-    }, { class: 'default-button' }), button('Cancel', () => w.close()), button('Apply', async () => w.apply?.('apply')));
+    }, { class: 'default-button' }), button('Cancel', () => w.close()), button('Apply', async () => w.apply?.()));
     w.body.append(strip, panel, buttons);
     w.element.addEventListener('keydown', e => {
         if (e.ctrlKey && e.key === 'Tab') {
@@ -315,13 +315,18 @@ export function settingsApplet(s, id) {
                         confirmPassword.focus();
                         return;
                     }
+                    if (!newPassword.value && await s.ui.message('Leaving the new password empty removes your Windows password. You will not be asked for a password at startup. Continue?', 'Change Windows Password', ['Yes', 'No'], { owner: dialog, icon: 'help' }) !== 'Yes') {
+                        newPassword.focus();
+                        return;
+                    }
                     s.settings.set('loginPassword', newPassword.value);
                     await dialog.close();
                     s.ui.message('Your Windows password has been changed.', 'Change Windows Password', ['OK'], { owner: w, icon: 'login' });
                 };
-                dialog.body.append(el('div', { class: 'stack', style: { gap: '8px', padding: '10px 12px' } },
-                    field('Old password:', oldPassword), field('New password:', newPassword), field('Confirm new password:', confirmPassword)),
-                el('div', { class: 'dialog-buttons' }, button('OK', applyPassword, { class: 'default-button' }), button('Cancel', () => dialog.close())));
+                dialog.body.append(el('form', { onsubmit: event => { event.preventDefault(); applyPassword(); } },
+                    el('div', { class: 'stack', style: { gap: '8px', padding: '10px 12px' } },
+                        field('Old password:', oldPassword), field('New password:', newPassword), field('Confirm new password:', confirmPassword)),
+                    el('div', { class: 'dialog-buttons' }, el('button', { type: 'submit', class: 'default-button', text: 'OK' }), button('Cancel', () => dialog.close(), { type: 'button' }))));
                 queueMicrotask(() => oldPassword.focus());
             };
             p.append(el('fieldset', {}, el('legend', { text: 'Windows Password' }),
@@ -353,7 +358,7 @@ export function settingsApplet(s, id) {
     else
         pages.push(['General', p => p.append(el('p', { text: meta[1] + ' settings are stored for this desktop.' }))]);
     w = propertySheet(s, meta[1] + ' Properties', meta[2], pages, 430, 390);
-    w.apply = async mode => {
+    w.apply = async () => {
         const currentLanguage = s.settings.get('ui-language', (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
         const languageChanged = id === 'regional' && uiLanguageChangedByUser && (draft.uiLanguage === 'en' || draft.uiLanguage === 'zh') && draft.uiLanguage !== currentLanguage;
         if (languageChanged) {

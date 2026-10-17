@@ -12,3 +12,10 @@ test('login reset confirms first, clears app data, then plays shutdown audio bef
     assert.match(main, /indexedDB\.deleteDatabase\('win95-desktop'\)/);
     assert.match(main, /await waitForSoundEnd\(s\.playSound\('shutdown'\)\);\s+location\.reload\(\);/);
 });
+
+test('login reset asks twice, and both warnings are bold with the second one heavier', () => {
+    assert.match(main, /el\('strong', \{ text: 'Resetting Windows will erase all files and settings\. Continue\?' \}\)/);
+    assert.match(main, /el\('strong', \{ text: 'This is your last warning: every file and setting will be permanently erased\. This cannot be undone\.' \}\)/);
+    assert.match(main, /text: 'Really reset Windows\?'/);
+    assert.match(main, /\) !== 'Yes'\)\s*return;\s*resetting = true;/, 'the heavier second prompt must gate the reset on an explicit Yes');
+});

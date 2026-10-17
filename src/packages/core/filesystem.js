@@ -239,15 +239,18 @@ export class VirtualFileSystem extends EventTarget {
     }
     export() { return JSON.stringify({ format: 'win95-volume', version: 1, nodes: [...this.nodes] }, null, 2); }
 }
+export const readSettingsValues = () => {
+    try {
+        return JSON.parse(localStorage.getItem('win95-settings') || '{}') || {};
+    }
+    catch {
+        return {};
+    }
+};
 export class Settings extends EventTarget {
     constructor() {
         super();
-        try {
-            this.values = JSON.parse(localStorage.getItem('win95-settings') || '{}');
-        }
-        catch {
-            this.values = {};
-        }
+        this.values = readSettingsValues();
     }
     get(name, fallback) { return this.values[name] ?? fallback; }
     set(name, value) {

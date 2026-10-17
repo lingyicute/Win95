@@ -305,7 +305,7 @@ s.restart = async (ownerWindow = null) => {
     if (ownerWindow && !await ownerWindow.close())
         return false;
     for (const win of [...s.wm.windows])
-        if (!win.options.modal && !await s.wm.close(win))
+        if (!await s.wm.close(win))
             return false;
     await s.fs.flush();
     await waitForSoundEnd(s.playSound('shutdown'));
@@ -326,7 +326,7 @@ s.shutdown = () => {
         }
         setPointerBusy(true);
         for (const win of [...s.wm.windows])
-            if (!win.options.modal && !await s.wm.close(win))
+            if (!await s.wm.close(win))
                 return setPointerBusy(false);
         await s.fs.flush();
         setPointerBusy(false);
@@ -342,13 +342,15 @@ s.shutdown = () => {
     return w;
 };
 function showLoginDialog({ startup = false } = {}) {
-    const login = s.ui.modal('Enter Windows Password', { width: 470, height: 250, icon: 'login' });
+    const login = s.ui.modal('Enter Windows Password', { width: 470, height: 250, icon: 'login', closable: false });
     let authenticated = false, resetting = false;
     const user = el('input', { value: s.settings.get('owner', 'Windows User'), readOnly: true, 'aria-label': 'User name', autocomplete: 'username' });
     const password = el('input', { type: 'password', 'aria-label': 'Password', autocomplete: 'current-password' });
     const resetData = async () => {
-        const answer = await s.ui.message('Resetting Windows will erase all files and settings. Continue?', 'Reset Windows', ['Yes', 'No'], { owner: login, icon: 'help' });
+        const answer = await s.ui.message(el('strong', { text: 'Resetting Windows will erase all files and settings. Continue?' }), 'Reset Windows', ['Yes', 'No'], { owner: login, icon: 'help' });
         if (answer !== 'Yes')
+            return;
+        if (await s.ui.message(el('div', {}, el('strong', { text: 'This is your last warning: every file and setting will be permanently erased. This cannot be undone.' }), el('div', { text: 'Really reset Windows?' })), 'Reset Windows', ['Yes', 'No'], { owner: login, icon: 'help' }) !== 'Yes')
             return;
         resetting = true;
         s.resettingData = true;
@@ -399,7 +401,7 @@ function showLoginDialog({ startup = false } = {}) {
     el('div', { class: 'login-copy' },
         el('div', { text: 'Type a name to identify yourself to Windows. Enter a password if you want to.' }),
         el('div', { class: 'login-tip', text: "Tip: If you don't enter a password, you won't get this prompt again at startup." })),
-    el('div', { class: 'login-buttons' }, el('button', { type: 'submit', class: 'default-button', text: 'OK' }), button('Cancel', () => login.close(), { type: 'button' }), button('Reset', resetData, { type: 'button' })),
+    el('div', { class: 'login-buttons' }, el('button', { type: 'submit', class: 'default-button', text: 'OK' }), button('Reset', resetData, { type: 'button' })),
     el('div', { class: 'login-fields' }, el('label', { for: 'login-user', text: 'User name:' }), user, el('label', { for: 'login-password', text: 'Password:' }), password));
     user.id = 'login-user';
     password.id = 'login-password';
@@ -430,7 +432,7 @@ s.logoff = () => {
     const logoffNow = async () => {
         await confirm.close();
         for (const win of [...s.wm.windows]) {
-            if (!win.options.modal && !await s.wm.close(win))
+            if (!await s.wm.close(win))
                 return;
         }
         await s.fs.flush();
@@ -466,7 +468,7 @@ function startMenu() {
     }
     const accessories = [...appMenu('accessory'), null, { label: 'Multimedia', icon: 'media', items: () => appMenu('multimedia') }, { label: 'System Tools', icon: 'computer', items: () => appMenu('system').filter(x => x.label !== 'Windows Explorer' && x.label !== 'MS-DOS Prompt') }];
     const programs = [{ label: 'Accessories', icon: 'folder', items: accessories }, { label: 'Games', icon: 'folder', items: () => appMenu('game') }, { label: 'Communications', icon: 'folder', items: () => appMenu('communication') }, null, { label: 'MS-DOS Prompt', icon: 'dos', action: () => s.launch('dos') }, { label: 'Windows Explorer', icon: 'folder', action: () => s.launch('explorer', { path: 'C:\\', tree: true }) }];
-    const items = [{ label: 'Programs', icon: 'programs', items: programs }, { label: 'Documents', icon: 'documents', items: () => { const docs = s.settings.get('recentDocuments', []).filter(p => s.fs.exists(p)).map(path => ({ label: baseName(path), icon: fileIcon(s.fs.get(path)), action: () => s.open(path) })); return docs.length ? docs : [{ label: '(Empty)', disabled: true }]; } }, { label: 'Settings', icon: 'settings', items: [{ label: 'Control Panel', icon: 'control', action: () => s.launch('control') }, { label: 'Printers', icon: 'printer', action: () => s.launch('printers') }, { label: 'Taskbar…', icon: 'windows', action: () => s.launch('taskbar-properties') }] }, { label: 'Find', icon: 'find', items: [{ label: 'Files or Folders…', icon: 'find', action: () => s.launch('find') }, { label: 'Computer…', icon: 'network', action: () => s.launch('network') }] }, { label: 'Help', icon: 'help', action: () => s.launch('help') }, { label: 'Run…', icon: 'run', action: runDialog }, null, { label: 'Log Off...', icon: 'logoff', action: s.logoff }, { label: 'Shut Down…', icon: 'shutdown', action: s.shutdown }];
+    const items = [{ label: 'Programs', icon: 'programs', items: programs }, { label: 'Documents', icon: 'documents', items: () => { const docs = s.settings.get('recentDocuments', []).filter(p => s.fs.exists(p)).map(path => ({ label: baseName(path), icon: fileIcon(s.fs.get(path)), action: () => s.open(path) })); return docs.length ? docs : [{ label: '(Empty)', disabled: true }]; } }, { label: 'Settings', icon: 'settings', items: [{ label: 'Control Panel', icon: 'control', action: () => s.launch('control') }, { label: 'Printers', icon: 'printer', action: () => s.launch('printers') }, { label: 'Taskbar…', icon: 'windows', action: () => s.launch('taskbar-properties') }] }, { label: 'Find', icon: 'find', items: [{ label: 'Files or Folders…', icon: 'find', action: () => s.launch('find') }, { label: 'Computer…', icon: 'network', action: () => s.launch('network') }] }, { label: 'Help', icon: 'help', action: () => s.launch('help') }, { label: 'Run…', icon: 'run', action: runDialog }, null, { label: 'Log Off…', icon: 'logoff', action: s.logoff }, { label: 'Shut Down…', icon: 'shutdown', action: s.shutdown }];
     popup(items, 2, innerHeight - 30 - 310, { large: true, class: 'start-menu', brand: true });
     const m = document.querySelector('.start-menu');
     m.style.top = Math.max(0, innerHeight - 30 - m.offsetHeight) + 'px';
