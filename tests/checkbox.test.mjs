@@ -60,6 +60,7 @@ test('the radio is a drawn 12 px well with a 4 px dot', () => {
     assert.match(decodeURIComponent(base), /fill='#DFDFDF'/, 'the inner shading');
     assert.doesNotMatch(base, /border-radius|clip-path/, 'the well is drawn, not a styled round div');
     assert.match(base, /box-shadow:none/, 'the square bevel belongs to the check box, not the radio');
+    assert.match(base, /background-color:transparent/, 'no square plate behind the drawn well');
     const checked = decodeURIComponent(rule('input[type=radio]:checked'));
     assert.match(checked, /<svg width='4' height='4'/, 'the dot is its own drawn glyph');
     assert.match(checked, /background-size:4px 4px,12px 12px/, 'the dot is the top layer, the well underneath');
