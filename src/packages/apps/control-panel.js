@@ -1,4 +1,5 @@
 import { el, button, field, download, fileInput, formatSize, infoGrid } from '@win95/ui/dom.js';
+import { trackbar } from '@win95/ui/trackbar.js';
 import { icon } from '@win95/ui/icons.js';
 import { menuBar } from '@win95/ui/menu.js';
 import { combo } from '@win95/ui/select.js';
@@ -171,7 +172,7 @@ export function settingsApplet(s, id) {
     let w;
     const select = (p, label, key, values, value) => { const input = combo({ ariaLabel: label, options: values.map(x => ({ value: x, label: x })), value: draft[key] ?? value, onchange: next => draft[key] = next }); p.append(field(label, input)); };
     const check = (p, label, key, value = false) => p.append(el('label', { class: 'checkbox-label' }, el('input', { type: 'checkbox', checked: draft[key] ?? value, onchange: e => draft[key] = e.target.checked }), label));
-    const range = (p, label, key, value = 50) => p.append(field(label, el('input', { type: 'range', min: 0, max: 100, value: draft[key] ?? value, 'aria-label': label, oninput: e => draft[key] = Number(e.target.value) })));
+    const range = (p, label, key, value = 50) => p.append(field(label, trackbar({ label, value: draft[key] ?? value, onChange: next => draft[key] = next })));
     const pages = [];
     if (id === 'mouse') {
         pages.push(['Buttons', p => { p.append(el('div', { class: 'row' }, icon('mouse', 32), el('p', { text: 'Customize your pointing device.' }))); check(p, 'Left-handed button configuration', 'leftHanded'); range(p, 'Double-click speed:', 'doubleClick', 50); const test = button('Double-click to test', () => { }, { ondblclick: e => { e.target.classList.toggle('pressed'); e.target.textContent = e.target.classList.contains('pressed') ? 'Folder opened' : 'Double-click to test'; } }); p.append(el('fieldset', {}, el('legend', { text: 'Test area' }), icon('folder', 32), test)); commits.push(() => s.settings.set('doubleClickMs', Math.round(800 - (draft.doubleClick ?? 50) * 6))); }], ['Pointers', p => { select(p, 'Scheme:', 'cursor', ['Windows Standard', 'Large', 'Crosshair'], 'Windows Standard'); commits.push(() => { document.body.style.cursor = draft.cursor === 'Crosshair' ? 'crosshair' : 'default'; document.body.classList.toggle('large-pointer', draft.cursor === 'Large'); }); }]);

@@ -201,6 +201,8 @@ const ZH = {
     'This media cannot be played. Choose an audio or video file supported by your browser.': '无法播放此媒体。请选择浏览器支持的音频或视频文件。',
     'Media files (*.wav, *.mp3, *.mp4, *.webm)': '媒体文件 (*.wav, *.mp3, *.mp4, *.webm)',
     'Play': '播放', 'Pause': '暂停', 'Stop': '停止', 'Rewind': '快退', 'Fast forward': '快进',
+    'Eject': '弹出', 'Previous': '上一个', 'Next': '下一个', 'Start selection': '选择起点', 'End selection': '选择终点',
+    'Scroll back': '向后滚动', 'Scroll forward': '向前滚动', 'Scale': '刻度', 'Seconds': '秒', 'Frames': '帧',
     'Play sample': '播放示例', 'Wave Audio': '波形音频', 'Video': '视频', 'CD Audio': 'CD 音频',
     'Repeat': '重复播放', 'Balance': '平衡', 'Balance:': '平衡：', 'Center': '中央',
     'Mute all': '全部静音', 'Mute': '静音', 'Position:': '位置：', 'Length:': '长度：',
