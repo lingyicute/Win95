@@ -40,8 +40,8 @@ export const counterMarkup = value => [...counterChars(value)].map(char => {
 }).join('');
 
 const EYES = {
-    smile: '<path d="M6 5V7M13 5V7" stroke-width="2"/>',
-    pressed: '<path d="M6 5V7M13 5V7" stroke-width="2"/>',
+    smile: '<path d="M7 5V7M13 5V7" stroke-width="2"/>',
+    pressed: '<path d="M7 5V7M13 5V7" stroke-width="2"/>',
     lost: '<path d="M5 5L8 8M8 5L5 8M12 5L15 8M15 5L12 8"/>',
     won: '<path d="M3 5H17M4 6L5 9H8L9 6M11 6L12 9H15L16 6" fill="#000"/>'
 };
