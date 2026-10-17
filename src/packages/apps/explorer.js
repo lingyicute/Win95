@@ -103,7 +103,7 @@ export function createFileActions(s) {
     return { properties, rename, remove, copy, paste, newFolder, newText, importFiles, menu };
 }
 export function explorer(s, args = {}) {
-    let path = args.path || 'computer', tree = !!args.tree, view = args.view || 'large', selection = new Set(), sort = 'name', showToolbar = tree;
+    let path = args.path || 'computer', tree = !!args.tree, view = args.view || 'large', selection = new Set(), sort = 'name', showToolbar = tree, hist = [path], hIndex = 0;
     const w = s.wm.create({ title: 'My Computer', icon: path === 'recycle' ? 'recycle' : 'computer', width: args.width || 575, height: args.height || 360, x: args.x, y: args.y });
     const toolbar = el('div', { class: 'explorer-toolbar' });
     const content = el('div', { class: 'explorer-content' }), treeHost = el('div', { class: 'folder-tree inset' }), list = el('div', { class: 'file-list inset', tabIndex: 0, 'aria-label': 'Files' });
@@ -114,7 +114,27 @@ export function explorer(s, args = {}) {
     const realPath = () => path === 'recycle' ? 'C:\\Recycled' : path === 'desktop' ? 'C:\\Windows\\Desktop' : s.fs.exists(path) ? path : 'C:\\';
     const selectedPaths = () => [...selection].filter(p => s.fs.exists(p));
     const openEntry = e => e.app ? s.launch(e.app) : e.path && s.fs.get(e.path)?.type === 'folder' ? navigate(e.path) : s.open(e.path);
-    const navigate = p => { path = p; selection.clear(); render(); };
+    const navigate = p => {
+        const same = p === path;
+        path = p;
+        selection.clear();
+        if (!same) {
+            hist = hist.slice(0, hIndex + 1);
+            hist.push(p);
+            hIndex++;
+        }
+        render();
+    };
+    const go = delta => {
+        const next = hIndex + delta;
+        if (next < 0 || next >= hist.length)
+            return;
+        hIndex = next;
+        path = hist[hIndex];
+        selection.clear();
+        render();
+    };
+    const upOneLevel = () => navigate(path === 'computer' ? 'desktop' : path === 'desktop' ? 'computer' : normalizePath(parentPath(realPath())));
     const paintSelection = () => { list.querySelectorAll('[data-path]').forEach(n => n.classList.toggle('selected', selection.has(n.dataset.path))); w.status(selection.size ? `${selection.size} object(s) selected     ${formatSize(selectedPaths().reduce((a, p) => a + s.fs.size(p), 0))}` : `${entries.length} object(s)${path === 'computer' ? '' : `     ${formatSize(s.fs.size(realPath()))}`}`); };
     const addTree = (title, ic, p, depth = 0) => treeHost.append(el('button', { class: 'tree-item' + (p === path ? ' selected' : ''), style: { paddingLeft: (3 + depth * 13) + 'px' }, onclick: () => navigate(p) }, icon(ic, 16), title));
     const render = () => {
@@ -137,7 +157,7 @@ export function explorer(s, args = {}) {
         }
         addTree('Recycle Bin', 'recycle', 'recycle', 1);
         toolbar.hidden = !showToolbar;
-        toolbar.replaceChildren(button('↰', () => navigate(path === 'computer' ? 'desktop' : path === 'desktop' ? 'computer' : normalizePath(parentPath(realPath()))), { title: 'Up One Level' }), el('div', { class: 'toolbar-divider' }), button('Cut', () => s.files.copy(selectedPaths(), true)), button('Copy', () => s.files.copy(selectedPaths())), button('Paste', () => s.files.paste(realPath())), el('div', { class: 'toolbar-divider' }), button('Large Icons', () => { view = 'large'; render(); }), button('Details', () => { view = 'details'; render(); }));
+        toolbar.replaceChildren(button('↰', upOneLevel, { title: 'Up One Level' }), el('div', { class: 'toolbar-divider' }), button('Cut', () => s.files.copy(selectedPaths(), true)), button('Copy', () => s.files.copy(selectedPaths())), button('Paste', () => s.files.paste(realPath())), el('div', { class: 'toolbar-divider' }), button('Large Icons', () => { view = 'large'; render(); }), button('Details', () => { view = 'details'; render(); }));
         entries = path === 'computer' ? computer : path === 'network' ? [{ name: 'Entire Network', icon: 'network', app: 'network' }, { name: 'My Computer', icon: 'computer', path: 'C:\\' }] : s.fs.list(realPath()).map(n => ({ name: baseName(n.path), icon: fileIcon(n), path: n.path, node: n }));
         if (sort === 'type')
             entries.sort((a, b) => (a.node?.type || '').localeCompare(b.node?.type || ''));
@@ -243,7 +263,7 @@ export function explorer(s, args = {}) {
                             selection.has(k) ? selection.delete(k) : selection.add(k);
                         }
                         paintSelection();
-                    } }] }, { label: 'View', items: () => [{ label: 'Toolbar', checked: showToolbar, action: () => { showToolbar = !showToolbar; render(); } }, { label: 'Folders', checked: tree, action: () => { tree = !tree; render(); } }, null, ...['large', 'small', 'list', 'details'].map(v => ({ label: ({ large: 'Large Icons', small: 'Small Icons', list: 'List', details: 'Details' })[v], checked: view === v, action: () => { view = v; render(); } })), null, { label: 'Refresh', shortcut: 'F5', action: render }, { label: 'Options…', action: () => s.launch('folder-options') }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'files' }) }, null, { label: 'About Windows 95', action: () => s.about() }] }]));
+                    } }] }, { label: 'View', items: () => [{ label: 'Toolbar', checked: showToolbar, action: () => { showToolbar = !showToolbar; render(); } }, { label: 'Folders', checked: tree, action: () => { tree = !tree; render(); } }, null, ...['large', 'small', 'list', 'details'].map(v => ({ label: ({ large: 'Large Icons', small: 'Small Icons', list: 'List', details: 'Details' })[v], checked: view === v, action: () => { view = v; render(); } })), null, { label: 'Refresh', shortcut: 'F5', action: render }, { label: 'Options…', action: () => s.launch('folder-options') }] }, { label: 'Go', items: () => [{ label: 'Back', disabled: hIndex <= 0, action: () => go(-1) }, { label: 'Forward', disabled: hIndex >= hist.length - 1, action: () => go(1) }, { label: 'Up One Level', action: upOneLevel }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'files' }) }, null, { label: 'About Windows 95', action: () => s.about() }] }]));
     w.element.addEventListener('keydown', e => {
         if (e.target.tagName === 'INPUT')
             return;

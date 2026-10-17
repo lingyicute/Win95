@@ -92,7 +92,7 @@ const ZH = {
     'The file could not be found:': '找不到此文件：',
     // Welcome and About
     'Windows 95 desktop recreation': 'Windows 95 桌面复刻', 'Version 1.0.0': '版本 1.0.0',
-    'Registered to:': '注册给：', 'Windows User': 'Windows 用户', 'System Info…': '系统信息…',
+    'Registered to:': '授权给：', 'Windows User': 'Windows 用户', 'System Info…': '系统信息…',
     'Where do you want': '今天您想去', 'to go': '', 'today?': '哪里？',
     'Welcome to Windows 95. There’s a whole new world waiting on your desktop.': '欢迎使用 Windows 95。一个全新的世界正在您的桌面上等待着您。',
     'Explore Windows': '探索 Windows', 'Open My Documents': '打开我的文档',
@@ -212,7 +212,7 @@ const ZH = {
     'Browse your documents': '浏览您的文档', 'open it in a browser tab': '在浏览器标签页中打开',
     'If the website does not allow embedded viewing,': '如果网站不允许嵌入查看，',
     'Website': '网站', 'Done': '完成', 'Forward': '前进', 'Source': '源代码',
-    'Favorites': '收藏夹', 'Add to Favorites…': '添加到收藏夹…', 'Go': '转到',
+    'Favorites': '收藏夹', 'Add to Favorites…': '添加到收藏夹…', 'Go': '跳转',
     'HTML Files (*.htm, *.html)': 'HTML 文件 (*.htm, *.html)',
     'Inbox - Microsoft Exchange': '收件箱 - Microsoft Exchange', 'Outbox': '发件箱',
     'Sent Items': '已发送邮件', 'Deleted Items': '已删除邮件', 'Drafts': '草稿',
