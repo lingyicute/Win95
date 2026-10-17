@@ -14,6 +14,10 @@ test('startup language follows the browser language', () => {
 
 test('Chinese UI strings come from the dictionary, English is untouched', () => {
     assert.equal(translateText('Start', 'zh'), '开始');
+    assert.equal(translateText('Accessories', 'zh'), '附件');
+    assert.equal(translateText('Games', 'zh'), '游戏');
+    assert.equal(translateText('Communications', 'zh'), '通讯');
+    assert.equal(translateText('System Tools', 'zh'), '系统工具');
     assert.equal(translateText('My Computer', 'zh'), '我的电脑');
     assert.equal(translateText('Show this next time', 'zh'), '下次显示此窗口');
     assert.equal(translateText('Start', 'en'), 'Start');
