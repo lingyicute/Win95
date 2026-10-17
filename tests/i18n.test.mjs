@@ -19,6 +19,9 @@ test('Chinese UI strings come from the dictionary, English is untouched', () => 
     assert.equal(translateText('Communications', 'zh'), '通讯');
     assert.equal(translateText('System Tools', 'zh'), '系统工具');
     assert.equal(translateText('Change Password', 'zh'), '更改密码');
+    assert.equal(translateText('Click this button to change your Windows password.', 'zh'), '单击此按钮更改 Windows 密码。');
+    assert.equal(translateText('Type a name to identify yourself to Windows. Enter a password if you want to.', 'zh'), '输入您的名称以标识 Windows 用户。如有密码，请输入密码。');
+    assert.equal(translateText("Tip: If you don't enter a password, you won't get this prompt again at startup.", 'zh'), '提示：如果用户没有密码，下次启动时将不再显示此质询。');
     assert.equal(translateText('Old password:', 'zh'), '旧密码：');
     assert.equal(translateText('My Computer', 'zh'), '我的电脑');
     assert.equal(translateText('Show this next time', 'zh'), '下次显示此窗口');
