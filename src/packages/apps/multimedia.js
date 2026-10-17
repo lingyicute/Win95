@@ -201,7 +201,7 @@ export function volumeControl(s) {
             valueText: value => `${value} percent`,
             onChange: value => s.settings.set(key, value)
         });
-        const muted = el('input', { class: 'win95-checkbox', type: 'checkbox', checked: s.settings.get(muteKey, false), 'aria-label': `${name} mute`, onchange: e => s.settings.set(muteKey, e.target.checked) });
+        const muted = el('input', { type: 'checkbox', checked: s.settings.get(muteKey, false), 'aria-label': `${name} mute`, onchange: e => s.settings.set(muteKey, e.target.checked) });
         area.append(el('div', { class: 'volume-channel' },
             el('div', { class: 'volume-channel-title', text: name }),
             el('div', { class: 'volume-control-label', text: 'Balance:' }),
