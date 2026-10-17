@@ -32,7 +32,7 @@ const ZH = {
     // Shell, taskbar, boot, start menu
     'Start': '开始', 'Tap to start': '点击开始', 'Windows 95 desktop': 'Windows 95 桌面', 'Accessories': '附件', 'Games': '游戏', 'Communications': '通讯', 'System Tools': '系统工具',
     'Programs': '程序', 'Documents': '文档', 'Settings': '设置', 'Find': '查找', 'Help': '帮助',
-    'Run': '运行', 'Run…': '运行…', 'Log Off...': '注销...', 'Log Off Windows': '注销 Windows', 'Are you sure you want to log off?': '确定要注销吗？', 'Enter Windows Password': '输入 Windows 密码', 'Type a name to identify yourself to Windows. Enter a password if you want to.': '输入您的名称以标识 Windows 用户。如需密码，请输入密码。', "Tip: If you don't enter a password, you won't get this prompt again at startup.": '提示：如果不输入密码，下次启动时将不再显示此提示。', 'User name:': '用户名：', 'Password:': '密码：', 'Shut Down…': '关闭系统…', 'Shut Down Windows': '关闭 Windows',
+    'Run': '运行', 'Run…': '运行…', 'Log Off...': '注销...', 'Log Off Windows': '注销 Windows', 'Are you sure you want to log off?': '确定要注销吗？', 'Enter Windows Password': '输入 Windows 密码', 'The password you entered is incorrect. Try again.': '您输入的密码不正确，请重试。', 'Type a name to identify yourself to Windows. Enter a password if you want to.': '输入您的名称以标识 Windows 用户。如需密码，请输入密码。', "Tip: If you don't enter a password, you won't get this prompt again at startup.": '提示：如果不输入密码，下次启动时将不再显示此提示。', 'User name:': '用户名：', 'Password:': '密码：', 'Shut Down…': '关闭系统…', 'Shut Down Windows': '关闭 Windows',
     'Shut down the computer?': '关闭计算机？', 'Restart the computer?': '重新启动计算机？',
     'Restart the computer in MS-DOS mode?': '重新启动计算机并进入 MS-DOS 模式？',
     'It is now safe to turn off your computer.': '现在可以安全地关闭计算机了。',
@@ -190,7 +190,7 @@ const ZH = {
     'Connection status: Offline': '连接状态：脱机', 'Identification': '标识', 'Computer name:': '计算机名：',
     'Workgroup:': '工作组：',
     'These names identify your local desktop. Browser networking uses the host computer’s connection.': '这些名称用于标识您的本地桌面。浏览器网络使用主机计算机的连接。',
-    'User Profiles': '用户配置文件', 'User name:': '用户名：',
+    'Change Password': '更改密码', 'Change Windows Password': '更改 Windows 密码', 'Windows Password': 'Windows 密码', 'Change Windows Password…': '更改 Windows 密码…', 'Old password:': '旧密码：', 'New password:': '新密码：', 'Confirm new password:': '确认新密码：', 'Old password': '旧密码', 'New password': '新密码', 'Confirm new password': '确认新密码', 'The old password is incorrect.': '旧密码不正确。', 'The new passwords do not match.': '两次输入的新密码不一致。', 'Your Windows password has been changed.': 'Windows 密码已更改。', 'User Profiles': '用户配置文件', 'User name:': '用户名：',
     'Documents and preferences belong to this browser profile.': '文档和首选项属于此浏览器配置文件。',
     'Privacy': '隐私',
     'Your virtual drive is stored in this browser. Export a backup before clearing browser storage.': '您的虚拟驱动器存储在此浏览器中。在清除浏览器存储之前，请导出备份。',

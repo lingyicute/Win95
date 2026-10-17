@@ -227,7 +227,38 @@ export function settingsApplet(s, id) {
         pages.push(['Configuration', p => { p.append(el('p', { text: 'The following network components are available:' }), el('div', { class: 'inset stack', style: { padding: '10px' } }, el('div', { class: 'row' }, icon('network', 16), 'Browser Network Adapter'), el('div', { class: 'row' }, icon('network', 16), 'TCP/IP — Browser HTTPS'), el('div', { class: 'row' }, icon('network', 16), 'Local virtual filesystem')), el('p', { text: navigator.onLine ? 'Connection status: Online' : 'Connection status: Offline' }), button('Internet Explorer…', () => s.launch('internet'))); }], ['Identification', p => { p.append(field('Computer name:', el('input', { value: draft.computer || 'WINDOWS95', oninput: e => draft.computer = e.target.value })), field('Workgroup:', el('input', { value: draft.workgroup || 'WORKGROUP', oninput: e => draft.workgroup = e.target.value })), el('p', { text: 'These names identify your local desktop. Browser networking uses the host computer’s connection.' })); }]);
     }
     else if (id === 'passwords') {
-        pages.push(['User Profiles', p => { p.append(field('User name:', el('input', { value: s.settings.get('owner', 'Windows User'), oninput: e => draft.owner = e.target.value })), el('p', { text: 'Documents and preferences belong to this browser profile.' })); commits.push(() => s.settings.set('owner', draft.owner || 'Windows User')); }], ['Privacy', p => p.append(el('p', { text: 'Your virtual drive is stored in this browser. Export a backup before clearing browser storage.' }), button('Back Up Files…', () => s.launch('backup')))]);
+        pages.push(['Change Password', p => {
+            const openChangePassword = () => {
+                const dialog = s.ui.modal('Change Windows Password', { width: 370, height: 188, icon: 'login' });
+                const oldPassword = el('input', { type: 'password', autocomplete: 'current-password', 'aria-label': 'Old password' });
+                const newPassword = el('input', { type: 'password', autocomplete: 'new-password', 'aria-label': 'New password' });
+                const confirmPassword = el('input', { type: 'password', autocomplete: 'new-password', 'aria-label': 'Confirm new password' });
+                const applyPassword = async () => {
+                    const current = s.settings.get('loginPassword', '');
+                    if (current && oldPassword.value !== current) {
+                        await s.ui.message('The old password is incorrect.', 'Change Windows Password', ['OK'], { owner: dialog, icon: 'help' });
+                        oldPassword.focus();
+                        return;
+                    }
+                    if (newPassword.value !== confirmPassword.value) {
+                        await s.ui.message('The new passwords do not match.', 'Change Windows Password', ['OK'], { owner: dialog, icon: 'help' });
+                        confirmPassword.focus();
+                        return;
+                    }
+                    s.settings.set('loginPassword', newPassword.value);
+                    await dialog.close();
+                    s.ui.message('Your Windows password has been changed.', 'Change Windows Password', ['OK'], { owner: w, icon: 'login' });
+                };
+                dialog.body.append(el('div', { class: 'stack', style: { gap: '8px', padding: '10px 12px' } },
+                    field('Old password:', oldPassword), field('New password:', newPassword), field('Confirm new password:', confirmPassword)),
+                el('div', { class: 'dialog-buttons' }, button('OK', applyPassword, { class: 'default-button' }), button('Cancel', () => dialog.close())));
+                queueMicrotask(() => oldPassword.focus());
+            };
+            p.append(el('fieldset', {}, el('legend', { text: 'Windows Password' }),
+                el('div', { class: 'row', style: { alignItems: 'flex-start', gap: '14px' } }, icon('login', 32),
+                    el('div', { class: 'stack', style: { flex: '1' } }, el('p', { text: 'Click this button to change your Windows password.' }),
+                        button('Change Windows Password…', openChangePassword)))));
+        }], ['User Profiles', p => { p.append(field('User name:', el('input', { value: s.settings.get('owner', 'Windows User'), oninput: e => draft.owner = e.target.value })), el('p', { text: 'Documents and preferences belong to this browser profile.' })); commits.push(() => s.settings.set('owner', draft.owner || 'Windows User')); }], ['Privacy', p => p.append(el('p', { text: 'Your virtual drive is stored in this browser. Export a backup before clearing browser storage.' }), button('Back Up Files…', () => s.launch('backup')))]);
     }
     else if (id === 'printers') {
         pages.push(['Printers', p => p.append(el('div', { class: 'row' }, icon('printer', 32), el('div', {}, el('b', { text: 'Browser Print Service' }), el('p', { text: 'Default printer' }))), el('p', { text: 'Use File → Print in Notepad or WordPad to choose a printer or save as PDF.' }), button('Print Test Page', () => { s.launch('notepad', { text: 'Windows 95 Printer Test Page\n\nBrowser Print Service\n\nThe quick brown fox jumps over the lazy dog.\n0123456789\n\n' + new Date().toLocaleString() }); })),]);
