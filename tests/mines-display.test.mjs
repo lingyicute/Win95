@@ -68,6 +68,8 @@ test('the four faces differ exactly where they should', () => {
     const withoutMouth = (html, mouth) => html.replace(mouth, '');
     assert.equal(withoutMouth(smile, '<path d="M5 11Q10 18 15 11"/>'), withoutMouth(pressed, '<ellipse cx="10" cy="13" rx="2" ry="3" fill="#000"/>'), 'only the mouth changes while the mouse is held');
     assert.match(pressed, /<ellipse cx="10" cy="13" rx="2" ry="3"/, 'open mouth');
+    assert.match(smile, /M7 5V7M13 5V7/, 'the left eye sits one pixel closer to the center');
+    assert.match(pressed, /M7 5V7M13 5V7/, 'the pressed face keeps the aligned eyes');
     assert.match(smile, /M5 11Q10 18 15 11/, 'smile');
     assert.match(lost, /M5 5L8 8M8 5L5 8M12 5L15 8M15 5L12 8/, 'crossed eyes');
     assert.match(lost, /M5 15Q10 9 15 15/, 'frown');
