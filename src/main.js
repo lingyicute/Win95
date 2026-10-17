@@ -355,7 +355,6 @@ function showLoginDialog({ startup = false } = {}) {
         resetting = true;
         s.resettingData = true;
         try {
-            clearTimeout(s.fs.saveTimer);
             s.fs.db?.close();
             s.fs.db = null;
             if (typeof indexedDB !== 'undefined') {

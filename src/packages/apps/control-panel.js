@@ -105,7 +105,13 @@ export function powerProperties(s) {
     return w;
 }
 export function dateTime(s) {
-    let date = new Date(Date.now() + s.settings.get('clockOffset', 0)), chosen = date.toISOString().slice(0, 10), clock = date.toTimeString().slice(0, 5), zone = s.settings.get('timezone', 'Local time');
+    const pad = n => String(n).padStart(2, '0');
+    let date = new Date(Date.now() + s.settings.get('clockOffset', 0));
+    /* The calendar works in local dates. toISOString() reports the UTC day,
+       which is one off near midnight and made every Apply rewrite the clock
+       offset by about a day. */
+    let chosen = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`, clock = date.toTimeString().slice(0, 5), zone = s.settings.get('timezone', 'Local time');
+    let dateTimeEdited = false;
     const w = propertySheet(s, 'Date/Time Properties', 'clock', [
         ['Date & Time', (p, w) => {
                 const layout = el('div', { class: 'row', style: { alignItems: 'flex-start' } }), calendar = el('div', { style: { flex: 1 } }), dial = el('div', { class: 'analog-clock' });
@@ -116,7 +122,7 @@ export function dateTime(s) {
                     for (let i = 0; i < first; i++)
                         grid.append(el('span'));
                     for (let i = 1; i <= days; i++)
-                        grid.append(button(String(i), () => { date = new Date(+year.value, +month.value, i); chosen = `${year.value}-${String(+month.value + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`; draw(); }, { class: i === date.getDate() ? 'today' : '' }));
+                        grid.append(button(String(i), () => { date = new Date(+year.value, +month.value, i); chosen = `${year.value}-${String(+month.value + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`; dateTimeEdited = true; draw(); }, { class: i === date.getDate() ? 'today' : '' }));
                 };
                 year.oninput = draw;
                 month.onchange = draw;
@@ -132,15 +138,17 @@ export function dateTime(s) {
                 w.onClosed.push(() => clearInterval(timer));
                 tick();
                 draw();
-                layout.append(calendar, el('div', { style: { width: '142px' } }, dial, el('input', { type: 'time', value: clock, 'aria-label': 'Time', oninput: e => clock = e.target.value, style: { width: '110px', margin: '16px' } })));
+                layout.append(calendar, el('div', { style: { width: '142px' } }, dial, el('input', { type: 'time', value: clock, 'aria-label': 'Time', oninput: e => { clock = e.target.value; dateTimeEdited = true; }, style: { width: '110px', margin: '16px' } })));
                 p.append(layout, el('p', { text: 'Changes apply to the clock on this desktop.' }));
             }],
         ['Time Zone', p => p.append(field('Time Zone:', combo({ ariaLabel: 'Time zone', options: ['Local time', 'UTC', 'Europe/Warsaw', 'Europe/London', 'America/New_York', 'America/Los_Angeles', 'Asia/Tokyo'], value: zone, onchange: value => zone = value })), el('p', { text: 'Choose how the taskbar clock displays the time.' }))]
     ], 450, 365);
     w.apply = () => {
-        const target = new Date(`${chosen}T${clock}:00`);
-        if (!Number.isNaN(target.getTime()))
-            s.settings.set('clockOffset', target.getTime() - Date.now());
+        if (dateTimeEdited) {
+            const target = new Date(`${chosen}T${clock}:00`);
+            if (!Number.isNaN(target.getTime()))
+                s.settings.set('clockOffset', target.getTime() - Date.now());
+        }
         s.settings.set('timezone', zone);
         s.updateClock();
     };
