@@ -116,12 +116,12 @@ test('the channel variant carries a ruled scale like the original seek bar', asy
     const ruler = bar.querySelector('.win95-trackbar-ruler');
     assert.ok(ruler, 'the scale row exists');
     const labels = [...ruler.querySelectorAll('.win95-trackbar-ruler-label')].map(n => n.textContent);
-    assert.deepEqual(labels, ['0.00', '1.00', '2.00', '3.00', '4.00', '5.00', '6.00'], 'a tick and its number across the span, the total at the end');
-    assert.equal(ruler.querySelectorAll('.win95-trackbar-ruler-tick').length, labels.length);
+    assert.deepEqual(labels, ['0.00', '1.00', '2.00', '3.00', '4.00', '6.00'], 'a tick and its number across the span, the step before the total keeps only its tick, the total at the end');
+    assert.equal(ruler.querySelectorAll('.win95-trackbar-ruler-tick').length, labels.length + 1, 'every step keeps its tick even when its number yields to the total');
 
     bar.max = 300;
     const wider = [...bar.querySelectorAll('.win95-trackbar-ruler-label')].map(n => n.textContent);
-    assert.deepEqual(wider, ['0.00', '60.00', '120.00', '180.00', '240.00', '300.00'], 'the scale picks a step that fits');
+    assert.deepEqual(wider, ['0.00', '60.00', '120.00', '180.00', '300.00'], 'the scale picks a step that fits');
 
     bar.max = 5.02;
     const odd = [...bar.querySelectorAll('.win95-trackbar-ruler-label')].map(n => n.textContent);
@@ -132,4 +132,20 @@ test('the channel variant carries a ruled scale like the original seek bar', asy
 
     const plain = trackbar({ label: 'Speed' });
     assert.equal(plain.querySelector('.win95-trackbar-ruler').childNodes.length, 0, 'applet sliders stay unrulled');
+});
+
+test('the ruled scale follows the pixels available, like the original', async () => {
+    installDom();
+    globalThis.requestAnimationFrame = () => 0;
+    const { trackbar } = await import('../src/packages/ui/trackbar.js');
+    const bar = trackbar({ label: 'Position', min: 0, max: 5, channel: true, ruler: at => at.toFixed(Math.max(0, 3 - String(Math.floor(at)).length)) });
+    const row = bar.querySelector('.win95-trackbar-ruler');
+    Object.defineProperty(row, 'clientWidth', { value: 379, configurable: true });
+    bar.max = 5;
+    const labels = [...bar.querySelectorAll('.win95-trackbar-ruler-label')].map(n => n.textContent);
+    assert.deepEqual(labels, ['0.00', '0.50', '1.00', '1.50', '2.00', '2.50', '3.00', '3.50', '4.00', '5.00'], 'half-second steps when the channel is wide enough for them');
+    Object.defineProperty(row, 'clientWidth', { value: 120, configurable: true });
+    bar.max = 5;
+    const tight = [...bar.querySelectorAll('.win95-trackbar-ruler-label')].map(n => n.textContent);
+    assert.deepEqual(tight, ['0.00', '2.00', '5.00'], 'coarser steps when the channel narrows, the last step keeping only its tick');
 });

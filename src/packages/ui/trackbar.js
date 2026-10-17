@@ -58,24 +58,39 @@ export function trackbar({ label, orientation = 'horizontal', min = 0, max = 100
     // The original media player puts a ruled scale under its seek bar: a tick and
     // its number at every step of a scale it chooses to fit, plus the total at
     // the far end.
-    const RULER_STEPS = [.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600];
+    const RULER_STEPS = [.1, .25, .5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 3600, 7200, 18000, 36000, 108000];
+    const MIN_LABEL_PX = 30;
     const paintRuler = () => {
+        // Measured before the row is emptied: an empty ruler is display:none,
+        // which would report a width of zero.
+        const width = rulerRow.clientWidth;
         rulerRow.replaceChildren();
         if (!ruler || !(max > min))
             return;
         const span = max - min;
-        const every = RULER_STEPS.find(candidate => span / candidate <= 7) ?? RULER_STEPS[RULER_STEPS.length - 1];
+        // The original picks the scale from the pixels available: a label needs
+        // about thirty pixels of room. Without a layout width (tests) fall back
+        // to at most seven divisions.
+        const every = width
+            ? RULER_STEPS.find(candidate => candidate * (width / span) >= MIN_LABEL_PX) ?? RULER_STEPS[RULER_STEPS.length - 1]
+            : RULER_STEPS.find(candidate => span / candidate <= 7) ?? RULER_STEPS[RULER_STEPS.length - 1];
         const label = typeof ruler === 'function' ? ruler : ruler.label;
-        for (let at = min; at < max; at += every) {
+        const steps = [min];
+        for (let at = min + every; at < max; at += every)
+            steps.push(at);
+        const hasEnd = steps[steps.length - 1] < max;
+        steps.forEach((at, i) => {
             const tick = el('span', { class: 'win95-trackbar-ruler-tick' });
             tick.style.left = `${(at - min) / span * 100}%`;
             rulerRow.append(tick);
-            if (max - at >= every / 2) {
-                const text = el('span', { class: 'win95-trackbar-ruler-label' + (at === min ? ' first' : ''), text: label(at) });
-                text.style.left = `${(at - min) / span * 100}%`;
-                rulerRow.append(text);
-            }
-        }
+            if (hasEnd && i === steps.length - 1)
+                return;
+            const text = el('span', { class: 'win95-trackbar-ruler-label' + (i ? '' : ' first'), text: label(at) });
+            text.style.left = `${(at - min) / span * 100}%`;
+            rulerRow.append(text);
+        });
+        if (!hasEnd)
+            return;
         const endTick = el('span', { class: 'win95-trackbar-ruler-tick' });
         endTick.style.left = '100%';
         const endLabel = el('span', { class: 'win95-trackbar-ruler-label last', text: label(max) });
@@ -157,6 +172,11 @@ export function trackbar({ label, orientation = 'horizontal', min = 0, max = 100
     paintRuler();
     render();
     requestAnimationFrame(render);
+    if (typeof ResizeObserver !== 'undefined')
+        new ResizeObserver(() => {
+            render();
+            paintRuler();
+        }).observe(root);
     Object.defineProperty(root, 'ruler', {
         get: () => ruler,
         set: next => {

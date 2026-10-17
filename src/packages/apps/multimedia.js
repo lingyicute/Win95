@@ -32,12 +32,18 @@ export function mediaPlayer(s, args = {}) {
     const w = s.wm.create({ title: cd ? 'CD Player' : 'Media Player', icon: cd ? 'cd' : 'media', width: 440, height: 315 });
     w.body.classList.add('media-body');
     let scale = 'time';
+    let trackName = '';
+    const rulerLabel = at => {
+        const value = scale === 'frames' ? Math.round(at * 30) : at;
+        return value.toFixed(Math.max(0, 3 - String(Math.floor(value)).length));
+    };
     const media = el('video', { preload: 'metadata', playsInline: true }), display = el('div', { class: 'media-display' }, media), slider = trackbar({
             label: 'Playback position', min: 0, max: 1, value: 0, channel: true,
-            ruler: at => scale === 'frames' ? String(Math.round(at * 30)) : at.toFixed(2),
+            ruler: rulerLabel,
             onChange: next => { if (Number.isFinite(media.duration)) media.currentTime = next; }
         }), time = el('span', { class: 'media-time', text: '00:00' });
     let srcUrl = null;
+    const retitle = () => w.setTitle(trackName ? `${trackName} (${media.paused ? 'paused' : 'playing'})` : (cd ? 'CD Player' : 'Media Player'));
     const applyVolume = () => { media.volume = s.settings.get('muted', false) ? 0 : s.settings.get('volume', 65) / 100; };
     applyVolume();
     const load = (url, name) => {
@@ -45,22 +51,28 @@ export function mediaPlayer(s, args = {}) {
             URL.revokeObjectURL(srcUrl);
         srcUrl = url;
         media.src = url;
-        w.setTitle(`${name} - ${cd ? 'CD Player' : 'Media Player'}`);
-        w.status('Ready');
+        trackName = name;
+        retitle();
         refresh();
     };
-    const play = () => media.play().then(() => w.status('Playing')).catch(() => s.ui.message('This media cannot be played. Choose an audio or video file supported by your browser.', 'Media Player', ['OK'], { owner: w }));
-    const stop = () => { media.pause(); media.currentTime = 0; w.status('Stopped'); };
+    const play = () => media.play().catch(() => s.ui.message('This media cannot be played. Choose an audio or video file supported by your browser.', 'Media Player', ['OK'], { owner: w }));
+    const stop = () => { media.pause(); media.currentTime = 0; };
     const open = async () => {
         const p = await s.ui.file({ owner: w, type: 'Media files (*.wav, *.mp3, *.mp4, *.webm)' });
         if (p) {
             load(s.fs.read(p), baseName(p));
         }
     };
-    const format = x => !Number.isFinite(x) ? '00:00' : String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(Math.floor(x % 60)).padStart(2, '0');
-    let selStart = null, selEnd = null, view = null;
+    const format = x => {
+        if (!Number.isFinite(x))
+            return '00:00';
+        const h = Math.floor(x / 3600), m = Math.floor(x % 3600 / 60), sec = Math.floor(x % 60);
+        return (h ? `${h}:` : '') + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+    };
+    let selStart = null, selEnd = null;
     const GLYPHS = {
         play: '<path d="M5 0 11 6 5 12z"/>',
+        pause: '<rect x="3" y="1" width="3" height="10"/><rect x="8" y="1" width="3" height="10"/>',
         stop: '<rect x="3" y="2" width="8" height="8"/>',
         eject: '<path d="M7 0 12 6H2z"/><rect x="2" y="8" width="10" height="2"/>',
         prev: '<rect x="1" y="1" width="2" height="10"/><path d="M8 1v10L4 6z"/><path d="M13 1v10L9 6z"/>',
@@ -70,31 +82,46 @@ export function mediaPlayer(s, args = {}) {
         selStart: '<path d="M2 1h10L7 6z"/><rect x="1" y="4" width="2" height="6"/><rect x="11" y="4" width="2" height="6"/><rect x="1" y="8" width="12" height="2"/>',
         selEnd: '<path d="M2 6h10L7 1z"/><rect x="1" y="4" width="2" height="6"/><rect x="11" y="4" width="2" height="6"/><rect x="1" y="8" width="12" height="2"/>'
     };
+    const glyph = name => `<svg viewBox="0 0 14 12" width="14" height="12" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true">${GLYPHS[name]}</svg>`;
     const tbtn = (name, label, action) => {
         const b = el('button', { class: 'transport-btn', type: 'button', 'aria-label': label });
-        b.innerHTML = `<svg viewBox="0 0 14 12" width="14" height="12" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true">${GLYPHS[name]}</svg>`;
+        b.innerHTML = glyph(name);
         b.addEventListener('click', action);
         return b;
     };
-    const step = dir => {
-        const dur = Number.isFinite(media.duration) ? media.duration : 0;
-        media.currentTime = Math.min(dur, Math.max(0, media.currentTime + dir * Math.max(1, dur * .1)));
+    const holdSeek = (btn, dir) => {
+        let frame = 0, stamp = 0;
+        const loop = () => {
+            const now = performance.now(), delta = now - stamp;
+            if (delta >= 350) {
+                stamp = now;
+                const dur = Number.isFinite(media.duration) ? media.duration : 0;
+                media.currentTime = Math.min(dur, Math.max(0, media.currentTime + dir * 6 * delta / 1000));
+            }
+            frame = requestAnimationFrame(loop);
+        };
+        btn.addEventListener('pointerdown', () => {
+            stamp = performance.now() - 350;
+            frame = requestAnimationFrame(loop);
+        });
+        for (const type of ['pointerup', 'pointerleave', 'pointercancel'])
+            btn.addEventListener(type, () => cancelAnimationFrame(frame));
     };
     const playB = tbtn('play', 'Play', () => {
         if (!srcUrl)
             return;
         if (media.paused)
             play();
-        else {
+        else
             media.pause();
-            w.status('Paused');
-        }
     });
     const stopB = tbtn('stop', 'Stop', stop);
     const ejectB = tbtn('eject', 'Eject', () => { });
     const prevB = tbtn('prev', 'Previous', () => { media.currentTime = 0; });
-    const rewB = tbtn('rew', 'Rewind', () => step(-1));
-    const ffB = tbtn('ff', 'Fast forward', () => step(1));
+    const rewB = tbtn('rew', 'Rewind', () => { });
+    const ffB = tbtn('ff', 'Fast forward', () => { });
+    holdSeek(rewB, -1);
+    holdSeek(ffB, 1);
     const nextB = tbtn('next', 'Next', () => { if (Number.isFinite(media.duration)) media.currentTime = media.duration; });
     const selSB = tbtn('selStart', 'Start selection', () => {
         selStart = media.currentTime;
@@ -112,13 +139,8 @@ export function mediaPlayer(s, args = {}) {
         const b = el('button', { class: 'media-scroll', type: 'button', 'aria-label': dir < 0 ? 'Scroll back' : 'Scroll forward' });
         b.innerHTML = `<svg viewBox="0 0 10 10" width="8" height="8" shape-rendering="crispEdges" fill="currentColor" aria-hidden="true"><path d="${dir < 0 ? 'M8 1v8L3 5z' : 'M2 1v8l5-4z'}"/></svg>`;
         b.addEventListener('click', () => {
-            if (!view)
-                return;
-            const span = view[1] - view[0];
-            const a = Math.max(0, Math.min(view[0] + dir * span / 2, (Number.isFinite(media.duration) ? media.duration : 0) - span));
-            view = [a, a + span];
-            slider.min = a;
-            slider.max = a + span;
+            const dur = Number.isFinite(media.duration) ? media.duration : 0;
+            media.currentTime = Math.min(dur, Math.max(0, media.currentTime + dir / 30));
         });
         return b;
     };
@@ -128,6 +150,7 @@ export function mediaPlayer(s, args = {}) {
         selSB.disabled = selEB.disabled = !loaded || media.paused;
         ejectB.disabled = true;
         stopB.disabled = !loaded || (media.paused && media.currentTime === 0);
+        playB.innerHTML = glyph(media.paused ? 'play' : 'pause');
     };
     media.ontimeupdate = () => {
         slider.value = media.currentTime;
@@ -137,13 +160,23 @@ export function mediaPlayer(s, args = {}) {
         refresh();
     };
     media.onloadedmetadata = () => { slider.max = Number.isFinite(media.duration) ? media.duration : 1; media.ontimeupdate(); };
-    media.onended = () => { w.status('Stopped'); refresh(); };
-    media.onplay = refresh;
-    media.onpause = refresh;
-    w.body.append(display, el('div', { class: 'row media-seek' }, slider, scrollBtn(-1), scrollBtn(1)), el('div', { class: 'media-transport' }, el('div', { class: 'tgroup' }, playB, stopB, ejectB), el('div', { class: 'tgroup' }, prevB, rewB, ffB, nextB), el('div', { class: 'tgroup' }, selSB, selEB), el('span', { class: 'etch-v', 'aria-hidden': 'true' }), time));
+    media.onended = () => refresh();
+    media.onplay = () => { refresh(); retitle(); };
+    media.onpause = () => { refresh(); retitle(); };
+    const navGroup = el('div', { class: 'tgroup' }, prevB, rewB, ffB, nextB);
+    const selGroup = el('div', { class: 'tgroup' }, selSB, selEB);
+    const applyWidth = () => {
+        const width = w.body.clientWidth;
+        navGroup.hidden = width < 260;
+        selGroup.hidden = width < 310;
+    };
+    applyWidth();
+    if (typeof ResizeObserver !== 'undefined')
+        new ResizeObserver(applyWidth).observe(w.body);
+    w.body.append(display, el('div', { class: 'row media-seek' }, slider, scrollBtn(-1), scrollBtn(1)), el('div', { class: 'media-transport' }, el('div', { class: 'tgroup' }, playB, stopB, ejectB), navGroup, selGroup, el('span', { class: 'etch-v', 'aria-hidden': 'true' }), time));
     const setScale = next => {
         scale = next;
-        slider.ruler = at => scale === 'frames' ? String(Math.round(at * 30)) : at.toFixed(2);
+        slider.ruler = rulerLabel;
     };
     w.setMenu(menuBar([{ label: 'File', items: [{ label: 'Open…', shortcut: 'Ctrl+O', action: open }, { label: 'Import from Computer…', action: () => fileInput('audio/*,video/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'Play sample', action: () => { load(waveTone(), 'Windows Chimes'); play(); } }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [{ label: 'Select All', disabled: !Number.isFinite(media.duration), action: () => { selStart = 0; selEnd = media.duration; } }, { label: 'Clear Selection', disabled: selStart == null && selEnd == null, action: () => { selStart = selEnd = null; } }] }, { label: 'Device', items: [{ label: 'Wave Audio', action: () => fileInput('audio/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'Video', action: () => fileInput('video/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'CD Audio', action: () => { load(waveTone(), 'Track 01 — Windows Chimes'); } }, null, { label: 'Volume Control…', action: () => s.launch('volume') }] }, { label: 'Scale', items: () => [{ label: 'Seconds', checked: scale === 'time', action: () => setScale('time') }, { label: 'Frames', checked: scale === 'frames', action: () => setScale('frames') }] }, { label: 'Help', items: [{ label: 'About Media Player', action: () => s.about(cd ? 'CD Player' : 'Media Player', 'media') }] }]));
     refresh();
@@ -158,10 +191,8 @@ export function mediaPlayer(s, args = {}) {
     });
     if (args.path)
         load(s.fs.read(args.path), baseName(args.path));
-    else {
+    else
         load(waveTone(), cd ? 'Track 01 — Windows Chimes' : 'Windows Chimes');
-        display.append(el('div', { class: 'media-title', style: { position: 'absolute', pointerEvents: 'none', textAlign: 'center' } }, icon(cd ? 'cd' : 'media', 32), el('p', { text: 'Windows Chimes', style: { marginTop: '10px', color: '#c0c0c0' } })));
-    }
     return w;
 }
 function volumeSpeaker(side) {
