@@ -1,6 +1,52 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile, readdir } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { detectLanguage, translateText } from '../src/packages/core/i18n.js';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * The ZH table as an object, taken from the module source. It is a plain object
+ * literal, so the literal is sliced out by brace matching and evaluated — the
+ * alternative is a regex over 300 lines of quoted text, which reads more keys
+ * than it should.
+ */
+async function dictionary() {
+    const source = await readFile(path.join(root, 'src/packages/core/i18n.js'), 'utf8');
+    const marker = 'const ZH = ';
+    const start = source.indexOf(marker) + marker.length;
+    let depth = 0, end = -1;
+    for (let i = start; i < source.length; i++) {
+        if (source[i] === '{')
+            depth++;
+        else if (source[i] === '}')
+            if (!--depth) { end = i + 1; break; }
+    }
+    assert.ok(end > 0, 'the ZH dictionary literal was found');
+    return new Function('return ' + source.slice(start, end))();
+}
+
+/** Every string the shell can render, quotes and escapes removed. */
+async function renderedText() {
+    const files = [];
+    const walk = async directory => {
+        for (const entry of await readdir(directory, { withFileTypes: true })) {
+            const full = path.join(directory, entry.name);
+            if (entry.isDirectory())
+                await walk(full);
+            else if (/\.(?:js|html)$/.test(entry.name) && entry.name !== 'i18n.js')
+                files.push(full);
+        }
+    };
+    await walk(path.join(root, 'src'));
+    const text = [];
+    for (const file of files)
+        text.push(await readFile(file, 'utf8'));
+    /* An apostrophe written \' in the source is the same text on screen. */
+    return text.join('\n').replace(/\\(['"`\\])/g, '$1');
+}
 
 test('startup language follows the browser language', () => {
     assert.equal(detectLanguage('zh-CN'), 'zh');
@@ -39,4 +85,31 @@ test('dynamic UI strings are translated by pattern', () => {
     assert.equal(translateText('Beginner: 42 seconds\nExpert: — seconds', 'zh'), '初级：42 秒\n高级：— 秒');
     assert.equal(translateText('45 minutes (custom)', 'zh'), '45 分钟（自定义）');
     assert.equal(translateText('This is the same wait time as the Screen Saver tab in Display Properties; host sleep stays under your computer’s control.', 'zh'), '这与“显示属性”中的“屏幕保护程序”选项卡使用相同的等待时间；主机的睡眠仍由您的计算机控制。');
+});
+
+/**
+ * Keys no source file spells out as one string, so the check below cannot find
+ * them: 'Folder Options' and 'Folder-options' are a settings applet id with its
+ * first letter capitalised (control-panel.js), the print dialog line is a single
+ * table entry for text rendered as separate nodes, and the four media transport
+ * words are entries for a pause control the player does not have yet.
+ */
+const UNRUNLIT_KEYS = [
+    'Folder Options', 'Folder-options',
+    'Paper: A4 Margins: 20 mm  Choose a printer and adjust paper options in the print dialog.',
+    'Playing', 'Paused', 'Pause', 'Stopped'
+];
+
+test('every translation key matches text the shell actually renders', async () => {
+    const zh = await dictionary();
+    const keys = Object.keys(zh);
+    assert.ok(keys.length > 500, `the dictionary is read in full, saw ${keys.length} keys`);
+    const rendered = await renderedText();
+    /* A key whose English text is nowhere in the source can never be looked up:
+       translateText returns the DOM text unchanged when the table misses, which
+       is how editing a key but not the string it names leaves the old copy on
+       screen. Matching is a substring test and so forgiving by design — a key
+       that only appears inside a longer concatenated line still counts. */
+    const orphans = keys.filter(key => key && !rendered.includes(key) && !UNRUNLIT_KEYS.includes(key));
+    assert.deepEqual(orphans, [], 'unreferenced ZH keys: ' + JSON.stringify(orphans));
 });
