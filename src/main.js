@@ -1,4 +1,4 @@
-import { VirtualFileSystem, Settings, baseName, parentPath } from './packages/core/filesystem.js';
+import { VirtualFileSystem, Settings, baseName, parentPath, displayName } from './packages/core/filesystem.js';
 import { installI18n, uiLocale } from './packages/core/i18n.js';
 import { WindowManager } from './packages/shell/window-manager.js';
 import { pointerTrails } from './packages/shell/pointer-trails.js';
@@ -481,8 +481,12 @@ const fixed = [['computer', 'My Computer', 'computer'], ['network-neighborhood',
 function renderDesktop() {
     desktopIcons.replaceChildren();
     const entries = fixed.map(([app, name, ic]) => ({ app, name, ic, key: app }));
-    for (const n of s.fs.list('C:\\Windows\\Desktop'))
-        entries.push({ path: n.path, name: baseName(n.path).replace(/\.lnk$/i, ''), ic: fileIcon(n), key: n.path });
+    const folderOptions = s.settings.get('applet-folder-options', {});
+    for (const n of s.fs.list('C:\\Windows\\Desktop')) {
+        if (folderOptions.allFiles === false && n.hidden)
+            continue;
+        entries.push({ path: n.path, name: displayName(n, folderOptions.extensions === false), ic: fileIcon(n), key: n.path });
+    }
     for (const e of entries) {
         const b = el('button', { class: 'desktop-icon' + (selected.has(e.key) ? ' selected' : ''), 'aria-label': e.name, 'data-desktop-key': e.key, draggable: !!e.path }, icon(e.app === 'recycle' && s.fs.list('C:\\Recycled').length ? 'recycleFull' : e.ic, 32), el('span', { text: e.name }));
         const open = () => e.app ? s.launch(e.app) : s.open(e.path);
@@ -640,6 +644,10 @@ document.addEventListener('pointerdown', () => {
 let fsFrame = 0;
 s.fs.addEventListener('change', () => {
     if (!fsFrame)
+        fsFrame = requestAnimationFrame(() => { fsFrame = 0; renderDesktop(); });
+});
+s.settings.addEventListener('change', e => {
+    if (String(e.detail?.name || '').startsWith('applet-folder-options') && !fsFrame)
         fsFrame = requestAnimationFrame(() => { fsFrame = 0; renderDesktop(); });
 });
 s.fs.addEventListener('storageerror', () => s.ui.message('The browser could not save your virtual drive. Export a backup to keep a copy of your files.', 'Storage Full', ['OK'], { height: 190 }));

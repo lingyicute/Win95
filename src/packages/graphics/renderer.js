@@ -249,7 +249,13 @@ export class DesktopGraphics {
         }
         else if (pattern.startsWith('data:')) {
             const img = new Image();
-            img.onload = () => { ctx.drawImage(img, Math.max(0, (this.source.width - img.width) / 2), Math.max(0, (this.source.height - img.height) / 2)); this.presenter.present(this.source); };
+            const token = this.imageToken = (this.imageToken || 0) + 1;
+            img.onload = () => {
+                if (token !== this.imageToken)
+                    return;
+                ctx.drawImage(img, Math.max(0, (this.source.width - img.width) / 2), Math.max(0, (this.source.height - img.height) / 2));
+                this.presenter.present(this.source);
+            };
             img.src = pattern;
         }
         this.presenter.present(this.source);
@@ -317,10 +323,11 @@ export class DesktopGraphics {
             render.present(source);
             frame = requestAnimationFrame(tick);
         };
-        const stop = () => { stopped = true; cancelAnimationFrame(frame); render.destroy(); render.canvas.remove(); document.removeEventListener('keydown', stop); document.removeEventListener('pointerdown', stop); document.removeEventListener('pointermove', stop); };
+        let linger = 0;
+        const stop = () => { stopped = true; clearTimeout(linger); cancelAnimationFrame(frame); render.destroy(); render.canvas.remove(); document.removeEventListener('keydown', stop); document.removeEventListener('pointerdown', stop); document.removeEventListener('pointermove', stop); };
         document.addEventListener('keydown', stop);
         document.addEventListener('pointerdown', stop);
-        setTimeout(() => {
+        linger = setTimeout(() => {
             if (!stopped)
                 document.addEventListener('pointermove', stop);
         }, 500);

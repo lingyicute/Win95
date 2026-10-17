@@ -574,7 +574,7 @@ export class DosEngine {
     async _copyMove(command, paths, switches) {
         if (!paths.length || paths.length > 2)
             throw error(HELP[command]);
-        const sources = await this._matches(paths[0]);
+        const sources = await this._matches(paths[0], { filesOnly: command === 'COPY' });
         if (!sources.length)
             throw error('File not found - ' + paths[0]);
         const destination = this.normalize(paths[1] || this.cwd), destNode = await this._get(destination);

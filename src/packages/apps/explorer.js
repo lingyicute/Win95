@@ -1,7 +1,7 @@
 import { el, button, download, fileInput, formatSize, infoGrid, onDoubleActivate } from '@win95/ui/dom.js';
 import { icon, fileIcon } from '@win95/ui/icons.js';
 import { menuBar, popup } from '@win95/ui/menu.js';
-import { normalizePath, parentPath, baseName } from '@win95/core/filesystem.js';
+import { normalizePath, parentPath, baseName, displayName } from '@win95/core/filesystem.js';
 export function createFileActions(s) {
     const properties = (paths) => {
         if (!paths?.length)
@@ -153,7 +153,8 @@ export function explorer(s, args = {}) {
     const render = () => {
         if (w.closed)
             return;
-        w.setTitle(path === 'computer' ? 'My Computer' : path === 'recycle' ? 'Recycle Bin' : path === 'network' ? 'Network Neighborhood' : path === 'desktop' ? 'Desktop' : tree ? `Exploring - ${baseName(path)}` : path.length <= 3 ? `(${path[0]}:)` : baseName(path));
+        const folderOptions = s.settings.get('applet-folder-options', {});
+        w.setTitle(path === 'computer' ? 'My Computer' : path === 'recycle' ? 'Recycle Bin' : path === 'network' ? 'Network Neighborhood' : path === 'desktop' ? 'Desktop' : tree ? `Exploring - ${folderOptions.fullPath ? realPath() : baseName(path)}` : path.length <= 3 ? `(${path[0]}:)` : folderOptions.fullPath ? realPath() : baseName(path));
         treeHost.hidden = !tree;
         treeHost.replaceChildren();
         addTree('Desktop', 'computer', 'desktop');
@@ -171,7 +172,7 @@ export function explorer(s, args = {}) {
         addTree('Recycle Bin', 'recycle', 'recycle', 1);
         toolbar.hidden = !showToolbar;
         toolbar.replaceChildren(button('↰', upOneLevel, { title: 'Up One Level' }), el('div', { class: 'toolbar-divider' }), button('Cut', () => s.files.copy(selectedPaths(), true)), button('Copy', () => s.files.copy(selectedPaths())), button('Paste', () => s.files.paste(realPath())), el('div', { class: 'toolbar-divider' }), button('Large Icons', () => { view = 'large'; render(); }), button('Details', () => { view = 'details'; render(); }));
-        entries = path === 'computer' ? computer : path === 'network' ? [{ name: 'Entire Network', icon: 'network', app: 'network' }, { name: 'My Computer', icon: 'computer', path: 'C:\\' }] : s.fs.list(realPath()).map(n => ({ name: baseName(n.path), icon: fileIcon(n), path: n.path, node: n }));
+        entries = path === 'computer' ? computer : path === 'network' ? [{ name: 'Entire Network', icon: 'network', app: 'network' }, { name: 'My Computer', icon: 'computer', path: 'C:\\' }] : (folderOptions.allFiles === false ? s.fs.list(realPath()).filter(n => !n.hidden) : s.fs.list(realPath())).map(n => ({ name: displayName(n, folderOptions.extensions === false), icon: fileIcon(n), path: n.path, node: n }));
         if (sort === 'type')
             entries.sort((a, b) => (a.node?.type || '').localeCompare(b.node?.type || ''));
         else if (sort === 'size')
@@ -337,8 +338,10 @@ export function explorer(s, args = {}) {
         if (!frame)
             frame = requestAnimationFrame(() => { frame = 0; render(); });
     };
+    const onOptions = e => { if (String(e.detail?.name || '').startsWith('applet-folder-options')) onChange(); };
     s.fs.addEventListener('change', onChange);
-    w.onClosed.push(() => { s.fs.removeEventListener('change', onChange); cancelAnimationFrame(frame); });
+    s.settings.addEventListener?.('change', onOptions);
+    w.onClosed.push(() => { s.fs.removeEventListener('change', onChange); s.settings.removeEventListener?.('change', onOptions); cancelAnimationFrame(frame); });
     render();
     return w;
 }

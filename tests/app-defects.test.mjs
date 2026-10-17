@@ -10,6 +10,10 @@ const main = await read('src/main.js');
 const docs = await read('src/packages/apps/documents.js');
 const paint = await read('src/packages/apps/paint.js');
 const utils = await read('src/packages/apps/utilities.js');
+const mm = await read('src/packages/apps/multimedia.js');
+const apps = await read('src/packages/games/apps.js');
+const dos = await read('src/packages/apps/dos.js');
+const explorer = await read('src/packages/apps/explorer.js');
 
 test('a failed or empty paste is a no-op, never insert(\'\') fodder', () => {
     const paste = main.slice(main.indexOf('s.pasteText = async'), main.indexOf('s.recent ='));
@@ -60,4 +64,36 @@ test('ScanDisk accepts only folder parents, like backup restore', () => {
 test('the desktop drop guard is case-insensitive like the explorer drop', () => {
     assert.match(main, /parentPath\(p\)\.toLowerCase\(\) === 'c:\\\\windows\\\\desktop'/);
     assert.doesNotMatch(main, /parentPath\(p\) === 'C:/);
+});
+
+test('Sound Recorder retires the old clip on New and never exports a null blob', () => {
+    assert.match(mm, /'New', action: \(\) => \{ stop\(\); blob = null; if \(url\) \{ URL\.revokeObjectURL\(url\); url = null; \}/);
+    assert.match(mm, /if \(url && blob\)/);
+    assert.doesNotMatch(mm, /if \(url\)\s*download\('Sound\.webm', url, blob\.type\)/);
+});
+
+test('the minesweeper end tone plays exactly once, win or loss', () => {
+    assert.match(apps, /if \(!ended\)/);
+    assert.match(apps, /ended = false;/);
+    /* The beep sits outside the won-only block, so a loss beeps too. */
+    assert.match(apps, /\}\n                s\.beep\(game\.state === 'won' \? 'win' : 'error'\);/);
+});
+
+test('the media seek hold cannot leak a second loop', () => {
+    assert.match(mm, /let frame = 0, stamp = 0, holding = false;/);
+    assert.match(mm, /if \(holding\)\n                return;/);
+});
+
+test('DOS history skips empty lines', () => {
+    assert.match(dos, /if \(command\.trim\(\)\)\n            history\.push\(command\);/);
+});
+
+test('Folder Options settings drive the folder views', () => {
+    assert.match(explorer, /folderOptions\.fullPath \? realPath\(\) : baseName\(path\)/);
+    assert.match(explorer, /folderOptions\.allFiles === false \? s\.fs\.list\(realPath\(\)\)\.filter\(n => !n\.hidden\)/);
+    assert.match(explorer, /displayName\(n, folderOptions\.extensions === false\)/);
+    assert.match(explorer, /startsWith\('applet-folder-options'\)/);
+    assert.match(main, /displayName\(n, folderOptions\.extensions === false\)/);
+    assert.match(main, /folderOptions\.allFiles === false && n\.hidden/);
+    assert.match(main, /startsWith\('applet-folder-options'\)/);
 });
