@@ -321,6 +321,13 @@ s.logoff = () => {
         const password = el('input', { type: 'password', 'aria-label': 'Password', autocomplete: 'current-password' });
         const form = el('form', { class: 'login-layout', onsubmit: async event => {
             event.preventDefault();
+            const expectedPassword = s.settings.get('loginPassword', '');
+            if (password.value !== expectedPassword) {
+                password.value = '';
+                await s.ui.message('The password you entered is incorrect. Try again.', 'Enter Windows Password', ['OK'], { owner: login, icon: 'help' });
+                password.focus();
+                return;
+            }
             await login.close();
         } }, icon('login', 48),
         el('div', { class: 'login-copy' },
