@@ -374,9 +374,9 @@ function showLoginDialog({ startup = false } = {}) {
     login.onClosed.push(() => {
         if (resetting)
             return;
-        if (startup && !authenticated) {
+        if (!authenticated) {
             document.body.classList.add('logged-off');
-            queueMicrotask(() => showLoginDialog({ startup: true }));
+            queueMicrotask(() => showLoginDialog({ startup }));
             return;
         }
         document.body.classList.remove('logged-off');
