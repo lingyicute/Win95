@@ -236,8 +236,8 @@ function welcome() { const w = s.wm.create({ title: 'Welcome to Windows 95', ico
 register('welcome', 'Welcome to Windows 95', 'windows', welcome);
 function runDialog() {
     const w = s.ui.modal('Run', { width: 405, height: 192, icon: 'run' });
-    const input = el('input', { 'aria-label': 'Open', value: s.settings.get('lastRun', ''), list: 'run-programs' });
-    const options = el('datalist', { id: 'run-programs' }, ...['notepad', 'mspaint', 'calc', 'explorer', 'command', 'winmine', 'sol', 'freecell', 'regedit', 'control', 'winver'].map(x => el('option', { value: x })));
+    const input = combo({ editable: true, ariaLabel: 'Open', value: s.settings.get('lastRun', '') });
+    input.setOptions(['notepad', 'mspaint', 'calc', 'explorer', 'command', 'winmine', 'sol', 'freecell', 'regedit', 'control', 'winver']);
     const submit = () => {
         if (!input.value.trim())
             return;
@@ -246,7 +246,7 @@ function runDialog() {
         w.close();
         s.run(command);
     };
-    const form = el('form', { class: 'stack', onsubmit: e => { e.preventDefault(); submit(); } }, el('div', { class: 'row', style: { alignItems: 'flex-start' } }, icon('run', 32), el('p', { text: 'Type the name of a program, folder, or document, and Windows will open it for you.' })), field('Open:', input), options, el('div', { class: 'dialog-buttons' }, el('button', { text: 'OK', type: 'submit', class: 'default-button' }), button('Cancel', () => w.close(), { type: 'button' }), button('Browse…', async () => {
+    const form = el('form', { class: 'stack', onsubmit: e => { e.preventDefault(); submit(); } }, el('div', { class: 'row', style: { alignItems: 'flex-start' } }, icon('run', 32), el('p', { text: 'Type the name of a program, folder, or document, and Windows will open it for you.' })), field('Open:', input), el('div', { class: 'dialog-buttons' }, el('button', { text: 'OK', type: 'submit', class: 'default-button' }), button('Cancel', () => w.close(), { type: 'button' }), button('Browse…', async () => {
         const p = await s.ui.file({ owner: w });
         if (p)
             input.value = p;
