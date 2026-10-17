@@ -241,7 +241,7 @@ export function diskUtility(s, args = {}) {
             if (w.closed)
                 return;
             const n = nodes[index];
-            if (n && n.path.length > 3 && !s.fs.exists(parentPath(n.path)))
+            if (n && n.path.length > 3 && s.fs.get(parentPath(n.path))?.type !== 'folder')
                 errors.push(n.path);
             const end = Math.min(256, Math.round((index + 1) / nodes.length * 256));
             for (let i = 0; i < end; i++)
