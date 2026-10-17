@@ -32,9 +32,9 @@ function propertySheet(s, title, ic, tabs, width = 420, height = 420) {
     const render = () => { [...strip.children].forEach((b, i) => b.classList.toggle('active', i === tabIndex)); panel.replaceChildren(panels[tabIndex]); };
     buttons.append(button('OK', async () => {
         if (w.apply)
-            await w.apply();
+            await w.apply('ok');
         w.close();
-    }, { class: 'default-button' }), button('Cancel', () => w.close()), button('Apply', async () => w.apply?.()));
+    }, { class: 'default-button' }), button('Cancel', () => w.close()), button('Apply', async () => w.apply?.('apply')));
     w.body.append(strip, panel, buttons);
     w.element.addEventListener('keydown', e => {
         if (e.ctrlKey && e.key === 'Tab') {
@@ -200,7 +200,7 @@ export function settingsApplet(s, id) {
         pages.push(['Speed', p => { range(p, 'Repeat delay:', 'delay'); range(p, 'Repeat rate:', 'repeat'); p.append(field('Click here to test:', el('input', { 'aria-label': 'Keyboard test', placeholder: '' })), el('p', { class: 'muted', text: 'Key repeat for browser text fields follows your computer’s keyboard settings.' })); }], ['Language', p => select(p, 'Language:', 'language', ['English (United States)', 'Polski', 'Deutsch', 'Français'], 'English (United States)')]);
     }
     else if (id === 'regional') {
-        pages.push(['Regional Settings', p => { select(p, 'Locale:', 'locale', ['en-US', 'en-GB', 'pl-PL', 'de-DE', 'fr-FR', 'ja-JP', 'zh-CN'], s.settings.get('locale', 'en-US')); p.append(el('fieldset', {}, el('legend', { text: 'Samples' }), el('p', { text: 'Number: ' + new Intl.NumberFormat(draft.locale || s.settings.get('locale', 'en-US')).format(1234567.89) }), el('p', { text: 'Date: ' + new Date().toLocaleDateString(draft.locale || s.settings.get('locale', 'en-US')) }))); commits.push(() => { s.settings.set('locale', draft.locale || 'en-US'); s.updateClock(); }); }], ['Language', p => { select(p, 'Display language:', 'uiLanguage', [{ value: 'en', label: 'English' }, { value: 'zh', label: 'Chinese (Simplified)' }], s.settings.get('ui-language', (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en')); const stored = s.settings.get('ui-language', ''); if (stored) draft.uiLanguage = stored; commits.push(() => { if (draft.uiLanguage === 'en' || draft.uiLanguage === 'zh') { s.settings.set('ui-language', draft.uiLanguage); location.reload(); } }); }], ['Time', p => { check(p, 'Use 24-hour time', 'hour24'); commits.push(() => { s.settings.set('hour24', !!draft.hour24); s.updateClock(); }); }]);
+        pages.push(['Regional Settings', p => { select(p, 'Locale:', 'locale', ['en-US', 'en-GB', 'pl-PL', 'de-DE', 'fr-FR', 'ja-JP', 'zh-CN'], s.settings.get('locale', 'en-US')); p.append(el('fieldset', {}, el('legend', { text: 'Samples' }), el('p', { text: 'Number: ' + new Intl.NumberFormat(draft.locale || s.settings.get('locale', 'en-US')).format(1234567.89) }), el('p', { text: 'Date: ' + new Date().toLocaleDateString(draft.locale || s.settings.get('locale', 'en-US')) }))); commits.push(() => { s.settings.set('locale', draft.locale || 'en-US'); s.updateClock(); }); }], ['Language', p => { const currentLanguage = s.settings.get('ui-language', (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en'); draft.uiLanguage = currentLanguage; select(p, 'Display language:', 'uiLanguage', [{ value: 'en', label: 'English' }, { value: 'zh', label: 'Chinese (Simplified)' }], currentLanguage); }], ['Time', p => { check(p, 'Use 24-hour time', 'hour24'); commits.push(() => { s.settings.set('hour24', !!draft.hour24); s.updateClock(); }); }]);
     }
     else if (id === 'sounds' || id === 'multimedia') {
         pages.push(['Audio', p => { select(p, 'Scheme:', 'scheme', ['Windows Default', 'No Sounds'], 'Windows Default'); range(p, 'Volume:', 'volume', s.settings.get('volume', 65)); check(p, 'Mute all sounds', 'muted', s.settings.get('muted', false)); p.append(button('Test', () => s.beep('startup')), button('Volume Control…', () => s.launch('volume'))); commits.push(() => { s.settings.set('volume', draft.volume ?? 65); s.settings.set('muted', draft.muted || draft.scheme === 'No Sounds'); }); }], ['Recording', p => p.append(el('p', { text: 'Record sound through the microphone selected by your browser.' }), button('Sound Recorder…', () => s.launch('recorder')))]);
@@ -252,6 +252,21 @@ export function settingsApplet(s, id) {
     else
         pages.push(['General', p => p.append(el('p', { text: meta[1] + ' settings are stored for this desktop.' }))]);
     w = propertySheet(s, meta[1] + ' Properties', meta[2], pages, 430, 390);
-    w.apply = () => { s.settings.set('applet-' + id, draft); commits.forEach(f => f()); };
+    w.apply = async mode => {
+        const currentLanguage = s.settings.get('ui-language', (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en');
+        const languageChanged = id === 'regional' && (draft.uiLanguage === 'en' || draft.uiLanguage === 'zh') && draft.uiLanguage !== currentLanguage;
+        if (languageChanged) {
+            const choice = await s.ui.message('The system will restart to apply the language change. Restart now?', 'Language Change', ['OK', 'Cancel'], { owner: w, icon: 'shutdown' });
+            if (choice !== 'OK') {
+                s.settings.set('applet-' + id, { ...draft, uiLanguage: currentLanguage });
+                return;
+            }
+            s.settings.set('ui-language', draft.uiLanguage);
+        }
+        s.settings.set('applet-' + id, draft);
+        commits.forEach(f => f());
+        if (languageChanged)
+            await s.restart(w);
+    };
     return w;
 }
