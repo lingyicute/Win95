@@ -132,22 +132,35 @@ export function trackbar({ label, orientation = 'horizontal', min = 0, max = 100
     };
     let dragging = false;
     root.addEventListener('pointerdown', event => {
-        if (event.button !== undefined && event.button !== 0)
+        if (root.disabled || (event.button !== undefined && event.button !== 0))
             return;
         dragging = true;
-        root.setPointerCapture?.(event.pointerId);
+        try {
+            root.setPointerCapture?.(event.pointerId);
+        }
+        catch { }
         root.focus({ preventScroll: true });
         setValue(valueFromPointer(event));
         event.preventDefault();
     });
     root.addEventListener('pointermove', event => {
-        if (dragging)
-            setValue(valueFromPointer(event));
+        if (!dragging)
+            return;
+        if (!(event.buttons & 3)) {
+            /* Heal a drag whose pointer went up without an event (capture
+               lost): stop instead of sliding buttonless. */
+            stopDrag();
+            return;
+        }
+        setValue(valueFromPointer(event));
     });
     const stopDrag = () => { dragging = false; };
     root.addEventListener('pointerup', stopDrag);
     root.addEventListener('pointercancel', stopDrag);
+    root.addEventListener('lostpointercapture', stopDrag);
     root.addEventListener('keydown', event => {
+        if (root.disabled)
+            return;
         const increments = { ArrowLeft: -step, ArrowDown: -step, ArrowRight: step, ArrowUp: step, PageDown: -pageStep, PageUp: pageStep };
         if (event.key === 'Home') {
             event.preventDefault();

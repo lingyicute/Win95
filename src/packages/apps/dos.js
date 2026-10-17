@@ -15,7 +15,8 @@ export function dosPrompt(s, args = {}) {
             return;
         const command = input.value;
         input.value = '';
-        history.push(command);
+        if (command.trim())
+            history.push(command);
         historyIndex = history.length;
         output.textContent += (engine.prompt || engine.cwd + '>') + command + '\n';
         running = true;

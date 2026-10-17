@@ -90,8 +90,12 @@ export function mediaPlayer(s, args = {}) {
         return b;
     };
     const holdSeek = (btn, dir) => {
-        let frame = 0, stamp = 0;
+        let frame = 0, stamp = 0, holding = false;
         const loop = () => {
+            if (!holding) {
+                frame = 0;
+                return;
+            }
             const now = performance.now(), delta = now - stamp;
             if (delta >= 350) {
                 stamp = now;
@@ -101,11 +105,15 @@ export function mediaPlayer(s, args = {}) {
             frame = requestAnimationFrame(loop);
         };
         btn.addEventListener('pointerdown', () => {
+            if (holding)
+                return;
+            holding = true;
             stamp = performance.now() - 350;
             frame = requestAnimationFrame(loop);
         });
-        for (const type of ['pointerup', 'pointerleave', 'pointercancel'])
-            btn.addEventListener(type, () => cancelAnimationFrame(frame));
+        const release = () => { holding = false; cancelAnimationFrame(frame); frame = 0; };
+        for (const type of ['pointerup', 'pointerleave', 'pointercancel', 'lostpointercapture'])
+            btn.addEventListener(type, release);
     };
     const playB = tbtn('play', 'Play', () => {
         if (!srcUrl)
@@ -334,8 +342,8 @@ export function soundRecorder(s) {
         if (url)
             audio.play().catch(() => { });
     }, { 'aria-label': 'Play' }), button('■', stop, { 'aria-label': 'Stop' }), button('●', record, { 'aria-label': 'Record', style: { color: '#f00' } })));
-    w.setMenu(menuBar([{ label: 'File', items: [{ label: 'New', action: () => { stop(); blob = null; audio.src = ''; w.setTitle('Sound - Sound Recorder'); info.lastChild.textContent = 'Length: 0.00 sec.'; } }, { label: 'Save As…', action: save }, { label: 'Export…', action: () => {
-                        if (url)
+    w.setMenu(menuBar([{ label: 'File', items: [{ label: 'New', action: () => { stop(); blob = null; if (url) { URL.revokeObjectURL(url); url = null; } audio.src = ''; w.setTitle('Sound - Sound Recorder'); info.lastChild.textContent = 'Length: 0.00 sec.'; } }, { label: 'Save As…', action: save }, { label: 'Export…', action: () => {
+                        if (url && blob)
                             download('Sound.webm', url, blob.type);
                     } }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Options', items: [{ label: 'Audio Properties', action: () => s.launch('multimedia') }] }, { label: 'Help', items: [{ label: 'About Sound Recorder', action: () => s.about('Sound Recorder', 'sound') }] }]));
     draw();
@@ -358,6 +366,7 @@ export function internet(s, args = {}) {
         }
         address.value = url;
         page.replaceChildren();
+        page.style.padding = '';
         if (url === 'about:home' || !url) {
             page.innerHTML = '<h1>Welcome to the Internet</h1><hr><h2>Microsoft Internet Explorer</h2><p>The world is at your fingertips.</p><p>Enter an address above to explore the World Wide Web, or open an HTML document from your C: drive.</p><hr><h3>Your computer</h3>';
             for (const n of s.fs.search('\\.htm')) {

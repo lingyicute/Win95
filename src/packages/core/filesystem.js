@@ -14,6 +14,15 @@ export const normalizePath = (path, cwd = 'C:\\') => {
 };
 export const parentPath = path => { const p = normalizePath(path); return p.length <= 3 ? p : p.lastIndexOf('\\') <= 2 ? p.slice(0, 3) : p.slice(0, p.lastIndexOf('\\')); };
 export const baseName = path => normalizePath(path).split('\\').pop() || normalizePath(path);
+/** The name a folder view shows: shortcuts drop their .lnk, and the Folder
+    Options switch can drop one file extension (never a folder's). */
+export const displayName = (node, hideExtensions = false) => {
+    const name = baseName(node.path ?? String(node));
+    const short = name.replace(/\.lnk$/i, '');
+    if (!hideExtensions || node.type === 'folder' || node.type === 'directory' || short !== name)
+        return short;
+    return name.replace(/\.[^.]+$/, '');
+};
 const key = p => normalizePath(p).toLowerCase();
 const validName = name => {
     if (!name || /[<>:"/\\|?*\x00-\x1f]/.test(name) || /[. ]$/.test(name))
