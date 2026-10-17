@@ -2,6 +2,7 @@ import { el, button, uniqueId, onDoubleActivate } from '@win95/ui/dom.js';
 import { menuBar } from '@win95/ui/menu.js';
 import { Minesweeper, Klondike, cardColor } from './engines.js';
 import { cellClass, cellMarkup, counterChars, counterMarkup, faceFor, faceMarkup } from './mines-display.js';
+import { createTouchFlagHandler } from './mines-input.js';
 import { FreeCell } from './freecell-engine.js';
 const suitSymbols = { clubs: '♣', diamonds: '♦', hearts: '♥', spades: '♠' };
 function cardNode(card, { selected = false, onClick, onDoubleClick, top = 0 } = {}) {
@@ -46,9 +47,22 @@ export function minesweeper(s) {
             // ground turns into the mine it wrongly covered.
             const shown = lost && cell.mine && !cell.flagged ? { ...cell, revealed: true } : cell;
             const wrong = lost && cell.flagged && !cell.mine;
-            const b = button('', () => reveal(i), { class: 'mine-cell' + cellClass({ ...shown, exploded: game.exploded === i, wrong }), 'aria-label': `Row ${Math.floor(i / cols) + 1} column ${i % cols + 1}, ${cell.flagged ? 'flagged' : cell.revealed ? cell.mine ? 'mine' : `${cell.adjacent} adjacent mines` : 'covered'}` });
+            const b = button('', e => {
+                if ((e.detail > 0 || e.pointerType === 'touch') && touchFlags.consumeClick(i)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
+                reveal(i);
+            }, { class: 'mine-cell' + cellClass({ ...shown, exploded: game.exploded === i, wrong }), 'aria-label': `Row ${Math.floor(i / cols) + 1} column ${i % cols + 1}, ${cell.flagged ? 'flagged' : cell.revealed ? cell.mine ? 'mine' : `${cell.adjacent} adjacent mines` : 'covered'}` });
             b.innerHTML = cellMarkup({ ...shown, wrong });
-            b.oncontextmenu = e => { e.preventDefault(); game.flag(i); render(); };
+            b.oncontextmenu = e => {
+                e.preventDefault();
+                if (!touchFlags.contextMenu()) {
+                    game.flag(i);
+                    render();
+                }
+            };
             b.onauxclick = e => {
                 if (e.button === 1) {
                     e.preventDefault();
@@ -58,20 +72,20 @@ export function minesweeper(s) {
                 }
             };
             onDoubleActivate(b, () => { game.chord(i); finish(); render(); });
-            let touch;
             b.onpointerdown = e => {
                 if (e.button === 0) {
                     pressed = true;
                     paintFace();
                 }
-                if (e.pointerType === 'touch')
-                    touch = setTimeout(() => { game.flag(i); render(); }, 500);
+                touchFlags.pointerDown(i, e);
             };
-            b.onpointerup = () => clearTimeout(touch);
-            b.onpointercancel = () => clearTimeout(touch);
             board.append(b);
         }
     };
+    const touchFlags = createTouchFlagHandler(i => {
+        game.flag(i);
+        render();
+    });
     const finish = () => {
         if (game.state === 'won' || game.state === 'lost') {
             clearInterval(timer);
@@ -95,7 +109,7 @@ export function minesweeper(s) {
         finish();
         render();
     };
-    const reset = (r = rows, c = cols, m = mines) => { clearInterval(timer); rows = r; cols = c; mines = m; game = new Minesweeper(r, c, m); seconds = 0; startTime = 0; pressed = false; w.rect.width = Math.max(212, c * 20 + 46); w.rect.height = r * 20 + 138; s.wm.layout(w); render(); };
+    const reset = (r = rows, c = cols, m = mines) => { touchFlags.cancel(); clearInterval(timer); rows = r; cols = c; mines = m; game = new Minesweeper(r, c, m); seconds = 0; startTime = 0; pressed = false; w.rect.width = Math.max(212, c * 20 + 46); w.rect.height = r * 20 + 138; s.wm.layout(w); render(); };
     w.setMenu(menuBar([{ label: 'Game', items: () => [{ label: 'New', shortcut: 'F2', action: () => reset() }, null, { label: 'Beginner', checked: rows === 8, action: () => reset(8, 8, 10) }, { label: 'Intermediate', checked: rows === 16 && cols === 16, action: () => reset(16, 16, 40) }, { label: 'Expert', checked: cols === 30, action: () => reset(16, 30, 99) }, { label: 'Custom…', action: async () => {
                         const r = await s.ui.prompt('Rows, columns, mines:', `${rows}, ${cols}, ${mines}`, 'Custom Field', { owner: w });
                         if (r) {
@@ -112,18 +126,23 @@ export function minesweeper(s) {
             reset();
         }
     });
-    const releaseFace = () => {
+    const releaseFace = e => {
+        touchFlags.pointerEnd(e.pointerId);
         if (!pressed)
             return;
         pressed = false;
         paintFace();
     };
+    const movePointer = e => touchFlags.pointerMove(e);
     window.addEventListener('pointerup', releaseFace);
     window.addEventListener('pointercancel', releaseFace);
+    window.addEventListener('pointermove', movePointer);
     w.onClosed.push(() => {
+        touchFlags.cancel();
         clearInterval(timer);
         window.removeEventListener('pointerup', releaseFace);
         window.removeEventListener('pointercancel', releaseFace);
+        window.removeEventListener('pointermove', movePointer);
     });
     reset();
     return w;
