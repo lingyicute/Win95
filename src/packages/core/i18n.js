@@ -32,7 +32,7 @@ const ZH = {
     // Shell, taskbar, boot, start menu
     'Start': '开始', 'Tap to start': '点击开始', 'Windows 95 desktop': 'Windows 95 桌面',
     'Programs': '程序', 'Documents': '文档', 'Settings': '设置', 'Find': '查找', 'Help': '帮助',
-    'Run': '运行', 'Run…': '运行…', 'Shut Down…': '关闭系统…', 'Shut Down Windows': '关闭 Windows',
+    'Run': '运行', 'Run…': '运行…', 'Log Off...': '注销...', 'Log Off Windows': '注销 Windows', 'Are you sure you want to log off?': '确定要注销吗？', 'Enter Windows Password': '输入 Windows 密码', 'Type a name to identify yourself to Windows. Enter a password if you want to.': '输入您的名称以标识 Windows 用户。如需密码，请输入密码。', "Tip: If you don't enter a password, you won't get this prompt again at startup.": '提示：如果不输入密码，下次启动时将不再显示此提示。', 'User name:': '用户名：', 'Password:': '密码：', 'Shut Down…': '关闭系统…', 'Shut Down Windows': '关闭 Windows',
     'Shut down the computer?': '关闭计算机？', 'Restart the computer?': '重新启动计算机？',
     'Restart the computer in MS-DOS mode?': '重新启动计算机并进入 MS-DOS 模式？',
     'It is now safe to turn off your computer.': '现在可以安全地关闭计算机了。',
