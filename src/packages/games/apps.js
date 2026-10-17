@@ -1,6 +1,7 @@
 import { el, button, uniqueId, onDoubleActivate } from '@win95/ui/dom.js';
 import { menuBar } from '@win95/ui/menu.js';
 import { Minesweeper, Klondike, cardColor } from './engines.js';
+import { cellClass, cellMarkup, counterChars, counterMarkup, faceFor, faceMarkup } from './mines-display.js';
 import { FreeCell } from './freecell-engine.js';
 const suitSymbols = { clubs: '♣', diamonds: '♦', hearts: '♥', spades: '♠' };
 function cardNode(card, { selected = false, onClick, onDoubleClick, top = 0 } = {}) {
@@ -22,25 +23,31 @@ function cardNode(card, { selected = false, onClick, onDoubleClick, top = 0 } = 
     return n;
 }
 export function minesweeper(s) {
-    let rows = 8, cols = 8, mines = 10, game = new Minesweeper(rows, cols, mines), startTime = 0, seconds = 0, best = s.settings.get('minesBest', {}), timer;
+    let rows = 8, cols = 8, mines = 10, game = new Minesweeper(rows, cols, mines), startTime = 0, seconds = 0, best = s.settings.get('minesBest', {}), timer, pressed = false;
     const w = s.wm.create({ title: 'Minesweeper', icon: 'minesweeper', width: 212, height: 287, resizable: false });
     w.body.classList.add('mines-body');
-    const frame = el('div', { class: 'mines-frame' }), count = el('div', { class: 'digital-counter' }), time = el('div', { class: 'digital-counter' }), face = button('☺', () => reset(), { class: 'mines-face', 'aria-label': 'New game' }), header = el('div', { class: 'mines-header' }, count, face, time), board = el('div', { class: 'mines-board', 'aria-label': 'Minesweeper board' });
+    const frame = el('div', { class: 'mines-frame' }), count = el('div', { class: 'mines-counter', role: 'img' }), time = el('div', { class: 'mines-counter', role: 'img' }), face = button('', () => reset(), { class: 'mines-face', 'aria-label': 'New game' }), header = el('div', { class: 'mines-header' }, count, face, time), board = el('div', { class: 'mines-board', 'aria-label': 'Minesweeper board' });
     frame.append(header, board);
     w.body.append(frame);
+    const paintCounter = (node, value) => {
+        node.innerHTML = counterMarkup(value);
+        node.setAttribute('aria-label', counterChars(value));
+    };
+    const paintFace = () => { face.innerHTML = faceMarkup(faceFor(game.state, pressed)); };
     const render = () => {
-        count.textContent = String(Math.max(-99, mines - game.flags)).padStart(3, '0');
-        time.textContent = String(Math.min(999, seconds)).padStart(3, '0');
-        face.textContent = game.state === 'lost' ? '☹' : game.state === 'won' ? '☻' : '☺';
+        paintCounter(count, mines - game.flags);
+        paintCounter(time, seconds);
+        paintFace();
         board.style.gridTemplateColumns = `repeat(${cols},20px)`;
         board.replaceChildren();
+        const lost = game.state === 'lost';
         for (const [i, cell] of game.cells.entries()) {
-            let text = cell.flagged ? '⚑' : cell.revealed && cell.mine ? '✹' : cell.revealed && cell.adjacent ? String(cell.adjacent) : '';
-            if (game.state === 'lost' && cell.mine)
-                text = '✹';
-            if (game.state === 'lost' && cell.flagged && !cell.mine)
-                text = '×';
-            const b = button(text, () => reveal(i), { class: 'mine-cell' + (cell.revealed ? ' revealed n' + cell.adjacent : '') + (game.exploded === i ? ' exploded' : ''), 'aria-label': `Row ${Math.floor(i / cols) + 1} column ${i % cols + 1}, ${cell.flagged ? 'flagged' : cell.revealed ? cell.mine ? 'mine' : `${cell.adjacent} adjacent mines` : 'covered'}` });
+            // When the game ends an unflagged mine is shown, and a flag over empty
+            // ground turns into the mine it wrongly covered.
+            const shown = lost && cell.mine && !cell.flagged ? { ...cell, revealed: true } : cell;
+            const wrong = lost && cell.flagged && !cell.mine;
+            const b = button('', () => reveal(i), { class: 'mine-cell' + cellClass({ ...shown, exploded: game.exploded === i, wrong }), 'aria-label': `Row ${Math.floor(i / cols) + 1} column ${i % cols + 1}, ${cell.flagged ? 'flagged' : cell.revealed ? cell.mine ? 'mine' : `${cell.adjacent} adjacent mines` : 'covered'}` });
+            b.innerHTML = cellMarkup({ ...shown, wrong });
             b.oncontextmenu = e => { e.preventDefault(); game.flag(i); render(); };
             b.onauxclick = e => {
                 if (e.button === 1) {
@@ -53,6 +60,10 @@ export function minesweeper(s) {
             onDoubleActivate(b, () => { game.chord(i); finish(); render(); });
             let touch;
             b.onpointerdown = e => {
+                if (e.button === 0) {
+                    pressed = true;
+                    paintFace();
+                }
                 if (e.pointerType === 'touch')
                     touch = setTimeout(() => { game.flag(i); render(); }, 500);
             };
@@ -79,12 +90,12 @@ export function minesweeper(s) {
         const changed = game.reveal(i);
         if (changed && wasReady && game.state === 'playing') {
             startTime = Date.now();
-            timer = setInterval(() => { seconds = Math.floor((Date.now() - startTime) / 1000); time.textContent = String(Math.min(999, seconds)).padStart(3, '0'); }, 500);
+            timer = setInterval(() => { seconds = Math.floor((Date.now() - startTime) / 1000); paintCounter(time, seconds); }, 500);
         }
         finish();
         render();
     };
-    const reset = (r = rows, c = cols, m = mines) => { clearInterval(timer); rows = r; cols = c; mines = m; game = new Minesweeper(r, c, m); seconds = 0; startTime = 0; w.rect.width = Math.max(212, c * 20 + 46); w.rect.height = r * 20 + 138; s.wm.layout(w); render(); };
+    const reset = (r = rows, c = cols, m = mines) => { clearInterval(timer); rows = r; cols = c; mines = m; game = new Minesweeper(r, c, m); seconds = 0; startTime = 0; pressed = false; w.rect.width = Math.max(212, c * 20 + 46); w.rect.height = r * 20 + 138; s.wm.layout(w); render(); };
     w.setMenu(menuBar([{ label: 'Game', items: () => [{ label: 'New', shortcut: 'F2', action: () => reset() }, null, { label: 'Beginner', checked: rows === 8, action: () => reset(8, 8, 10) }, { label: 'Intermediate', checked: rows === 16 && cols === 16, action: () => reset(16, 16, 40) }, { label: 'Expert', checked: cols === 30, action: () => reset(16, 30, 99) }, { label: 'Custom…', action: async () => {
                         const r = await s.ui.prompt('Rows, columns, mines:', `${rows}, ${cols}, ${mines}`, 'Custom Field', { owner: w });
                         if (r) {
@@ -101,7 +112,19 @@ export function minesweeper(s) {
             reset();
         }
     });
-    w.onClosed.push(() => clearInterval(timer));
+    const releaseFace = () => {
+        if (!pressed)
+            return;
+        pressed = false;
+        paintFace();
+    };
+    window.addEventListener('pointerup', releaseFace);
+    window.addEventListener('pointercancel', releaseFace);
+    w.onClosed.push(() => {
+        clearInterval(timer);
+        window.removeEventListener('pointerup', releaseFace);
+        window.removeEventListener('pointercancel', releaseFace);
+    });
     reset();
     return w;
 }
