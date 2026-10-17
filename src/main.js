@@ -306,6 +306,42 @@ s.shutdown = () => {
     w.body.append(el('div', { class: 'row', style: { alignItems: 'flex-start', gap: '17px' } }, icon('shutdown', 32), el('div', { class: 'stack' }, el('p', { text: 'Are you sure you want to:' }), opts)), el('div', { class: 'dialog-buttons' }, button('Yes', go, { class: 'default-button' }), button('No', () => w.close()), button('Help', () => s.launch('help', { topic: 'windows' }))));
     return w;
 };
+s.logoff = () => {
+    const confirm = s.ui.modal('Log Off Windows', { width: 300, height: 140, icon: 'logoff' });
+    const logoffNow = async () => {
+        await confirm.close();
+        for (const win of [...s.wm.windows]) {
+            if (!win.options.modal && !await s.wm.close(win))
+                return;
+        }
+        await s.fs.flush();
+        document.body.classList.add('logged-off');
+        const login = s.ui.modal('Enter Windows Password', { width: 470, height: 250, icon: 'login' });
+        const user = el('input', { value: s.settings.get('owner', 'Windows User'), readOnly: true, 'aria-label': 'User name', autocomplete: 'username' });
+        const password = el('input', { type: 'password', 'aria-label': 'Password', autocomplete: 'current-password' });
+        const form = el('form', { class: 'login-layout', onsubmit: async event => {
+            event.preventDefault();
+            await login.close();
+        } }, icon('login', 48),
+        el('div', { class: 'login-copy' },
+            el('div', { text: 'Type a name to identify yourself to Windows. Enter a password if you want to.' }),
+            el('div', { class: 'login-tip', text: "Tip: If you don't enter a password, you won't get this prompt again at startup." })),
+        el('div', { class: 'login-buttons' }, el('button', { type: 'submit', class: 'default-button', text: 'OK' }), button('Cancel', () => login.close(), { type: 'button' })),
+        el('div', { class: 'login-fields' }, el('label', { for: 'login-user', text: 'User name:' }), user, el('label', { for: 'login-password', text: 'Password:' }), password));
+        user.id = 'login-user';
+        password.id = 'login-password';
+        login.body.append(form);
+        login.onClosed.push(() => {
+            document.body.classList.remove('logged-off');
+            renderDesktop();
+            s.updateClock();
+        });
+        queueMicrotask(() => password.focus());
+    };
+    confirm.body.append(el('div', { class: 'row', style: { alignItems: 'center', gap: '18px', padding: '12px 16px 8px' } }, icon('logoff', 32), el('p', { text: 'Are you sure you want to log off?' })),
+        el('div', { class: 'dialog-buttons' }, button('Yes', logoffNow, { class: 'default-button' }), button('No', () => confirm.close())));
+    return confirm;
+};
 s.applyAppearance = () => { const schemes = { 'Windows Standard': ['#c0c0c0', '#000080', '#000000'], 'Desert': ['#d5ccbb', '#008080', '#000000'], 'Marine': ['#a6c2c2', '#004080', '#000000'], 'Plum': ['#c4a6b7', '#400040', '#000000'], 'High Contrast Black': ['#000000', '#800080', '#ffffff'], 'High Contrast White': ['#ffffff', '#000000', '#000000'] }; const a = schemes[s.settings.get('scheme', 'Windows Standard')] || schemes['Windows Standard']; document.documentElement.style.setProperty('--face', a[0]); document.documentElement.style.setProperty('--title', a[1]); document.documentElement.style.setProperty('--text', a[2]); };
 s.updateClock = () => {
     let locale = s.settings.get('locale', uiLocale), zone = s.settings.get('timezone', 'Local time');
@@ -331,7 +367,7 @@ function startMenu() {
     }
     const accessories = [...appMenu('accessory'), null, { label: 'Multimedia', icon: 'media', items: () => appMenu('multimedia') }, { label: 'System Tools', icon: 'computer', items: () => appMenu('system').filter(x => x.label !== 'Windows Explorer' && x.label !== 'MS-DOS Prompt') }];
     const programs = [{ label: 'Accessories', icon: 'folder', items: accessories }, { label: 'Games', icon: 'folder', items: () => appMenu('game') }, { label: 'Communications', icon: 'folder', items: () => appMenu('communication') }, null, { label: 'MS-DOS Prompt', icon: 'dos', action: () => s.launch('dos') }, { label: 'Windows Explorer', icon: 'folder', action: () => s.launch('explorer', { path: 'C:\\', tree: true }) }];
-    const items = [{ label: 'Programs', icon: 'programs', items: programs }, { label: 'Documents', icon: 'documents', items: () => { const docs = s.settings.get('recentDocuments', []).filter(p => s.fs.exists(p)).map(path => ({ label: baseName(path), icon: fileIcon(s.fs.get(path)), action: () => s.open(path) })); return docs.length ? docs : [{ label: '(Empty)', disabled: true }]; } }, { label: 'Settings', icon: 'settings', items: [{ label: 'Control Panel', icon: 'control', action: () => s.launch('control') }, { label: 'Printers', icon: 'printer', action: () => s.launch('printers') }, { label: 'Taskbar…', icon: 'windows', action: () => s.launch('taskbar-properties') }] }, { label: 'Find', icon: 'find', items: [{ label: 'Files or Folders…', icon: 'find', action: () => s.launch('find') }, { label: 'Computer…', icon: 'network', action: () => s.launch('network') }] }, { label: 'Help', icon: 'help', action: () => s.launch('help') }, { label: 'Run…', icon: 'run', action: runDialog }, null, { label: 'Shut Down…', icon: 'shutdown', action: s.shutdown }];
+    const items = [{ label: 'Programs', icon: 'programs', items: programs }, { label: 'Documents', icon: 'documents', items: () => { const docs = s.settings.get('recentDocuments', []).filter(p => s.fs.exists(p)).map(path => ({ label: baseName(path), icon: fileIcon(s.fs.get(path)), action: () => s.open(path) })); return docs.length ? docs : [{ label: '(Empty)', disabled: true }]; } }, { label: 'Settings', icon: 'settings', items: [{ label: 'Control Panel', icon: 'control', action: () => s.launch('control') }, { label: 'Printers', icon: 'printer', action: () => s.launch('printers') }, { label: 'Taskbar…', icon: 'windows', action: () => s.launch('taskbar-properties') }] }, { label: 'Find', icon: 'find', items: [{ label: 'Files or Folders…', icon: 'find', action: () => s.launch('find') }, { label: 'Computer…', icon: 'network', action: () => s.launch('network') }] }, { label: 'Help', icon: 'help', action: () => s.launch('help') }, { label: 'Run…', icon: 'run', action: runDialog }, null, { label: 'Log Off...', icon: 'logoff', action: s.logoff }, { label: 'Shut Down…', icon: 'shutdown', action: s.shutdown }];
     popup(items, 2, innerHeight - 30 - 310, { large: true, class: 'start-menu', brand: true });
     const m = document.querySelector('.start-menu');
     m.style.top = Math.max(0, innerHeight - 30 - m.offsetHeight) + 'px';
