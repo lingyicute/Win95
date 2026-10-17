@@ -14,7 +14,18 @@ export function detectLanguage(input) {
 const browserLanguage = typeof navigator !== 'undefined'
     ? (Array.isArray(navigator.languages) && navigator.languages[0]) || navigator.language || 'en'
     : 'en';
-export const uiLang = detectLanguage(browserLanguage);
+// An explicit Regional Settings choice takes precedence over browser detection.
+// Reloading applies it consistently to both the static desktop and later UI.
+let savedUiLanguage = '';
+try {
+    savedUiLanguage = localStorage.getItem('win95-settings')
+        ? JSON.parse(localStorage.getItem('win95-settings'))['ui-language'] || ''
+        : '';
+}
+catch { }
+export const uiLang = savedUiLanguage === 'zh' || savedUiLanguage === 'en'
+    ? savedUiLanguage
+    : detectLanguage(browserLanguage);
 export const uiLocale = uiLang === 'zh' ? 'zh-CN' : browserLanguage || 'en-US';
 
 const ZH = {
@@ -160,7 +171,7 @@ const ZH = {
     'Repeat delay:': '重复延迟：', 'Repeat rate:': '重复率：', 'Click here to test:': '单击此处测试：',
     'Keyboard test': '键盘测试',
     'Key repeat for browser text fields follows your computer’s keyboard settings.': '浏览器文本字段的按键重复遵循您计算机的键盘设置。',
-    'Language': '语言', 'English (United States)': '英语（美国）', 'Samples': '示例',
+    'Language': '语言', 'Display language:': '显示语言：', 'English': '英语', 'Chinese (Simplified)': '简体中文', 'English (United States)': '英语（美国）', 'en-US': '英语（美国）', 'en-GB': '英语（英国）', 'pl-PL': '波兰语（波兰）', 'de-DE': '德语（德国）', 'fr-FR': '法语（法国）', 'ja-JP': '日语（日本）', 'zh-CN': '中文（简体，中国）', 'Samples': '示例',
     'Number:': '数字：', 'Date:': '日期：', 'Locale:': '区域：', 'Use 24-hour time': '使用 24 小时制',
     'Audio': '音频', 'Windows Default': 'Windows 默认', 'No Sounds': '无声',
     'Mute all sounds': '所有声音静音', 'Test': '测试', 'Volume Control…': '音量控制…',
