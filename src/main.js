@@ -269,6 +269,16 @@ function taskman() {
     return w;
 }
 register('taskman', 'Close Program', 'task', taskman);
+s.restart = async (ownerWindow = null) => {
+    if (ownerWindow)
+        await ownerWindow.close();
+    for (const win of [...s.wm.windows])
+        if (!win.options.modal && !await s.wm.close(win))
+            return;
+    await s.fs.flush();
+    await waitForSoundEnd(s.playSound('shutdown'));
+    location.reload();
+};
 s.shutdown = () => {
     const w = s.ui.modal('Shut Down Windows', { width: 385, height: 259, icon: 'shutdown' });
     let selected = 'shutdown';
@@ -277,16 +287,15 @@ s.shutdown = () => {
         opts.append(el('label', {}, el('input', { type: 'radio', name: 'shutdown-option', value, checked: value === 'shutdown', onchange: () => selected = value }), label));
     const go = async () => {
         await w.close();
+        if (selected === 'restart') {
+            await s.restart();
+            return;
+        }
         for (const win of [...s.wm.windows])
             if (!win.options.modal && !await s.wm.close(win))
                 return;
         await s.fs.flush();
-        const shutdownSound = s.playSound('shutdown');
-        if (selected === 'restart') {
-            await waitForSoundEnd(shutdownSound);
-            location.reload();
-            return;
-        }
+        s.playSound('shutdown');
         if (selected === 'dos') {
             s.launch('dos', { fullscreen: true });
             return;
