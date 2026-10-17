@@ -1,6 +1,7 @@
 import { VirtualFileSystem, Settings, baseName, parentPath } from './packages/core/filesystem.js';
 import { installI18n, uiLocale } from './packages/core/i18n.js';
 import { WindowManager } from './packages/shell/window-manager.js';
+import { pointerTrails } from './packages/shell/pointer-trails.js';
 import { el, button, field, onDoubleActivate, setDoubleClickDelay } from './packages/ui/dom.js';
 import { icon, fileIcon } from './packages/ui/icons.js';
 import { popup, closeMenus } from './packages/ui/menu.js';
@@ -520,6 +521,65 @@ if (document.readyState === 'complete')
     showBootTap();
 else
     window.addEventListener('load', showBootTap, { once: true });
+pointerTrails(s);
+// The left-handed configuration swaps the roles of the two buttons: the
+// physical left button becomes the secondary one (context menus) and the
+// physical right button becomes the primary one (select, activate, drag).
+{
+    const lefty = () => s.settings.get('leftHanded', false);
+    let swallowClick = false;
+    document.addEventListener('pointerdown', e => {
+        if (lefty() && e.isTrusted && e.button === 0)
+            e.stopPropagation();
+    }, true);
+    document.addEventListener('mousedown', e => {
+        if (!lefty() || !e.isTrusted || e.button !== 0)
+            return;
+        swallowClick = true;
+        const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, clientX: e.clientX, clientY: e.clientY });
+        menu.win95Synthetic = true;
+        e.target.dispatchEvent(menu);
+    }, true);
+    // Chrome emits no click for the right button, so the new primary button
+    // gets its activation events synthesised on release, doubles included.
+    let lastRight = { t: 0, target: null };
+    document.addEventListener('mouseup', e => {
+        if (!lefty() || !e.isTrusted || e.button !== 2)
+            return;
+        const init = { bubbles: true, cancelable: true, button: 2, clientX: e.clientX, clientY: e.clientY };
+        const click = new MouseEvent('click', init);
+        click.win95Synthetic = true;
+        e.target.dispatchEvent(click);
+        const now = performance.now();
+        if (lastRight.target === e.target && now - lastRight.t < s.settings.get('doubleClickMs', 500)) {
+            const dbl = new MouseEvent('dblclick', init);
+            dbl.win95Synthetic = true;
+            e.target.dispatchEvent(dbl);
+            lastRight = { t: 0, target: null };
+        }
+        else
+            lastRight = { t: now, target: e.target };
+    }, true);
+    document.addEventListener('contextmenu', e => {
+        if (!lefty() || e.win95Synthetic)
+            return;
+        if (e.isTrusted && e.button === 2) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+    }, true);
+    for (const type of ['click', 'dblclick'])
+        document.addEventListener(type, e => {
+            if (!lefty() || !e.isTrusted || e.button !== 0)
+                return;
+            if (type === 'click' && !swallowClick)
+                return;
+            swallowClick = false;
+            e.stopPropagation();
+            e.preventDefault();
+        }, true);
+    s.wm.primary = e => (lefty() ? e.button === 2 : e.button === 0);
+}
 window.win95 = s;
 const model = document.modelContext;
 if (model?.registerTool) {
