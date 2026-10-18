@@ -1,4 +1,4 @@
-import { el, button, download, fileInput, formatSize, infoGrid, onDoubleActivate } from '@win95/ui/dom.js';
+import { dataText, el, button, download, fileInput, formatSize, infoGrid, onDoubleActivate } from '@win95/ui/dom.js';
 import { icon, fileIcon } from '@win95/ui/icons.js';
 import { menuBar, popup } from '@win95/ui/menu.js';
 import { normalizePath, parentPath, baseName, displayName, nameError } from '@win95/core/filesystem.js';
@@ -183,7 +183,8 @@ export function explorer(s, args = {}) {
         if (w.closed)
             return;
         const folderOptions = s.settings.get('applet-folder-options', {});
-        w.setTitle(path === 'computer' ? 'My Computer' : path === 'recycle' ? 'Recycle Bin' : path === 'network' ? 'Network Neighborhood' : path === 'desktop' ? 'Desktop' : tree ? `Exploring - ${folderOptions.fullPath ? realPath() : baseName(path)}` : path.length <= 3 ? `(${path[0]}:)` : folderOptions.fullPath ? realPath() : baseName(path));
+        const rawTitle = path !== 'computer' && path !== 'recycle' && path !== 'network' && path !== 'desktop' && !tree && path.length > 3;
+        w.setTitle(path === 'computer' ? 'My Computer' : path === 'recycle' ? 'Recycle Bin' : path === 'network' ? 'Network Neighborhood' : path === 'desktop' ? 'Desktop' : tree ? `Exploring - ${folderOptions.fullPath ? realPath() : baseName(path)}` : path.length <= 3 ? `(${path[0]}:)` : folderOptions.fullPath ? realPath() : baseName(path), { raw: rawTitle });
         treeHost.hidden = !tree;
         treeHost.replaceChildren();
         addTree('Desktop', 'computer', 'desktop');
@@ -192,16 +193,16 @@ export function explorer(s, args = {}) {
             addTree(`(${drive[0]}:)`, drive[0] === 'A' ? 'floppy' : drive[0] === 'D' ? 'cd' : 'disk', drive, 2);
             if (drive === 'C:\\')
                 for (const n of s.fs.list(drive).filter(n => n.type === 'folder' && !n.path.toLowerCase().includes('recycled'))) {
-                    addTree(baseName(n.path), 'folder', n.path, 3);
+                    addTree(dataText(baseName(n.path)), 'folder', n.path, 3);
                     if (path.toLowerCase().startsWith(n.path.toLowerCase()))
                         for (const c of s.fs.list(n.path).filter(n => n.type === 'folder'))
-                            addTree(baseName(c.path), 'folder', c.path, 4);
+                            addTree(dataText(baseName(c.path)), 'folder', c.path, 4);
                 }
         }
         addTree('Recycle Bin', 'recycle', 'recycle', 1);
         toolbar.hidden = !showToolbar;
         toolbar.replaceChildren(button('↰', upOneLevel, { title: 'Up One Level' }), el('div', { class: 'toolbar-divider' }), button('Cut', () => s.files.copy(selectedPaths(), true)), button('Copy', () => s.files.copy(selectedPaths())), button('Paste', () => s.files.paste(realPath())), el('div', { class: 'toolbar-divider' }), button('Large Icons', () => { view = 'large'; render(); }), button('Details', () => { view = 'details'; render(); }));
-        entries = path === 'computer' ? computer : path === 'network' ? [{ name: 'Entire Network', icon: 'network', app: 'network' }, { name: 'My Computer', icon: 'computer', path: 'C:\\' }] : (folderOptions.allFiles === false ? s.fs.list(realPath()).filter(n => !n.hidden) : s.fs.list(realPath())).map(n => ({ name: displayName(n, folderOptions.extensions === false), icon: fileIcon(n), path: n.path, node: n }));
+        entries = path === 'computer' ? computer : path === 'network' ? [{ name: 'Entire Network', icon: 'network', app: 'network' }, { name: 'My Computer', icon: 'computer', path: 'C:\\' }] : (folderOptions.allFiles === false ? s.fs.list(realPath()).filter(n => !n.hidden) : s.fs.list(realPath())).map(n => ({ name: displayName(n, folderOptions.extensions === false), icon: fileIcon(n), path: n.path, node: n, nameIsData: true }));
         if (sort === 'type')
             entries.sort((a, b) => (a.node?.type || '').localeCompare(b.node?.type || ''));
         else if (sort === 'size')
@@ -212,7 +213,7 @@ export function explorer(s, args = {}) {
             list.append(el('div', { class: 'details-header' }, el('span', { text: 'Name' }), el('span', { text: 'Size' }), el('span', { text: 'Type' }), el('span', { text: 'Modified' })));
         for (const e of entries) {
             const id = e.path || e.app;
-            const b = el('button', { class: 'file-item', draggable: !!e.path, 'data-path': id, 'aria-label': e.name }, icon(e.icon, 32), el('span', { class: 'file-name', text: e.name }), el('span', { class: 'file-detail', text: e.node?.type === 'file' ? formatSize(s.fs.size(e.path)) : '' }), el('span', { class: 'file-detail', text: e.node?.type === 'folder' ? 'File Folder' : e.node ? 'File' : '' }), el('span', { class: 'file-detail', text: e.node ? new Date(e.node.modified).toLocaleDateString() : '' }));
+            const b = el('button', { class: 'file-item', draggable: !!e.path, 'data-path': id, 'aria-label': e.name, 'data-i18n-skip-attrs': e.nameIsData ? 'aria-label' : undefined }, icon(e.icon, 32), e.nameIsData ? dataText(e.name, { class: 'file-name' }) : el('span', { class: 'file-name', text: e.name }), el('span', { class: 'file-detail', text: e.node?.type === 'file' ? formatSize(s.fs.size(e.path)) : '' }), el('span', { class: 'file-detail', text: e.node?.type === 'folder' ? 'File Folder' : e.node ? 'File' : '' }), el('span', { class: 'file-detail', text: e.node ? new Date(e.node.modified).toLocaleDateString() : '' }));
             b.onclick = ev => {
                 ev.stopPropagation();
                 if (ev.ctrlKey || ev.metaKey) {

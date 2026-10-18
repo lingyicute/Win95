@@ -498,10 +498,10 @@ function renderDesktop() {
     for (const n of s.fs.list('C:\\Windows\\Desktop')) {
         if (folderOptions.allFiles === false && n.hidden)
             continue;
-        entries.push({ path: n.path, name: displayName(n, folderOptions.extensions === false), ic: fileIcon(n), key: n.path });
+        entries.push({ path: n.path, name: displayName(n, folderOptions.extensions === false), ic: fileIcon(n), key: n.path, nameIsData: true });
     }
     for (const e of entries) {
-        const b = el('button', { class: 'desktop-icon' + (selected.has(e.key) ? ' selected' : ''), 'aria-label': e.name, 'data-desktop-key': e.key, draggable: !!e.path }, icon(e.app === 'recycle' && s.fs.list('C:\\Recycled').length ? 'recycleFull' : e.ic, 32), el('span', { text: e.name }));
+        const b = el('button', { class: 'desktop-icon' + (selected.has(e.key) ? ' selected' : ''), 'aria-label': e.name, 'data-i18n-skip-attrs': e.nameIsData ? 'aria-label' : undefined, 'data-desktop-key': e.key, draggable: !!e.path }, icon(e.app === 'recycle' && s.fs.list('C:\\Recycled').length ? 'recycleFull' : e.ic, 32), e.nameIsData ? dataText(e.name) : el('span', { text: e.name }));
         const open = () => e.app ? s.launch(e.app) : s.open(e.path);
         onDoubleActivate(b, open);
         b.onclick = event => {

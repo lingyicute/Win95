@@ -362,6 +362,13 @@ export function translateText(text, lang = uiLang) {
     return out === undefined ? text : match[1] + out + match[3];
 }
 
+/**
+ * Chrome vocabulary that a message interpolates - an applet, a tool, a mixer
+ * channel - has a dictionary entry. A name that came out of the file system does
+ * not: the same folder has to be called one thing in the list and another in the
+ * address bar otherwise. Patterns that carry a file, folder or drive name
+ * interpolate the capture raw and do not call this.
+ */
 function name(name) {
     return ZH[name] || name;
 }
@@ -382,7 +389,7 @@ function applyPatterns(core) {
     if ((m = /^Cannot find '(.+)'\. Make sure the name is correct and try again\.$/.exec(core))) return `找不到“${m[1]}”。请确认名称正确后重试。`;
     if ((m = /^Cannot find "(.+)"$/.exec(core))) return `找不到“${m[1]}”`;
     if ((m = /^Cannot open "(.+)": the shortcut points to a shortcut chain that is too deep\.$/.exec(core))) return `无法打开“${m[1]}”：快捷方式指向的快捷方式链过深。`;
-    if ((m = /^Exploring - (.+)$/.exec(core))) return `正在浏览 - ${name(m[1])}`;
+    if ((m = /^Exploring - (.+)$/.exec(core))) return `正在浏览 - ${m[1]}`;
     if ((m = /^The text in the (.+) file has changed\.$/.exec(core))) return `“${m[1]}”文件中的文本已更改。`;
     if (/^Do you want to save the changes\?$/.test(core)) return '是否保存更改？';
     if ((m = /^Delete the '(.+)' cursor scheme\?$/.exec(core))) return `确实要删除“${m[1]}”指针方案吗？`;
@@ -409,7 +416,7 @@ function applyPatterns(core) {
     if ((m = /^Line width (\d+)$/.exec(core))) return `线宽 ${m[1]}`;
     if ((m = /^(.+) Properties$/.exec(core))) return `${name(m[1])} 属性`;
     if ((m = /^(.+) - (Media Player|CD Player)$/.exec(core))) return `${translateText(m[1], 'zh')} - ${name(m[2])}`;
-    if ((m = /^(.+) - Sound Recorder$/.exec(core))) return `${translateText(m[1], 'zh')} - 录音机`;
+    if ((m = /^(.+) - Sound Recorder$/.exec(core))) return `${m[1]} - 录音机`;
     if ((m = /^Track (\d+) — (.+)$/.exec(core))) return `曲目 ${m[1]} — ${translateText(m[2], 'zh')}`;
     if ((m = /^Number: (.+)$/.exec(core))) return `数字：${m[1]}`;
     if ((m = /^Date: (.+)$/.exec(core))) return `日期：${m[1]}`;
@@ -470,7 +477,13 @@ function translateNode(node) {
     }
     if (node.nodeType !== Node.ELEMENT_NODE || skipped(node))
         return;
+    // data-i18n-skip walks past a subtree; data-i18n-skip-attrs walks past single
+    // attributes of this element, so a row can hold a file name in aria-label while
+    // its Size and Type columns stay UI strings.
+    const raw = (node.getAttribute?.('data-i18n-skip-attrs') || '').split(/\s+/);
     for (const attr of TRANSLATED_ATTRIBUTES) {
+        if (raw.includes(attr))
+            continue;
         const value = node.getAttribute?.(attr);
         if (value) {
             const next = translateText(value, 'zh');
