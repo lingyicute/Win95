@@ -240,7 +240,12 @@ export function explorer(s, args = {}) {
                 }
                 const items = path === 'recycle' ? [{ label: 'Restore', action: () => {
                             for (const p of selectedPaths())
-                                s.fs.restore(p);
+                                try {
+                                    s.fs.restore(p);
+                                }
+                                catch (e) {
+                                    s.ui.error(e, w);
+                                }
                         } }, { label: 'Delete', action: () => s.files.remove(selectedPaths(), true) }, { label: 'Properties', action: () => s.files.properties(selectedPaths()) }] : e.app ? [{ label: 'Open', action: () => openEntry(e) }] : s.files.menu(selectedPaths(), realPath());
                 popup(items, ev.clientX, ev.clientY);
             };

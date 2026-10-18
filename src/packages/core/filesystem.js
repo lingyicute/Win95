@@ -232,11 +232,26 @@ export class VirtualFileSystem extends EventTarget {
                 this.nodes.delete(k);
         this.changed();
     }
+    /** Folders on `path` that the volume does not have yet, created from the top down.
+     *  Stops at a name held by a file: that road is closed, and the caller's own check
+     *  reports it instead of quietly replacing what the user put there. */
+    ensureFolders(path) {
+        const missing = [];
+        for (let p = normalizePath(path); p.length > 3 && this.get(p)?.type !== 'folder'; p = parentPath(p)) {
+            if (this.exists(p))
+                break;
+            missing.push(p);
+        }
+        for (const p of missing.reverse())
+            this.mkdir(p);
+        return this.get(normalizePath(path))?.type === 'folder';
+    }
     restore(path) {
         const n = this.get(path);
         if (!n?.originalPath)
             throw new Error('This file is not in the Recycle Bin.');
         const to = this.unique(n.originalPath, n.type === 'folder');
+        this.ensureFolders(parentPath(to));
         this.move(path, to);
         delete this.get(to).originalPath;
         this.changed();
