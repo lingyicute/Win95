@@ -1,17 +1,17 @@
 import { dataText, el, button, download, fileInput, formatSize, infoGrid, onDoubleActivate } from '@win95/ui/dom.js';
 import { icon, fileIcon } from '@win95/ui/icons.js';
 import { menuBar, popup } from '@win95/ui/menu.js';
-import { normalizePath, parentPath, baseName, displayName, nameError } from '@win95/core/filesystem.js';
+import { NAME_LIMIT, normalizePath, parentPath, baseName, displayName, nameError } from '@win95/core/filesystem.js';
 /**
  * A host file name has to fit the volume's cap. The extension survives the cut
  * when it is short enough to be worth keeping; a 300 character "extension" is
  * not data, and keeping it would hand back a name longer than the one we cut.
  */
 const clampName = name => {
-    if (name.length <= 255)
+    if (name.length <= NAME_LIMIT)
         return name;
-    const dot = name.lastIndexOf('.'), ext = dot > 0 && name.length - dot <= 254 ? name.slice(dot) : '';
-    return (name.slice(0, 255 - ext.length) + ext).replace(/[. ]+$/, '');
+    const dot = name.lastIndexOf('.'), ext = dot > 0 && name.length - dot <= NAME_LIMIT - 1 ? name.slice(dot) : '';
+    return (name.slice(0, NAME_LIMIT - ext.length) + ext).replace(/[. ]+$/, '');
 };
 export function createFileActions(s) {
     const properties = (paths) => {
