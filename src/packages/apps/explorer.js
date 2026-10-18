@@ -2,6 +2,13 @@ import { el, button, download, fileInput, formatSize, infoGrid, onDoubleActivate
 import { icon, fileIcon } from '@win95/ui/icons.js';
 import { menuBar, popup } from '@win95/ui/menu.js';
 import { normalizePath, parentPath, baseName, displayName, nameError } from '@win95/core/filesystem.js';
+/** A host file name has to fit the volume's cap; the extension survives the cut. */
+const clampName = name => {
+    if (name.length <= 255)
+        return name;
+    const dot = name.lastIndexOf('.'), ext = dot > 0 ? name.slice(dot) : '';
+    return ext ? name.slice(0, 255 - ext.length) + ext : name.slice(0, 255);
+};
 export function createFileActions(s) {
     const properties = (paths) => {
         if (!paths?.length)
@@ -118,7 +125,7 @@ export function createFileActions(s) {
                 /* Host file names can carry characters the volume rejects, so
                    they are mangled into a legal name instead of failing the
                    whole import. */
-                const name = f.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[. ]+$/, '') || 'Document';
+                const name = clampName(f.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[. ]+$/, '') || 'Document');
                 const text = f.type.startsWith('text/') || /\.(txt|ini|bat|sys|csv|json|rtf|md)$/i.test(f.name) ? await f.text() : await new Promise((r, j) => { const reader = new FileReader(); reader.onload = () => r(reader.result); reader.onerror = j; reader.readAsDataURL(f); });
                 s.fs.write(s.fs.unique(path + '\\' + name), text, f.type || 'application/octet-stream');
             }
