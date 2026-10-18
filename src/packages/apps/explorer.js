@@ -13,6 +13,17 @@ const clampName = name => {
     const dot = name.lastIndexOf('.'), ext = dot > 0 && name.length - dot <= NAME_LIMIT - 1 ? name.slice(dot) : '';
     return (name.slice(0, NAME_LIMIT - ext.length) + ext).replace(/[. ]+$/, '');
 };
+/**
+ * A selection can hold a folder and things inside it. Acting on the folder
+ * moves the contents with it, so the descendants drop out of the batch: doing it
+ * in path order used to delete the folder and then fail on the file that had
+ * just travelled inside it, and copying made a second copy of the file at the
+ * destination. Sorted by path, every item comes after the ancestor carrying it,
+ * so one pass over the list is enough.
+ */
+const withoutContained = paths => [...new Set(paths)].sort((a, b) => a.length - b.length || a.localeCompare(b))
+    .filter((path, _, all) => !all.some(other => other !== path && path.toLowerCase().startsWith(other.toLowerCase() + '\\')));
+
 export function createFileActions(s) {
     const properties = (paths) => {
         if (!paths?.length)
@@ -53,6 +64,7 @@ export function createFileActions(s) {
         }
     };
     const remove = async (paths, permanent = false) => {
+        paths = withoutContained(paths);
         if (!paths.length)
             return;
         const text = paths.length === 1 ? `'${baseName(paths[0])}'` : `these ${paths.length} items`;
@@ -69,7 +81,7 @@ export function createFileActions(s) {
     const paste = path => {
         if (s.clipboard?.type !== 'files')
             return;
-        for (const src of [...s.clipboard.paths])
+        for (const src of withoutContained(s.clipboard.paths))
             try {
                 /* A cut item already in this folder stays where it is instead
                    of being renamed to a " (2)" copy of itself. */
@@ -273,7 +285,7 @@ export function explorer(s, args = {}) {
         const data = ev.dataTransfer.getData('application/x-win95-files');
         try {
             if (data) {
-                for (const p of JSON.parse(data)) {
+                for (const p of withoutContained(JSON.parse(data))) {
                     if (parentPath(p).toLowerCase() === to.toLowerCase() && !ev.ctrlKey)
                         continue;
                     const dest = s.fs.unique(to + '\\' + baseName(p), s.fs.get(p)?.type === 'folder');
@@ -345,7 +357,10 @@ export function explorer(s, args = {}) {
         }
         else if (e.key === 'Backspace') {
             e.preventDefault();
-            navigate(normalizePath(parentPath(realPath())));
+            /* The virtual folders have no parent on the volume: stepping up from
+               My Computer or the Recycle Bin would land in C:\ and read as a bug. */
+            if (path !== 'computer' && path !== 'recycle')
+                navigate(normalizePath(parentPath(realPath())));
         }
         else if (e.altKey && e.key === 'Enter') {
             e.preventDefault();
@@ -358,8 +373,11 @@ export function explorer(s, args = {}) {
         }
         else if (e.key.startsWith('Arrow')) {
             e.preventDefault();
-            let i = entries.findIndex(x => (x.path || x.app) === [...selection].at(-1));
             const columns = view === 'large' ? Math.max(1, Math.floor(list.clientWidth / 88)) : 1;
+            const current = entries.findIndex(x => (x.path || x.app) === [...selection].at(-1));
+            /* With nothing selected the step starts above the first row, so
+               Down lands on the first item instead of the first row's last. */
+            let i = current < 0 ? -columns : current;
             i = Math.max(0, Math.min(entries.length - 1, i + (e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowDown' ? columns : -columns)));
             if (entries[i]) {
                 selection.clear();

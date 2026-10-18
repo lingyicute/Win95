@@ -490,6 +490,18 @@ function startMenu() {
 }
 const desktop = document.querySelector('#desktop'), desktopIcons = document.querySelector('#desktop-icons');
 let selected = new Set();
+/* The desktop sorts by name until the user picks another arrangement, and the
+   choice survives the re-render that every file-system change triggers: sorting
+   the live DOM list only looked right until the next redraw. */
+const desktopArrangement = () => s.settings.get('desktop-arrange', 'name');
+const arrangeIcons = order => { s.settings.set('desktop-arrange', order); renderDesktop(); };
+const arrangeEntry = (a, b, order) => {
+    if (order === 'type') {
+        const kind = e => e.app ? 0 : (s.fs.get(e.path)?.type === 'folder' ? 1 : 2);
+        return kind(a) - kind(b) || a.name.localeCompare(b.name);
+    }
+    return a.name.localeCompare(b.name);
+};
 const fixed = [['computer', 'My Computer', 'computer'], ['network-neighborhood', 'Network Neighborhood', 'network'], ['inbox', 'Inbox', 'mail'], ['recycle', 'Recycle Bin', 'recycle'], ['briefcase', 'My Briefcase', 'briefcase']];
 function renderDesktop() {
     desktopIcons.replaceChildren();
@@ -500,6 +512,7 @@ function renderDesktop() {
             continue;
         entries.push({ path: n.path, name: displayName(n, folderOptions.extensions === false), ic: fileIcon(n), key: n.path, nameIsData: true });
     }
+    entries.sort((a, b) => arrangeEntry(a, b, desktopArrangement()));
     for (const e of entries) {
         const b = el('button', { class: 'desktop-icon' + (selected.has(e.key) ? ' selected' : ''), 'aria-label': e.name, 'data-i18n-skip-attrs': e.nameIsData ? 'aria-label' : undefined, 'data-desktop-key': e.key, draggable: !!e.path }, icon(e.app === 'recycle' && s.fs.list('C:\\Recycled').length ? 'recycleFull' : e.ic, 32), e.nameIsData ? dataText(e.name) : el('span', { text: e.name }));
         const open = () => e.app ? s.launch(e.app) : s.open(e.path);
@@ -549,7 +562,7 @@ desktop.oncontextmenu = e => {
     if (e.defaultPrevented || e.target.closest('.window') || e.target.closest('.desktop-icon'))
         return;
     e.preventDefault();
-    popup([{ label: 'Arrange Icons', items: [{ label: 'by Name', action: () => { const children = [...desktopIcons.children]; children.sort((a, b) => a.textContent.localeCompare(b.textContent)); desktopIcons.replaceChildren(...children); } }, { label: 'by Type', action: renderDesktop }, { label: 'Auto Arrange', checked: true, action: renderDesktop }] }, { label: 'Line Up Icons', action: renderDesktop }, null, { label: 'Paste', disabled: s.clipboard?.type !== 'files', action: () => s.files.paste('C:\\Windows\\Desktop') }, { label: 'New', items: [{ label: 'Folder', icon: 'folder', action: () => s.files.newFolder('C:\\Windows\\Desktop') }, { label: 'Shortcut…', icon: 'task', action: async () => {
+    popup([{ label: 'Arrange Icons', items: [{ label: 'by Name', checked: desktopArrangement() === 'name', action: () => arrangeIcons('name') }, { label: 'by Type', checked: desktopArrangement() === 'type', action: () => arrangeIcons('type') }, { label: 'Auto Arrange', checked: true, action: renderDesktop }] }, { label: 'Line Up Icons', action: renderDesktop }, null, { label: 'Paste', disabled: s.clipboard?.type !== 'files', action: () => s.files.paste('C:\\Windows\\Desktop') }, { label: 'New', items: [{ label: 'Folder', icon: 'folder', action: () => s.files.newFolder('C:\\Windows\\Desktop') }, { label: 'Shortcut…', icon: 'task', action: async () => {
                         const command = await s.ui.prompt('Command line:', 'notepad', 'Create Shortcut');
                         if (!command)
                             return;

@@ -326,6 +326,9 @@ const ZH = {
     'Hint: move the selected card to a foundation.': '提示：将所选牌移到回收堆。',
     // Remaining labels, fields and properties titles
     'Volume:': '音量：', 'Font:': '字体：', 'Named:': '名称：', 'Address:': '地址：', 'Home': '主页',
+    'Type:': '类型：', 'Location:': '位置：', 'Size:': '大小：', 'Contains:': '包含：',
+    'Created:': '创建时间：', 'Modified:': '修改时间：',
+    'Language:': '语言：', 'Display language:': '显示语言：',
     'Wave': '波形', 'Open:': '打开：', 'Version:': '版本：', 'Hardware architecture:': '硬件架构：', 'Processors:': '处理器：',
     'Display adapter:': '显示适配器：', 'Backspace': '退格', 'U+00A9 Copyright sign': 'U+00A9 版权符号',
     'Welcome to your Inbox': '欢迎使用收件箱', 'Windows 95 (D:)': 'Windows 95 (D:)',
@@ -428,11 +431,14 @@ function applyPatterns(core) {
     if ((m = /^(.+) balance$/.exec(core))) return `${name(m[1])} 平衡`;
     if ((m = /^(.+) volume$/.exec(core))) return `${name(m[1])} 音量`;
     if ((m = /^(.+) mute$/.exec(core))) return `${name(m[1])} 静音`;
-    if ((m = /^Desktop color (#[0-9a-fA-F]{6})$/.exec(core))) return `桌面颜色 ${m[1]}`;
-    if ((m = /^Color (#[0-9a-fA-F]{6})$/.exec(core))) return `颜色 ${m[1]}`;
+    if ((m = /^Color \(#[0-9a-fA-F]{6}\)$/.exec(core))) return `颜色 ${core.slice(7, -1)}`;
     if ((m = /^Foundation (\d+)$/.exec(core))) return `回收堆 ${m[1]}`;
     if ((m = /^Free cell (\d+)$/.exec(core))) return `空闲单元 ${m[1]}`;
     if ((m = /^Tableau column (\d+)$/.exec(core))) return `纸牌列 ${m[1]}`;
+    if ((m = /^Row (\d+) column (\d+), (\d+) adjacent mines$/.exec(core)))
+        return `第 ${m[1]} 行第 ${m[2]} 列，邻近 ${m[3]} 颗雷`;
+    if ((m = /^Row (\d+) column (\d+), (\d+) adjacent mine$/.exec(core)))
+        return `第 ${m[1]} 行第 ${m[2]} 列，邻近 1 颗雷`;
     if ((m = /^Row (\d+) column (\d+), (.+)$/.exec(core))) {
         const state = { covered: '未翻开', flagged: '已插旗', mine: '地雷' }[m[3]] || m[3];
         return `第 ${m[1]} 行第 ${m[2]} 列，${state}`;
