@@ -174,7 +174,7 @@ s.launch = (id, args = {}) => {
         return null;
     }
 };
-s.open = path => {
+s.open = (path, depth = 0) => {
     if (!path)
         return;
     const n = s.fs.get(path);
@@ -185,14 +185,20 @@ s.open = path => {
     if (n.type === 'folder')
         return s.launch('explorer', { path });
     const ext = path.split('.').pop().toLowerCase();
-    s.recent(path);
+    if (ext !== 'lnk' && ext !== 'exe' && ext !== 'com')
+        s.recent(path);
     if (ext === 'lnk') {
         try {
             const link = JSON.parse(n.content);
             if (link.app)
                 return s.launch(link.app, link.args);
-            if (link.target)
-                return s.open(link.target);
+            if (link.target) {
+                if (depth >= 8) {
+                    s.ui.message('Cannot open "' + path + '": the shortcut points to a shortcut chain that is too deep.', 'Windows', ['OK']);
+                    return;
+                }
+                return s.open(link.target, depth + 1);
+            }
         }
         catch { }
         return;

@@ -264,6 +264,8 @@ function rasterize(svg) {
         img.onerror = () => reject(new Error('cursor image failed to load'));
         img.src = svgDataUrl(svg);
     }).catch(() => svg);
+    if (rasterCache.size >= 32)
+        rasterCache.delete(rasterCache.keys().next().value);
     rasterCache.set(svg, job);
     return job;
 }
@@ -331,7 +333,7 @@ export function setPointerBusy(on) {
 export function trailGhost(s) {
     const custom = (s.settings.get('cursorCustom', null) || {}).normal;
     if (custom?.url)
-        return `<img src="${custom.url}" style="max-width:40px;max-height:40px" alt="">`;
+        return `<img src="${String(custom.url).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}" style="max-width:40px;max-height:40px" alt="">`;
     return cursorArt('normal', resolveScheme(s)).svg;
 }
 
@@ -344,7 +346,7 @@ export function trailGhost(s) {
 
 const readAscii = (view, offset, length) => String.fromCharCode(...new Uint8Array(view.buffer, view.byteOffset + offset, length));
 const isPng = bytes => bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
-const isGif = bytes => readAscii({ buffer: bytes.buffer, byteOffset: bytes.byteOffset, byteLength: 3 }, 0, 3) === 'GIF';
+const isGif = bytes => bytes.byteLength >= 3 && readAscii({ buffer: bytes.buffer, byteOffset: bytes.byteOffset, byteLength: 3 }, 0, 3) === 'GIF';
 const isJpeg = bytes => bytes[0] === 0xff && bytes[1] === 0xd8;
 
 function imageSize(bytes) {

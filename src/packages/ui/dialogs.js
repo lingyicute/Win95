@@ -118,6 +118,10 @@ export function createDialogs(system) {
         const top = el('div', { class: 'file-dialog-top' }, field(save ? 'Save in:' : 'Look in:', dir), button('↰', () => { path = normalizePath(parentPath(path)); render(); }, { title: 'Up one level' }), button('▰', async () => {
             const n = await prompt('New folder name:', 'New Folder', 'New Folder', { owner: w });
             if (n) {
+                if (!n.trim() || /[\\/:*?"<>|]/.test(n) || n === '.' || n === '..') {
+                    await message('A folder name cannot contain any of the following characters:\n  \\ / : * ? " < > |', 'New Folder', ['OK'], { owner: w });
+                    return;
+                }
                 try {
                     system.fs.mkdir(path + '\\' + n);
                     render();
