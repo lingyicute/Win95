@@ -65,6 +65,21 @@ test('the cap is announced in Chinese like every other refusal', () => {
     assert.equal(translateText('The file name is not valid.', 'zh'), '文件名无效。');
 });
 
+test('a host name whose "extension" is enormous is clamped, not stretched', async () => {
+    storage();
+    const s = {
+        errors: [], messages: [], fs: new VirtualFileSystem(), clipboard: null,
+        ui: { error: e => s.errors.push(String(e?.message || e)), message: async (...a) => { s.messages.push(a); return 'OK'; }, prompt: async () => null, file: async () => null }
+    };
+    await s.fs.init();
+    const files = createFileActions(s);
+    await files.importFiles([{ name: `a.${'b'.repeat(300)}`, size: 4, type: 'text/plain', text: async () => 'data' }], 'C:\\My Documents');
+    assert.deepEqual(s.errors, [], 'the clamp does not hand the cap back to the file system as a rejection');
+    const kept = s.fs.list('C:\\My Documents').map(n => n.path.split('\\').pop()).find(n => n.startsWith('a.'));
+    assert.ok(kept, 'the file is there');
+    assert.ok(kept.length <= 255, `cut to ${kept.length} characters`);
+});
+
 test('a user name is data, so the dictionary walks past it', () => {
     const owner = dataText('Printers');
     assert.equal(owner.textContent, 'Printers', 'the name is the text of the cell');
