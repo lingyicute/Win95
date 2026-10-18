@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { register } from 'node:module';
+import { readFileSync } from 'node:fs';
 import { installDom } from './dom-shim.mjs';
 
 installDom();
 register('./win95-resolver.mjs', import.meta.url);
 const { nameError, VirtualFileSystem } = await import('../src/packages/core/filesystem.js');
 const { translateText } = await import('../src/packages/core/i18n.js');
+const { dataText, infoGrid } = await import('../src/packages/ui/dom.js');
 const { createFileActions } = await import('../src/packages/apps/explorer.js');
 
 const storage = () => {
@@ -61,4 +63,29 @@ test('importing a host file with an enormous name fits the cap and keeps its ext
 test('the cap is announced in Chinese like every other refusal', () => {
     assert.equal(translateText('A name can be at most 255 characters.', 'zh'), '名称最多 255 个字符。');
     assert.equal(translateText('The file name is not valid.', 'zh'), '文件名无效。');
+});
+
+test('a user name is data, so the dictionary walks past it', () => {
+    const owner = dataText('Printers');
+    assert.equal(owner.textContent, 'Printers', 'the name is the text of the cell');
+    assert.equal(owner.getAttribute('data-i18n-skip'), '', 'and it carries the marker installI18n honours');
+    const grid = infoGrid([['Registered to:', owner], ['Version', '1.0.0']]);
+    assert.equal(grid.children[1], owner, 'infoGrid uses a given node as the value cell');
+    assert.equal(grid.children[3].textContent, '1.0.0', 'plain values still become text cells');
+    assert.ok(!/data-i18n-skip/.test(grid.children[3].outerHTML ?? ''), 'and they are still translated');
+    /* The two ends of the contract live in different files, so pin them together. */
+    const i18nSource = readFileSync(new URL('../src/packages/core/i18n.js', import.meta.url), 'utf8');
+    assert.match(i18nSource, /SKIP_SELECTOR[\s\S]{0,300}'\[data-i18n-skip\]'/, 'the walker skips marked nodes');
+    /* The name itself stays translatable for the chrome that uses it as a label. */
+    assert.equal(translateText('Windows User', 'zh'), 'Windows 用户');
+});
+
+test('every owner default is the same name, in every corner of the desktop', () => {
+    const sites = ['../src/main.js', '../src/packages/apps/control-panel.js', '../src/packages/apps/multimedia.js', '../src/packages/games/apps.js', '../src/packages/apps/utilities.js'];
+    for (const rel of sites) {
+        const source = readFileSync(new URL(rel, import.meta.url), 'utf8');
+        assert.match(source, /get\('owner', 'Windows User'\)/, `${rel} falls back to the account name`);
+        assert.doesNotMatch(source, /get\('owner', 'You'\)/, `${rel} no longer defaults to a dictionary word`);
+    }
+    assert.equal(sites.length, 5, 'the About box, the property sheet, the inbox, the cards table and the registry view');
 });

@@ -458,7 +458,7 @@ export function inbox(s) {
         const to = el('input', { 'aria-label': 'To' }), subject = el('input', { 'aria-label': 'Subject' }), body = el('textarea', { class: 'notepad-editor', 'aria-label': 'Message body' });
         let saved = false;
         const store = target => {
-            messages.push({ id: uniqueId(), from: s.settings.get('owner', 'You'), to: to.value, subject: subject.value || '(No subject)', body: body.value, folder: target });
+            messages.push({ id: uniqueId(), from: s.settings.get('owner', 'Windows User'), to: to.value, subject: subject.value || '(No subject)', body: body.value, folder: target });
             saved = true;
             save();
             c.close();
@@ -471,7 +471,7 @@ export function inbox(s) {
                 return true;
             const r = await s.ui.message('Save this message in Drafts?', 'Microsoft Exchange', ['Yes', 'No', 'Cancel'], { owner: c });
             if (r === 'Yes') {
-                messages.push({ id: uniqueId(), from: s.settings.get('owner', 'You'), to: to.value, subject: subject.value || '(No subject)', body: body.value, folder: 'Drafts' });
+                messages.push({ id: uniqueId(), from: s.settings.get('owner', 'Windows User'), to: to.value, subject: subject.value || '(No subject)', body: body.value, folder: 'Drafts' });
                 save();
                 return true;
             }
