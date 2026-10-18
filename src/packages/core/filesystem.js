@@ -23,13 +23,17 @@ export const displayName = (node, hideExtensions = false) => {
         return short;
     return name.replace(/\.[^.]+$/, '');
 };
+/** The volume's own limit, in characters, on a single name. Nothing may grow past
+    it by appending to a name that already sits at it - see unique(). */
+export const NAME_LIMIT = 255;
+
 const key = p => normalizePath(p).toLowerCase();
 export function nameError(name) {
     const n = String(name ?? '');
     if (!n.trim())
         return 'Please type a name.';
-    if (n.trim().length > 255)
-        return 'A name can be at most 255 characters.';
+    if (n.trim().length > NAME_LIMIT)
+        return 'A name can be at most 255 characters.';      // 字面量：词典按整句匹配，别用模板拼
     if (/^\.+$/.test(n.trim()))
         return 'The file name is not valid.';
     if (/[<>:"/\\|?*\x00-\x1f]/.test(n))
@@ -147,16 +151,29 @@ export class VirtualFileSystem extends EventTarget {
         this.changed();
         return path;
     }
+    /** An unused sibling of `path`: 'Report.txt', 'Report (2).txt', … Callers use this
+     *  to dodge a name already in the folder - pasting again, importing again, sending a
+     *  second file of the same name to the Recycle Bin - so the answer has to be legal,
+     *  not merely new: at the cap the counter is carved out of the stem rather than
+     *  bolted on, since 'Report (2).txt' longer than the limit is refused on the spot. */
     unique(path, folder = this.get(path)?.type === 'folder') {
         path = normalizePath(path);
         if (!this.exists(path))
             return path;
-        const dot = path.lastIndexOf('.'), hasExt = !folder && dot > path.lastIndexOf('\\');
-        const name = hasExt ? path.slice(0, dot) : path, ext = hasExt ? path.slice(dot) : '';
-        let n = 2;
-        while (this.exists(`${name} (${n})${ext}`))
-            n++;
-        return `${name} (${n})${ext}`;
+        const dot = path.lastIndexOf('.'), cut = path.lastIndexOf('\\') + 1, hasExt = !folder && dot > cut;
+        const dir = path.slice(0, cut), stem = hasExt ? path.slice(cut, dot) : path.slice(cut), ext = hasExt ? path.slice(dot) : '';
+        for (let n = 2; ; n++) {
+            const counter = ` (${n})`, room = NAME_LIMIT - counter.length - ext.length;
+            let stemPart = stem, extPart = ext;
+            if (stem.length + ext.length + counter.length > NAME_LIMIT)
+                if (room > 0)
+                    stemPart = stem.slice(0, room);
+                else
+                    stemPart = stem.slice(0, NAME_LIMIT - counter.length), extPart = '';
+            const candidate = dir + stemPart + counter + extPart;
+            if (!this.exists(candidate))
+                return candidate;
+        }
     }
     transfer(from, to, copy = false) {
         from = normalizePath(from);
