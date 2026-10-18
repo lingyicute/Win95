@@ -63,7 +63,11 @@ It is built with **plain ES modules, HTML, and CSS** — no framework, no bundle
 
 - **🌏 English and Chinese UI**
   - The interface follows your browser language (Chinese browsers get 简体中文, everything else gets English). You can also pin a language in **Regional Settings**.
-  - Bundled fonts (W95FA, Roboto, and a CJK font) keep text consistent across devices.
+  - Bundled fonts (W95FA, Roboto and a CJK font, plus embedded symbol, serif and mono
+    subsets) draw the whole interface. Only areas that show your own writing - the
+    Notepad and Clipboard Viewer text areas, the command prompt, WordPad, the
+    Character Map and Paint's text tool - use system fonts. `FONT-LICENSES.md`
+    records where every bundled face comes from.
 
 - **💾 Your Files, Kept Locally**
   - The virtual `C:` drive is saved in your browser with **IndexedDB**, falling back to `localStorage` when needed (and to in-memory if neither is available).
