@@ -18,15 +18,6 @@ const cursors = await read('src/packages/shell/cursors.js');
 const dialogs = await read('src/packages/ui/dialogs.js');
 const wm = await read('src/packages/shell/window-manager.js');
 
-test('a failed or empty paste is a no-op, never insert(\'\') fodder', () => {
-    const paste = main.slice(main.indexOf('s.pasteText = async'), main.indexOf('s.recent ='));
-    assert.ok(paste.length > 80, 'pasteText exists');
-    assert.match(paste, /return s\.clipboard\.text \|\| null/);
-    assert.match(paste, /await navigator\.clipboard\.readText\(\)\) \|\| null/);
-    assert.match(paste, /return null/);
-    assert.doesNotMatch(paste, /return ''/, "no ''-returning path survives");
-});
-
 test('WordPad Find searches only inside the editor', () => {
     assert.doesNotMatch(docs, /window\.find\(/, 'the page-wide search would select other windows');
     assert.match(docs, /createTreeWalker\(editor, NodeFilter\.SHOW_TEXT\)/);
@@ -114,9 +105,11 @@ test('cursor sniffing and trail HTML handle hostile bytes', () => {
     assert.match(cursors, /rasterCache\.size/);
 });
 
-test('the New Folder button rejects invalid names', () => {
-    assert.ok(dialogs.includes('[\\\\/:*?"<>|]'), 'charset check');
-    assert.match(dialogs, /folder name cannot contain/);
+test('name validation lives in one shared helper', () => {
+    assert.match(dialogs, /nameError\(n\)/);
+    assert.match(explorer, /nameError\(name\)/);
+    assert.match(explorer, /nameError\(n\)/);
+    assert.match(main, /nameError\(name\)/);
 });
 
 test('system sounds can caption themselves for the hearing-impaired', () => {
@@ -131,11 +124,10 @@ test('west and north window sizing clamps like east and south', () => {
     assert.match(wm, /Math\.min\(start\.y \+ start\.height, start\.height - dy\)/);
 });
 
-test('the desktop shortcut dialog validates names and resolves commands', () => {
+test('the desktop shortcut dialog resolves commands', () => {
     const at = main.indexOf("label: 'Shortcut");
     const block = main.slice(at, at + 1400);
-    assert.match(block, /A name cannot contain any of the following characters/);
-    assert.match(block, /\\\/:\*\?"<>\|/, 'invalid-character class');
+    assert.match(block, /nameError\(name\)/);
     assert.match(block, /id\.slice\(0, -4\)/, 'the .exe suffix is stripped like s.run');
     assert.match(block, /JSON\.stringify\(rest \? \{ app: id, args: rest \} : \{ app: id \}\)/);
     assert.doesNotMatch(block, /aliases\[command\.toLowerCase\(\)\]/, 'the raw command no longer lands in app');

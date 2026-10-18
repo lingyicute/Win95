@@ -24,9 +24,22 @@ export const displayName = (node, hideExtensions = false) => {
     return name.replace(/\.[^.]+$/, '');
 };
 const key = p => normalizePath(p).toLowerCase();
+export function nameError(name) {
+    const n = String(name ?? '');
+    if (!n.trim())
+        return 'Please type a name.';
+    if (/^\.+$/.test(n.trim()))
+        return 'The file name is not valid.';
+    if (/[<>:"/\\|?*\x00-\x1f]/.test(n))
+        return 'A name cannot contain any of the following characters:\n  \\ / : * ? " < > |';
+    if (/[. ]$/.test(n))
+        return 'The file name is not valid.';
+    return null;
+}
 const validName = name => {
-    if (!name || /[<>:"/\\|?*\x00-\x1f]/.test(name) || /[. ]$/.test(name))
-        throw new Error('The file name is not valid.');
+    const problem = nameError(name);
+    if (problem)
+        throw new Error(problem);
     return name;
 };
 export class VirtualFileSystem extends EventTarget {

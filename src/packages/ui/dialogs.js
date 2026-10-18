@@ -1,7 +1,7 @@
 import { el, button, field, onDoubleActivate } from './dom.js';
 import { icon } from './icons.js';
 import { combo } from './select.js';
-import { baseName, parentPath, normalizePath } from '@win95/core/filesystem.js';
+import { baseName, parentPath, normalizePath, nameError } from '@win95/core/filesystem.js';
 export function createDialogs(system) {
     const modal = (title, options = {}) => {
         const owner = options.owner ?? system.wm.active;
@@ -118,8 +118,9 @@ export function createDialogs(system) {
         const top = el('div', { class: 'file-dialog-top' }, field(save ? 'Save in:' : 'Look in:', dir), button('↰', () => { path = normalizePath(parentPath(path)); render(); }, { title: 'Up one level' }), button('▰', async () => {
             const n = await prompt('New folder name:', 'New Folder', 'New Folder', { owner: w });
             if (n) {
-                if (!n.trim() || /[\\/:*?"<>|]/.test(n) || n === '.' || n === '..') {
-                    await message('A folder name cannot contain any of the following characters:\n  \\ / : * ? " < > |', 'New Folder', ['OK'], { owner: w });
+                const problem = nameError(n);
+                if (problem) {
+                    await message(problem, 'New Folder', ['OK'], { owner: w });
                     return;
                 }
                 try {

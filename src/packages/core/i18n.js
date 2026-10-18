@@ -332,7 +332,15 @@ const ZH = {
     'Sound - Sound Recorder': '声音 - 录音机', 'End': '末尾', 'How to Play': '游戏说明',
     'Import from Computer…': '从计算机导入…', 'Are you sure you want to:': '您确实要：',
     'No tableau or foundation move found. Try a free cell.': '未找到可移到纸牌列或回收堆的走法。试试空闲单元。',
-    'Click the stock to draw another card.': '单击牌堆再抽一张牌。'
+    'Click the stock to draw another card.': '单击牌堆再抽一张牌。',
+    'Please type a name.': '请输入名称。',
+    'The file name is not valid.': '文件名无效。',
+    'A name cannot contain any of the following characters:': '名称不能包含以下字符：',
+    'Startup sound': '启动声音',
+    'Shutdown sound': '关闭声音',
+    'Chime': '叮咚声',
+    'Error beep': '错误提示音',
+    'Click': '咔哒声'
 };
 
 const SUITS = { Spades: '黑桃', Hearts: '红桃', Diamonds: '方块', Clubs: '梅花' };
@@ -372,6 +380,7 @@ function applyPatterns(core) {
     if ((m = /^(.+): (\d+) \(\+(\d+)\)$/.exec(core))) return `${name(m[1])}：${m[2]}（+${m[3]}）`;
     if ((m = /^Cannot find '(.+)'\. Make sure the name is correct and try again\.$/.exec(core))) return `找不到“${m[1]}”。请确认名称正确后重试。`;
     if ((m = /^Cannot find "(.+)"$/.exec(core))) return `找不到“${m[1]}”`;
+    if ((m = /^Cannot open "(.+)": the shortcut points to a shortcut chain that is too deep\.$/.exec(core))) return `无法打开“${m[1]}”：快捷方式指向的快捷方式链过深。`;
     if ((m = /^Exploring - (.+)$/.exec(core))) return `正在浏览 - ${name(m[1])}`;
     if ((m = /^The text in the (.+) file has changed\.$/.exec(core))) return `“${m[1]}”文件中的文本已更改。`;
     if (/^Do you want to save the changes\?$/.test(core)) return '是否保存更改？';

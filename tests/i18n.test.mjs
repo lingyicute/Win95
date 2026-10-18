@@ -122,3 +122,20 @@ test('System Properties names each hardware line in both languages', async () =>
         assert.ok(source.includes(label), `${label} is the label the dictionary translates`);
     assert.doesNotMatch(source, /logical processors|'File storage:'|'System:'|'Computer:'|'Graphics:'/, 'the old labels are gone, so no dictionary entry is left behind');
 });
+
+test('name validation and sound captions translate to Chinese', () => {
+    for (const [en, zh] of [
+        ['Please type a name.', '请输入名称。'],
+        ['The file name is not valid.', '文件名无效。'],
+        ['A name cannot contain any of the following characters:', '名称不能包含以下字符：'],
+        ['Startup sound', '启动声音'],
+        ['Shutdown sound', '关闭声音'],
+        ['Chime', '叮咚声'],
+        ['Error beep', '错误提示音'],
+        ['Click', '咔哒声']
+    ])
+        assert.equal(translateText(en, 'zh'), zh, en);
+    assert.equal(
+        translateText('Cannot open "C:\\\\x.lnk": the shortcut points to a shortcut chain that is too deep.', 'zh'),
+        '无法打开“C:\\\\x.lnk”：快捷方式指向的快捷方式链过深。');
+});
