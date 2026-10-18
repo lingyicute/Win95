@@ -5,8 +5,9 @@ import { readSettingsValues } from './filesystem.js';
  * The display language is chosen once per launch: an explicit Regional
  * Settings choice ('ui-language') wins, otherwise the browser language decides
  * (Chinese browsers (zh-*) get the Chinese UI, everything else English).
- * Help text and document content are not translated yet; the translator below
- * only rewrites UI strings rendered into the DOM (and skips help/document/content regions).
+ * Help topics are translated where they are written (see apps/utilities.js): content is
+ * authored in both languages instead of being rewritten in place, so a topic can name a file
+ * without the UI dictionary renaming it. The walker below only handles UI strings.
  */
 export function detectLanguage(input) {
     return String(input || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
