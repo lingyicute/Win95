@@ -79,5 +79,5 @@ export function download(name, content, type = 'text/plain') {
         setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 export const fileInput = (accept, callback) => { const i = el('input', { type: 'file', accept, onchange: () => i.files?.[0] && callback(i.files[0]) }); i.click(); };
-export const formatSize = n => n < 1024 ? `${n} bytes` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`;
+export const formatSize = n => !Number.isFinite(n) ? '0 bytes' : n < 1024 ? `${n} bytes` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`;
 export const uniqueId = () => typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint32Array(4)), v => v.toString(16).padStart(8, '0')).join('');

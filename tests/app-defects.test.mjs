@@ -14,6 +14,8 @@ const mm = await read('src/packages/apps/multimedia.js');
 const apps = await read('src/packages/games/apps.js');
 const dos = await read('src/packages/apps/dos.js');
 const explorer = await read('src/packages/apps/explorer.js');
+const cursors = await read('src/packages/shell/cursors.js');
+const dialogs = await read('src/packages/ui/dialogs.js');
 
 test('a failed or empty paste is a no-op, never insert(\'\') fodder', () => {
     const paste = main.slice(main.indexOf('s.pasteText = async'), main.indexOf('s.recent ='));
@@ -96,4 +98,22 @@ test('Folder Options settings drive the folder views', () => {
     assert.match(main, /displayName\(n, folderOptions\.extensions === false\)/);
     assert.match(main, /folderOptions\.allFiles === false && n\.hidden/);
     assert.match(main, /startsWith\('applet-folder-options'\)/);
+});
+
+test('shortcut chains terminate and recent documents stay documents', () => {
+    assert.match(main, /s\.open = \(path, depth = 0\)/);
+    assert.match(main, /depth >= 8/);
+    assert.match(main, /return s\.open\(link\.target, depth \+ 1\)/);
+    assert.match(main, /ext !== 'lnk' && ext !== 'exe' && ext !== 'com'/);
+});
+
+test('cursor sniffing and trail HTML handle hostile bytes', () => {
+    assert.match(cursors, /bytes\.byteLength >= 3 && readAscii/);
+    assert.match(cursors, /replace\(\/&\/g, '&amp;'\)\.replace\(\/"\/g, '&quot;'\)/);
+    assert.match(cursors, /rasterCache\.size/);
+});
+
+test('the New Folder button rejects invalid names', () => {
+    assert.ok(dialogs.includes('[\\\\/:*?"<>|]'), 'charset check');
+    assert.match(dialogs, /folder name cannot contain/);
 });
