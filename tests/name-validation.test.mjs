@@ -18,9 +18,9 @@ const storage = () => {
 };
 
 test('the reserved Windows device names stay out of the volume', () => {
-    for (const name of ['CON', 'con', 'CON.txt', 'PRN', 'AUX', 'NUL', 'nul.log', 'COM1', 'LPT9'])
+    for (const name of ['CON', 'con', 'CON.txt', 'PRN', 'AUX', 'NUL', 'nul.log', 'CLOCK$', 'clock$.sys', 'COM1', 'LPT9'])
         assert.match(nameError(name), /not valid/, `${name} is a device, not a file name`);
-    for (const name of ['CONFIG.SYS', 'CONSOLE.TXT', 'NULL.DAT', 'AUTOEXEC.BAT', 'COM10.LOG', 'AUXILIARY', 'RECONNECT.BAT'])
+    for (const name of ['CONFIG.SYS', 'CONSOLE.TXT', 'NULL.DAT', 'AUTOEXEC.BAT', 'COM10.LOG', 'AUXILIARY', 'CLOCK.TXT', 'CLOCKS.DAT', 'RECONNECT.BAT'])
         assert.equal(nameError(name), null, `${name} only begins with a reserved stem`);
 });
 
@@ -28,6 +28,8 @@ test('the 255 character cap is a name limit, not a reason to lose the extension'
     assert.equal(nameError('x'.repeat(255)), null, 'the limit is inclusive');
     assert.equal(nameError('x'.repeat(256)), 'A name can be at most 255 characters.');
     assert.equal(nameError(`${'x'.repeat(300)}   `), 'A name can be at most 255 characters.', 'padding does not hide an over-long name');
+    assert.equal(nameError(' '.repeat(4) + 'x'.repeat(252)), 'A name can be at most 255 characters.', 'leading padding counts towards the name too');
+    assert.equal(nameError('  x.txt'), null, 'a short name may still begin with a space');
     assert.equal(nameError('   '), 'Please type a name.', 'a blank name is still a blank name');
 });
 
@@ -36,6 +38,7 @@ test('the volume itself refuses what the dialogs refuse', async () => {
     const fs = await new VirtualFileSystem().init();
     assert.throws(() => fs.write('C:\\My Documents\\CON', 'x'), /not valid/);
     assert.throws(() => fs.write('C:\\My Documents\\NUL.txt', 'x'), /not valid/);
+    assert.throws(() => fs.write('C:\\My Documents\\CLOCK$', 'x'), /not valid/);
     assert.throws(() => fs.mkdir('C:\\My Documents\\' + 'y'.repeat(300)), /at most 255/);
     fs.write('C:\\My Documents\\CONFIG.SYS', 'x');
     assert.ok(fs.exists('C:\\My Documents\\CONFIG.SYS'), 'a name that merely starts with CON is fine');
