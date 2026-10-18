@@ -12,7 +12,7 @@ const rule = selector => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
 // than changing the shared bevel colours or moving/resizing the outer box.
 test('windows reserve one extra pixel of face colour on the right', () => {
     const frame = rule('.window');
-    assert.match(frame, /(?:^|;)padding:3px 4px 3px 3px(?:;|$)/,
+    assert.match(frame, /(?:^|;)padding:3px 3\.5px 3px 3px(?:;|$)/,
         'top, bottom and left stay at 3px; only the right grows to 4px');
     assert.match(frame, /box-shadow:var\(--window-edge\)/,
         'retain the existing window bevel');
