@@ -349,7 +349,7 @@ export function solitaire(s, args = {}) {
 export async function hearts(s) {
     const { Hearts } = await import('./hearts-engine.js');
     let game = new Hearts(), timer = 0;
-    const names = [s.settings.get('owner', 'You'), 'West', 'North', 'East'];
+    const names = [s.settings.get('owner', 'Windows User'), 'West', 'North', 'East'];
     const w = s.wm.create({ title: 'Hearts', icon: 'hearts', width: 640, height: 460 });
     const board = el('div', { class: 'hearts-table' });
     w.body.append(board);

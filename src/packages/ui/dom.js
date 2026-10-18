@@ -69,7 +69,14 @@ export const button = (text, action, attrs = {}) => el('button', { text, onclick
  * text nodes directly to the grid container instead would leave them in a
  * single anonymous grid item, which stacks every label and value together.
  */
-export const infoGrid = rows => el('div', { class: 'info-grid' }, ...rows.flatMap(([label, value]) => [el('span', { text: String(label) }), el('span', { text: String(value ?? '') })]));
+/**
+ * A cell whose text is data - somebody's name, a file name - rather than a UI
+ * string. installI18n rewrites text nodes from the dictionary, so a user called
+ * Printers would be registered to 打印机; this marks the node as content and the
+ * translator walks past it.
+ */
+export const dataText = value => el('span', { text: String(value ?? ''), 'data-i18n-skip': '' });
+export const infoGrid = rows => el('div', { class: 'info-grid' }, ...rows.flatMap(([label, value]) => [el('span', { text: String(label) }), value?.tagName ? value : el('span', { text: String(value ?? '') })]));
 export const separator = () => el('div', { class: 'separator', role: 'separator' });
 export const field = (label, input) => el('label', { class: 'field' }, el('span', { text: label }), input);
 export function download(name, content, type = 'text/plain') {

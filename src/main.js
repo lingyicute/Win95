@@ -5,7 +5,7 @@ import { WindowManager } from './packages/shell/window-manager.js';
 import { pointerTrails } from './packages/shell/pointer-trails.js';
 import { revealDesktopLayers } from './packages/shell/desktop-reveal.js';
 import { installCursors, setPointerBusy } from './packages/shell/cursors.js';
-import { el, button, field, onDoubleActivate, setDoubleClickDelay } from './packages/ui/dom.js';
+import { el, button, dataText, field, onDoubleActivate, setDoubleClickDelay } from './packages/ui/dom.js';
 import { icon, fileIcon } from './packages/ui/icons.js';
 import { popup, closeMenus } from './packages/ui/menu.js';
 import { createDialogs } from './packages/ui/dialogs.js';
@@ -279,7 +279,7 @@ s.run = command => {
     const path = rest.replace(/^"|"$/g, '');
     return s.launch(id, path ? { path, tree: id === 'explorer' } : id === 'explorer' ? { path: 'C:\\', tree: true } : {});
 };
-s.about = (name = 'Windows 95', ic = 'windows') => { const w = s.ui.modal('About ' + name, { width: 412, height: 280, icon: ic }); w.body.append(el('div', { class: 'system-logo', style: { marginBottom: '4px' } }, icon(ic, 48), el('div', {}, el('strong', { text: 'Microsoft', style: { fontSize: '23px' } }), el('p', { text: name, style: { fontSize: '20px' } }))), el('div', { class: 'separator' }), el('div', { style: { lineHeight: '1.6', paddingLeft: '64px' } }, 'Pure Javascript recreation of Windows 95 desktop experience', el('br'), 'Version 1.0.0', el('br'), 'Registered to: ', s.settings.get('owner', 'You')), el('div', { class: 'dialog-buttons' }, button('System Info…', () => s.launch('system')), button('OK', () => w.close(), { class: 'default-button' }))); return w; };
+s.about = (name = 'Windows 95', ic = 'windows') => { const w = s.ui.modal('About ' + name, { width: 412, height: 280, icon: ic }); w.body.append(el('div', { class: 'system-logo', style: { marginBottom: '4px' } }, icon(ic, 48), el('div', {}, el('strong', { text: 'Microsoft', style: { fontSize: '23px' } }), el('p', { text: name, style: { fontSize: '20px' } }))), el('div', { class: 'separator' }), el('div', { style: { lineHeight: '1.6', paddingLeft: '64px' } }, 'Pure Javascript recreation of Windows 95 desktop experience', el('br'), 'Version 1.0.0', el('br'), 'Registered to: ', dataText(s.settings.get('owner', 'Windows User'))), el('div', { class: 'dialog-buttons' }, button('System Info…', () => s.launch('system')), button('OK', () => w.close(), { class: 'default-button' }))); return w; };
 function welcome() { const w = s.wm.create({ title: 'Welcome to Windows 95', icon: 'windows', width: 505, height: 336, x: Math.min(innerWidth - 515, Math.max(180, innerWidth * .46)), y: Math.min(innerHeight - 375, Math.max(190, innerHeight * .35)), resizable: false }); w.body.classList.add('welcome-body'); const side = el('div', { class: 'welcome-side' }, icon('windows', 64), el('div', { class: 'welcome-wordmark' }, el('small', { text: 'Microsoft' }), el('strong', { text: 'Windows 95' }))); const main = el('div', { class: 'welcome-main' }, el('h1', {}, 'Where do you want ', el('br'), 'to go ', el('span', { text: 'today?' })), el('p', { text: 'Welcome to Windows 95. There’s a whole new world waiting on your desktop.' }), el('div', { class: 'welcome-actions' }, button('', () => s.launch('help'), { title: 'Explore Windows' }), button('', () => s.launch('documents'), { title: 'Open My Documents' })), el('div', { class: 'welcome-footer' }, el('label', { class: 'checkbox-label' }, el('input', { type: 'checkbox', checked: s.settings.get('showWelcome', true), onchange: e => s.settings.set('showWelcome', e.target.checked) }), 'Show this next time'), button('Close', () => w.close(), { class: 'default-button' }))); main.querySelectorAll('.welcome-actions button')[0].append(icon('help', 16), 'Take a tour of Windows'); main.querySelectorAll('.welcome-actions button')[1].append(icon('folder', 16), 'Open your documents'); w.body.append(side, main); return w; }
 register('welcome', 'Welcome to Windows 95', 'windows', welcome);
 function runDialog() {
@@ -359,7 +359,7 @@ s.shutdown = () => {
 function showLoginDialog({ startup = false } = {}) {
     const login = s.ui.modal('Enter Windows Password', { width: 470, height: 250, icon: 'login', closable: false });
     let authenticated = false, resetting = false;
-    const user = el('input', { value: s.settings.get('owner', 'You'), readOnly: true, 'aria-label': 'User name', autocomplete: 'username' });
+    const user = el('input', { value: s.settings.get('owner', 'Windows User'), readOnly: true, 'aria-label': 'User name', autocomplete: 'username' });
     const password = el('input', { type: 'password', 'aria-label': 'Password', autocomplete: 'current-password' });
     const resetData = async () => {
         const answer = await s.ui.message(el('strong', { text: 'Resetting Windows will erase all files and settings. Continue?' }), 'Reset Windows', ['Yes', 'No'], { owner: login, icon: 'help' });
