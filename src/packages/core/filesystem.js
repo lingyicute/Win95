@@ -216,7 +216,7 @@ export class VirtualFileSystem extends EventTarget {
     remove(path, permanent = false) {
         const node = this.get(path);
         if (!node)
-            throw new Error('File not found.');
+            throw new Error('This item was already moved with its parent folder.');
         path = node.path;
         if (path.length <= 3 || ['c:\\recycled', 'c:\\windows'].includes(key(path)))
             throw new Error('This system folder cannot be deleted.');
