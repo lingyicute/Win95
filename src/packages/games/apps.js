@@ -25,7 +25,10 @@ function cardNode(card, { selected = false, onClick, onDoubleClick, top = 0 } = 
 }
 export function minesweeper(s) {
     let rows = 8, cols = 8, mines = 10, game = new Minesweeper(rows, cols, mines), startTime = 0, seconds = 0, best = s.settings.get('minesBest', {}), timer, pressed = false;
-    const w = s.wm.create({ title: 'Minesweeper', icon: 'minesweeper', width: 212, height: 287, resizable: false, allowOverflow: true });
+    // 20px a cell plus the 47px of chrome around it (window padding, .mines-body and .mines-frame padding and bevels,
+    // and the board's border — summed from styles.css by tests/mines-window.test.mjs). A window any wider leaves a
+    // grey strip beside the field, and only on the right: .mines-frame is an inline-block hugging the body's left edge.
+    const w = s.wm.create({ title: 'Minesweeper', icon: 'minesweeper', width: cols * 20 + 47, height: rows * 20 + 138, resizable: false, allowOverflow: true });
     w.element.classList.add('mines-window');
     w.body.classList.add('mines-body');
     const frame = el('div', { class: 'mines-frame' }), count = el('div', { class: 'mines-counter', role: 'img' }), time = el('div', { class: 'mines-counter', role: 'img' }), face = button('', () => reset(), { class: 'mines-face', 'aria-label': 'New game' }), header = el('div', { class: 'mines-header' }, count, face, time), board = el('div', { class: 'mines-board', 'aria-label': 'Minesweeper board' });
@@ -114,7 +117,7 @@ export function minesweeper(s) {
         finish();
         render();
     };
-    const reset = (r = rows, c = cols, m = mines) => { touchFlags.cancel(); clearInterval(timer); rows = r; cols = c; mines = m; game = new Minesweeper(r, c, m); seconds = 0; startTime = 0; pressed = false; ended = false; w.rect.width = Math.max(212, c * 20 + 46); w.rect.height = r * 20 + 138; s.wm.layout(w); render(); };
+    const reset = (r = rows, c = cols, m = mines) => { touchFlags.cancel(); clearInterval(timer); rows = r; cols = c; mines = m; game = new Minesweeper(r, c, m); seconds = 0; startTime = 0; pressed = false; ended = false; w.rect.width = c * 20 + 47; w.rect.height = r * 20 + 138; s.wm.layout(w); render(); };
     w.setMenu(menuBar([{ label: 'Game', items: () => [{ label: 'New', shortcut: 'F2', action: () => reset() }, null, { label: 'Beginner', checked: rows === 8, action: () => reset(8, 8, 10) }, { label: 'Intermediate', checked: rows === 16 && cols === 16, action: () => reset(16, 16, 40) }, { label: 'Expert', checked: cols === 30, action: () => reset(16, 30, 99) }, { label: 'Custom…', action: async () => {
                         const r = await s.ui.prompt('Rows, columns, mines:', `${rows}, ${cols}, ${mines}`, 'Custom Field', { owner: w });
                         if (r) {
