@@ -32,7 +32,7 @@ export function nameError(name) {
     const n = String(name ?? '');
     if (!n.trim())
         return 'Please type a name.';
-    if (n.trim().length > NAME_LIMIT)
+    if (n.length > NAME_LIMIT)
         return 'A name can be at most 255 characters.';      // 字面量：词典按整句匹配，别用模板拼
     if (/^\.+$/.test(n.trim()))
         return 'The file name is not valid.';
@@ -40,7 +40,7 @@ export function nameError(name) {
         return 'A name cannot contain any of the following characters:\n  \\ / : * ? " < > |';
     /* Reserved device names stay reserved even with an extension: Windows 95
        would open CON as the console whatever the caller meant. */
-    if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$/i.test(n.trim()))
+    if (/^(CON|PRN|AUX|CLOCK\$|NUL|COM[1-9]|LPT[1-9])(\..*)?$/i.test(n.trim()))
         return 'The file name is not valid.';
     if (/[. ]$/.test(n))
         return 'The file name is not valid.';
