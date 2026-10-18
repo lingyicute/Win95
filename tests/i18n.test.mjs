@@ -139,3 +139,43 @@ test('name validation and sound captions translate to Chinese', () => {
         translateText('Cannot open "C:\\\\x.lnk": the shortcut points to a shortcut chain that is too deep.', 'zh'),
         '无法打开“C:\\\\x.lnk”：快捷方式指向的快捷方式链过深。');
 });
+
+/**
+ * The other direction of the same mistake this file guards: a label that is
+ * rendered into the DOM but has no dictionary entry shows English to a Chinese
+ * desktop, and no test notices. Labels built as 'Head' + value are exempt - the
+ * dynamic patterns in applyPatterns own those.
+ */
+test('labels shown by dialogs and sliders are all translatable', async () => {
+    const shapes = [
+        [/s\.ui\.prompt\(\s*'([^'\\]+)'/g, 's.ui.prompt'],
+        [/field\(\s*'([^'\\]+)'/g, 'field'],
+        [/trackbar\(\{\s*label:\s*'([^'\\]+)'/g, 'trackbar label'],
+        [/s\.ui\.message\(\s*'([^'\\]+)'/g, 's.ui.message']
+    ];
+    const walk = async dir => {
+        const found = [];
+        for (const entry of await readdir(dir, { withFileTypes: true })) {
+            const p = path.join(dir, entry.name);
+            if (entry.isDirectory())
+                found.push(...await walk(p));
+            else if (p.endsWith('.js'))
+                found.push(p);
+        }
+        return found;
+    };
+    const missing = [];
+    for (const file of await walk(path.join(root, 'src'))) {
+        const source = await readFile(file, 'utf8');
+        for (const [pattern, kind] of shapes)
+            for (const match of source.matchAll(pattern)) {
+                const label = match[1];
+                if (translateText(label, 'zh') !== label)
+                    continue;
+                if (source.slice(match.index + match[0].length, match.index + match[0].length + 8).trimStart().startsWith('+'))
+                    continue;
+                missing.push(`${kind} ${JSON.stringify(label)} in ${path.relative(root, file)}`);
+            }
+    }
+    assert.deepEqual(missing, [], 'a rendered label with no dictionary entry reads as English in Chinese:\n' + missing.join('\n'));
+});
