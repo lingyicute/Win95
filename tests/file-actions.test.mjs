@@ -87,3 +87,33 @@ test('importing keeps going past a failing file and mangles hostile host names',
     assert.equal(s.errors.length, 1);
     assert.match(s.errors[0], /boom/);
 });
+
+test('new folder, new text and rename share one name validator', async () => {
+    storage();
+    const s = makeSystem();
+    await s.fs.init();
+    const files = createFileActions(s);
+
+    s.ui.prompt = async () => '..\\hacked';
+    await files.newFolder('C:\\My Documents');
+    assert.equal(s.fs.exists('C:\\hacked'), false, 'a .. name cannot climb out of the folder');
+    assert.match(s.messages.at(-1)[0], /cannot contain/, 'the charset message explains the refusal');
+
+    s.ui.prompt = async () => '   ';
+    await files.newFolder('C:\\My Documents');
+    assert.match(s.messages.at(-1)[0], /^Please type a name\.$/, 'a blank name gets its own message');
+
+    s.ui.prompt = async () => 'Sub';
+    await files.newFolder('C:\\My Documents');
+    assert.equal(s.fs.exists('C:\\My Documents\\Sub'), true, 'a good name still creates the folder');
+
+    s.fs.write('C:\\My Documents\\a.txt', 'x');
+    s.ui.prompt = async () => '...';
+    await files.rename('C:\\My Documents\\a.txt');
+    assert.match(s.messages.at(-1)[0], /^The file name is not valid\.$/, 'a dot run is refused with the right words');
+    assert.equal(s.fs.exists('C:\\My Documents\\a.txt'), true, 'and the file keeps its old name');
+
+    s.ui.prompt = async () => '..\\evil.txt';
+    await files.newText('C:\\My Documents');
+    assert.equal(s.fs.exists('C:\\evil.txt'), false, 'new text documents get the same guard');
+});

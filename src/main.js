@@ -1,5 +1,6 @@
-import { VirtualFileSystem, Settings, baseName, parentPath, displayName } from './packages/core/filesystem.js';
-import { installI18n, uiLocale } from './packages/core/i18n.js';
+import { VirtualFileSystem, Settings, baseName, parentPath, displayName, nameError } from './packages/core/filesystem.js';
+import { installI18n, translateText, uiLocale } from './packages/core/i18n.js';
+import { installClipboard } from './packages/core/clipboard.js';
 import { WindowManager } from './packages/shell/window-manager.js';
 import { pointerTrails } from './packages/shell/pointer-trails.js';
 import { revealDesktopLayers } from './packages/shell/desktop-reveal.js';
@@ -66,7 +67,7 @@ const soundCaption = label => {
         box = el('div', { class: 'sound-caption', style: { position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: '36px', zIndex: '200', background: '#c0c0c0', border: '2px solid', borderColor: '#fff #000 #000 #fff', padding: '3px 12px', font: '12px var(--ui-font)' } });
         document.body.append(box);
     }
-    box.textContent = '[' + label + ']';
+    box.textContent = '[' + translateText(label) + ']';
     box.hidden = false;
     clearTimeout(soundCaptionTimer);
     soundCaptionTimer = setTimeout(() => { box.hidden = true; }, 2000);
@@ -142,19 +143,7 @@ const startBoot = () => {
     }, MIN_BOOT_MS);
 };
 bootEl?.addEventListener('click', startBoot);
-s.copyText = text => { s.clipboard = { type: 'text', text: String(text) }; navigator.clipboard?.writeText(String(text)).catch(() => { }); };
-s.pasteText = async () => {
-    /* An empty result must come back as null: insert('') deletes the
-       selection, so a failed or empty paste must be a no-op, not a wipe. */
-    if (s.clipboard?.type === 'text')
-        return s.clipboard.text || null;
-    try {
-        return (await navigator.clipboard.readText()) || null;
-    }
-    catch {
-        return null;
-    }
-};
+installClipboard(s);
 setDoubleClickDelay(() => s.settings.get('doubleClickMs', 500));
 s.recent = path => { const r = s.settings.get('recentDocuments', []).filter(x => x !== path); r.unshift(path); s.settings.set('recentDocuments', r.slice(0, 12)); };
 s.beep = (kind = 'click') => {
@@ -567,8 +556,9 @@ desktop.oncontextmenu = e => {
                         const name = await s.ui.prompt('Select a name for the shortcut:', command, 'Create Shortcut');
                         if (!name)
                             return;
-                        if (!name.trim() || /[\\/:*?"<>|]/.test(name) || name === '.' || name === '..') {
-                            s.ui.message('A name cannot contain any of the following characters:\n  \\ / : * ? " < > |', 'Create Shortcut', ['OK']);
+                        const problem = nameError(name);
+                        if (problem) {
+                            s.ui.message(problem, 'Create Shortcut', ['OK']);
                             return;
                         }
                         const m = command.trim().match(/^(?:"([^"]+)"|(\S+))(?:\s+(.*))?$/);

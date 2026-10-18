@@ -345,9 +345,9 @@ export function trailGhost(s) {
  * ------------------------------------------------------------------------- */
 
 const readAscii = (view, offset, length) => String.fromCharCode(...new Uint8Array(view.buffer, view.byteOffset + offset, length));
-const isPng = bytes => bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+const isPng = bytes => bytes.byteLength >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
 const isGif = bytes => bytes.byteLength >= 3 && readAscii({ buffer: bytes.buffer, byteOffset: bytes.byteOffset, byteLength: 3 }, 0, 3) === 'GIF';
-const isJpeg = bytes => bytes[0] === 0xff && bytes[1] === 0xd8;
+const isJpeg = bytes => bytes.byteLength >= 2 && bytes[0] === 0xff && bytes[1] === 0xd8;
 
 function imageSize(bytes) {
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);

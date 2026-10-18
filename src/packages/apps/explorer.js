@@ -1,7 +1,7 @@
 import { el, button, download, fileInput, formatSize, infoGrid, onDoubleActivate } from '@win95/ui/dom.js';
 import { icon, fileIcon } from '@win95/ui/icons.js';
 import { menuBar, popup } from '@win95/ui/menu.js';
-import { normalizePath, parentPath, baseName, displayName } from '@win95/core/filesystem.js';
+import { normalizePath, parentPath, baseName, displayName, nameError } from '@win95/core/filesystem.js';
 export function createFileActions(s) {
     const properties = (paths) => {
         if (!paths?.length)
@@ -27,13 +27,19 @@ export function createFileActions(s) {
     };
     const rename = async (path) => {
         const n = await s.ui.prompt('Type a new name:', baseName(path), 'Rename');
-        if (n && n !== baseName(path))
+        if (n && n !== baseName(path)) {
+            const problem = nameError(n);
+            if (problem) {
+                s.ui.message(problem, 'Rename', ['OK']);
+                return;
+            }
             try {
                 s.fs.rename(path, n);
             }
             catch (e) {
                 s.ui.error(e);
             }
+        }
     };
     const remove = async (paths, permanent = false) => {
         if (!paths.length)
@@ -72,23 +78,35 @@ export function createFileActions(s) {
     };
     const newFolder = async (path) => {
         const name = await s.ui.prompt('Name:', 'New Folder', 'New Folder');
-        if (name)
+        if (name) {
+            const problem = nameError(name);
+            if (problem) {
+                s.ui.message(problem, 'New Folder', ['OK']);
+                return;
+            }
             try {
                 s.fs.mkdir(path + '\\' + name);
             }
             catch (e) {
                 s.ui.error(e);
             }
+        }
     };
     const newText = async (path) => {
         const name = await s.ui.prompt('Name:', 'New Text Document.txt', 'New Text Document');
-        if (name)
+        if (name) {
+            const problem = nameError(name);
+            if (problem) {
+                s.ui.message(problem, 'New Text Document', ['OK']);
+                return;
+            }
             try {
                 s.fs.write(path + '\\' + name, '');
             }
             catch (e) {
                 s.ui.error(e);
             }
+        }
     };
     const importFiles = async (files, path) => {
         for (const f of files) {
