@@ -210,11 +210,11 @@ export class WindowManager extends EventTarget {
                 if (direction.includes('s'))
                     height = Math.max(w.options.minHeight, Math.min(innerHeight - 30 - y, height + dy));
                 if (direction.includes('w')) {
-                    width = Math.max(w.options.minWidth, start.width - dx);
+                    width = Math.max(w.options.minWidth, Math.min(start.x + start.width, start.width - dx));
                     x = start.x + start.width - width;
                 }
                 if (direction.includes('n')) {
-                    height = Math.max(w.options.minHeight, start.height - dy);
+                    height = Math.max(w.options.minHeight, Math.min(start.y + start.height, start.height - dy));
                     y = start.y + start.height - height;
                 }
             }
