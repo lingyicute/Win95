@@ -334,6 +334,7 @@ const ZH = {
     'No tableau or foundation move found. Try a free cell.': '未找到可移到纸牌列或回收堆的走法。试试空闲单元。',
     'Click the stock to draw another card.': '单击牌堆再抽一张牌。',
     'Please type a name.': '请输入名称。',
+    'A name can be at most 255 characters.': '名称最多 255 个字符。',
     'The file name is not valid.': '文件名无效。',
     'A name cannot contain any of the following characters:': '名称不能包含以下字符：',
     'Startup sound': '启动声音',

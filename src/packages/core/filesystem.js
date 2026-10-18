@@ -28,10 +28,16 @@ export function nameError(name) {
     const n = String(name ?? '');
     if (!n.trim())
         return 'Please type a name.';
+    if (n.trim().length > 255)
+        return 'A name can be at most 255 characters.';
     if (/^\.+$/.test(n.trim()))
         return 'The file name is not valid.';
     if (/[<>:"/\\|?*\x00-\x1f]/.test(n))
         return 'A name cannot contain any of the following characters:\n  \\ / : * ? " < > |';
+    /* Reserved device names stay reserved even with an extension: Windows 95
+       would open CON as the console whatever the caller meant. */
+    if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$/i.test(n.trim()))
+        return 'The file name is not valid.';
     if (/[. ]$/.test(n))
         return 'The file name is not valid.';
     return null;
