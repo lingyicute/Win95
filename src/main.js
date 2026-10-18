@@ -55,7 +55,24 @@ s.graphics = new DesktopGraphics(s);
 s.sounds = { startup: new Audio('./assets/win95-startup.mp3'), shutdown: new Audio('./assets/win95-shutdown.mp3') };
 for (const audio of Object.values(s.sounds))
     audio.preload = 'auto';
+let soundCaptionTimer = 0;
+const soundCaption = label => {
+    /* ShowSounds: a text caption describes each system sound for users who
+       cannot hear it. The caption shows even while the speakers are muted. */
+    if (!s.settings.get('soundCaptions', false))
+        return;
+    let box = document.querySelector('.sound-caption');
+    if (!box) {
+        box = el('div', { class: 'sound-caption', style: { position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: '36px', zIndex: '200', background: '#c0c0c0', border: '2px solid', borderColor: '#fff #000 #000 #fff', padding: '3px 12px', font: '12px var(--ui-font)' } });
+        document.body.append(box);
+    }
+    box.textContent = '[' + label + ']';
+    box.hidden = false;
+    clearTimeout(soundCaptionTimer);
+    soundCaptionTimer = setTimeout(() => { box.hidden = true; }, 2000);
+};
 s.playSound = name => {
+    soundCaption(name === 'shutdown' ? 'Shutdown sound' : 'Startup sound');
     if (s.settings.get('muted', false))
         return null;
     const audio = s.sounds[name];
@@ -141,12 +158,13 @@ s.pasteText = async () => {
 setDoubleClickDelay(() => s.settings.get('doubleClickMs', 500));
 s.recent = path => { const r = s.settings.get('recentDocuments', []).filter(x => x !== path); r.unshift(path); s.settings.set('recentDocuments', r.slice(0, 12)); };
 s.beep = (kind = 'click') => {
-    if (s.settings.get('muted', false))
-        return;
     if (kind === 'startup' || kind === 'shutdown') {
         s.playSound(kind);
         return;
     }
+    soundCaption(kind === 'win' ? 'Chime' : kind === 'error' ? 'Error beep' : 'Click');
+    if (s.settings.get('muted', false))
+        return;
     try {
         if (!s.audio)
             s.audio = new (window.AudioContext || window.webkitAudioContext)();
@@ -272,7 +290,7 @@ s.run = command => {
     const path = rest.replace(/^"|"$/g, '');
     return s.launch(id, path ? { path, tree: id === 'explorer' } : id === 'explorer' ? { path: 'C:\\', tree: true } : {});
 };
-s.about = (name = 'Windows 95', ic = 'windows') => { const w = s.ui.modal('About ' + name, { width: 412, height: 280, icon: ic }); w.body.append(el('div', { class: 'system-logo', style: { marginBottom: '4px' } }, icon(ic, 48), el('div', {}, el('strong', { text: 'Microsoft', style: { fontSize: '23px' } }), el('p', { text: name, style: { fontSize: '20px' } }))), el('div', { class: 'separator' }), el('div', { style: { lineHeight: '1.6', paddingLeft: '64px' } }, 'Pure Javascript recreation of Windows 95 desktop experience', el('br'), 'Version 1.0.0', el('br'), 'Registered to: ', s.settings.get('owner', 'Windows User')), el('div', { class: 'dialog-buttons' }, button('System Info…', () => s.launch('system')), button('OK', () => w.close(), { class: 'default-button' }))); return w; };
+s.about = (name = 'Windows 95', ic = 'windows') => { const w = s.ui.modal('About ' + name, { width: 412, height: 280, icon: ic }); w.body.append(el('div', { class: 'system-logo', style: { marginBottom: '4px' } }, icon(ic, 48), el('div', {}, el('strong', { text: 'Microsoft', style: { fontSize: '23px' } }), el('p', { text: name, style: { fontSize: '20px' } }))), el('div', { class: 'separator' }), el('div', { style: { lineHeight: '1.6', paddingLeft: '64px' } }, 'Pure Javascript recreation of Windows 95 desktop experience', el('br'), 'Version 1.0.0', el('br'), 'Registered to: ', s.settings.get('owner', 'You')), el('div', { class: 'dialog-buttons' }, button('System Info…', () => s.launch('system')), button('OK', () => w.close(), { class: 'default-button' }))); return w; };
 function welcome() { const w = s.wm.create({ title: 'Welcome to Windows 95', icon: 'windows', width: 505, height: 336, x: Math.min(innerWidth - 515, Math.max(180, innerWidth * .46)), y: Math.min(innerHeight - 375, Math.max(190, innerHeight * .35)), resizable: false }); w.body.classList.add('welcome-body'); const side = el('div', { class: 'welcome-side' }, icon('windows', 64), el('div', { class: 'welcome-wordmark' }, el('small', { text: 'Microsoft' }), el('strong', { text: 'Windows 95' }))); const main = el('div', { class: 'welcome-main' }, el('h1', {}, 'Where do you want ', el('br'), 'to go ', el('span', { text: 'today?' })), el('p', { text: 'Welcome to Windows 95. There’s a whole new world waiting on your desktop.' }), el('div', { class: 'welcome-actions' }, button('', () => s.launch('help'), { title: 'Explore Windows' }), button('', () => s.launch('documents'), { title: 'Open My Documents' })), el('div', { class: 'welcome-footer' }, el('label', { class: 'checkbox-label' }, el('input', { type: 'checkbox', checked: s.settings.get('showWelcome', true), onchange: e => s.settings.set('showWelcome', e.target.checked) }), 'Show this next time'), button('Close', () => w.close(), { class: 'default-button' }))); main.querySelectorAll('.welcome-actions button')[0].append(icon('help', 16), 'Take a tour of Windows'); main.querySelectorAll('.welcome-actions button')[1].append(icon('folder', 16), 'Open your documents'); w.body.append(side, main); return w; }
 register('welcome', 'Welcome to Windows 95', 'windows', welcome);
 function runDialog() {
@@ -352,7 +370,7 @@ s.shutdown = () => {
 function showLoginDialog({ startup = false } = {}) {
     const login = s.ui.modal('Enter Windows Password', { width: 470, height: 250, icon: 'login', closable: false });
     let authenticated = false, resetting = false;
-    const user = el('input', { value: s.settings.get('owner', 'Windows User'), readOnly: true, 'aria-label': 'User name', autocomplete: 'username' });
+    const user = el('input', { value: s.settings.get('owner', 'You'), readOnly: true, 'aria-label': 'User name', autocomplete: 'username' });
     const password = el('input', { type: 'password', 'aria-label': 'Password', autocomplete: 'current-password' });
     const resetData = async () => {
         const answer = await s.ui.message(el('strong', { text: 'Resetting Windows will erase all files and settings. Continue?' }), 'Reset Windows', ['Yes', 'No'], { owner: login, icon: 'help' });
@@ -547,8 +565,19 @@ desktop.oncontextmenu = e => {
                         if (!command)
                             return;
                         const name = await s.ui.prompt('Select a name for the shortcut:', command, 'Create Shortcut');
-                        if (name)
-                            s.fs.write(s.fs.unique('C:\\Windows\\Desktop\\' + name + '.lnk'), JSON.stringify({ app: aliases[command.toLowerCase()] || command.toLowerCase() }), 'application/x-win95-shortcut');
+                        if (!name)
+                            return;
+                        if (!name.trim() || /[\\/:*?"<>|]/.test(name) || name === '.' || name === '..') {
+                            s.ui.message('A name cannot contain any of the following characters:\n  \\ / : * ? " < > |', 'Create Shortcut', ['OK']);
+                            return;
+                        }
+                        const m = command.trim().match(/^(?:"([^"]+)"|(\S+))(?:\s+(.*))?$/);
+                        let id = (m?.[1] || m?.[2] || '').toLowerCase();
+                        if (id.endsWith('.exe'))
+                            id = id.slice(0, -4);
+                        id = aliases[id] || id;
+                        const rest = m?.[3] ? { path: m[3].replace(/^"|"$/g, '') } : null;
+                        s.fs.write(s.fs.unique('C:\\Windows\\Desktop\\' + name + '.lnk'), JSON.stringify(rest ? { app: id, args: rest } : { app: id }), 'application/x-win95-shortcut');
                     } }, { label: 'Text Document', icon: 'notepad', action: () => s.files.newText('C:\\Windows\\Desktop') }] }, null, { label: 'Properties', action: () => s.launch('display') }], e.clientX, e.clientY);
 };
 desktop.ondragover = e => {

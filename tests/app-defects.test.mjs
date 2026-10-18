@@ -16,6 +16,7 @@ const dos = await read('src/packages/apps/dos.js');
 const explorer = await read('src/packages/apps/explorer.js');
 const cursors = await read('src/packages/shell/cursors.js');
 const dialogs = await read('src/packages/ui/dialogs.js');
+const wm = await read('src/packages/shell/window-manager.js');
 
 test('a failed or empty paste is a no-op, never insert(\'\') fodder', () => {
     const paste = main.slice(main.indexOf('s.pasteText = async'), main.indexOf('s.recent ='));
@@ -116,4 +117,26 @@ test('cursor sniffing and trail HTML handle hostile bytes', () => {
 test('the New Folder button rejects invalid names', () => {
     assert.ok(dialogs.includes('[\\\\/:*?"<>|]'), 'charset check');
     assert.match(dialogs, /folder name cannot contain/);
+});
+
+test('system sounds can caption themselves for the hearing-impaired', () => {
+    assert.match(main, /settings\.get\('soundCaptions', false\)/);
+    assert.match(main, /class: 'sound-caption'/);
+    assert.match(main, /soundCaption\(name === 'shutdown' \? 'Shutdown sound' : 'Startup sound'\)/);
+    assert.match(main, /soundCaption\(kind === 'win' \? 'Chime' : kind === 'error' \? 'Error beep' : 'Click'\)/);
+});
+
+test('west and north window sizing clamps like east and south', () => {
+    assert.match(wm, /Math\.min\(start\.x \+ start\.width, start\.width - dx\)/);
+    assert.match(wm, /Math\.min\(start\.y \+ start\.height, start\.height - dy\)/);
+});
+
+test('the desktop shortcut dialog validates names and resolves commands', () => {
+    const at = main.indexOf("label: 'Shortcut");
+    const block = main.slice(at, at + 1400);
+    assert.match(block, /A name cannot contain any of the following characters/);
+    assert.match(block, /\\\/:\*\?"<>\|/, 'invalid-character class');
+    assert.match(block, /id\.slice\(0, -4\)/, 'the .exe suffix is stripped like s.run');
+    assert.match(block, /JSON\.stringify\(rest \? \{ app: id, args: rest \} : \{ app: id \}\)/);
+    assert.doesNotMatch(block, /aliases\[command\.toLowerCase\(\)\]/, 'the raw command no longer lands in app');
 });
