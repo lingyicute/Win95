@@ -1,4 +1,4 @@
-import { el, onDoubleActivate } from '@win95/ui/dom.js';
+import { el, dataText, onDoubleActivate } from '@win95/ui/dom.js';
 import { icon } from '@win95/ui/icons.js';
 import { popup, closeMenus } from '@win95/ui/menu.js';
 export class WindowManager extends EventTarget {
@@ -26,7 +26,22 @@ export class WindowManager extends EventTarget {
         node.append(title, body);
         w.element = node;
         w.body = body;
-        w.setTitle = value => { w.title = value; label.textContent = value; node.setAttribute('aria-label', value); w.task?.querySelector('.task-label')?.replaceChildren(value); w.task?.setAttribute('aria-label', value); };
+        // { raw: true } is for a title that quotes the file system: a folder called System is
+        // System, not 系统, in the title bar, on the taskbar and to a screen reader, or the window
+        // would name its own contents differently from the list underneath them. Titles made of UI
+        // strings - 'My Computer', 'Exploring - C:\' - keep translating, which is why the flag is
+        // per call and not derived from the text.
+        w.setTitle = (value, { raw = false } = {}) => {
+            w.title = value; w.titleRaw = raw;
+            label.textContent = value;
+            if (raw) label.setAttribute('data-i18n-skip', ''); else label.removeAttribute('data-i18n-skip');
+            node.setAttribute('aria-label', value);
+            if (raw) node.setAttribute('data-i18n-skip-attrs', 'aria-label'); else node.removeAttribute('data-i18n-skip-attrs');
+            const caption = () => w.task?.querySelector('.task-label')?.replaceChildren(raw ? dataText(value) : value);
+            caption();
+            w.task?.setAttribute('aria-label', value);
+            if (raw) w.task?.setAttribute('data-i18n-skip-attrs', 'aria-label'); else w.task?.removeAttribute('data-i18n-skip-attrs');
+        };
         w.focus = () => this.focus(w);
         w.minimize = () => this.minimize(w);
         w.maximize = () => this.maximize(w);
@@ -74,7 +89,7 @@ export class WindowManager extends EventTarget {
                 node.append(handle);
             }
         if (!o.modal) {
-            w.task = el('button', { class: 'task-button', 'aria-label': w.title }, icon(w.icon, 16), el('span', { class: 'task-label', text: w.title }));
+            w.task = el('button', { class: 'task-button', 'aria-label': w.title, 'data-i18n-skip-attrs': w.titleRaw ? 'aria-label' : undefined }, icon(w.icon, 16), w.titleRaw ? el('span', { class: 'task-label' }, dataText(w.title)) : el('span', { class: 'task-label', text: w.title }));
             w.task.onclick = () => { if (this.active === w && !w.minimized)
                 this.minimize(w);
             else {
