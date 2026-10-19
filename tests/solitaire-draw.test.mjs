@@ -70,17 +70,17 @@ test('the stock still turns over three at a time, and the waste reads back in or
 });
 
 test('Help opens the guide to Solitaire, and F1 does too', () => {
-    assert.match(app, /s\.launch\('help', \{ topic: 'solitaire' \}\)/, 'How to Play opens the Help page');
-    assert.match(app, /label: 'How to Play', shortcut: !isFree \? 'F1' : undefined/, 'and says so on the menu');
-    assert.match(app, /e\.key === 'F1' && !isFree/, 'F1 opens it from the table');
-    assert.match(app, /e\.stopPropagation\(\);\s*\n\s*s\.launch\('help', \{ topic: 'solitaire' \}\)/, 'and keeps the shell from opening a second Help window');
+    assert.match(app, /s\.launch\('help', \{ topic: isFree \? 'freecell' : 'solitaire' \}\)/, 'How to Play opens the Help page for the game at hand');
+    assert.match(app, /label: 'How to Play', shortcut: 'F1'/, 'and says so on the menu, for both games');
+    assert.match(app, /e\.key === 'F1'\)/, 'F1 opens it from the table');
+    assert.match(app, /e\.stopPropagation\(\);\s*\n\s*s\.launch\('help', \{ topic: isFree \? 'freecell' : 'solitaire' \}\)/, 'and keeps the shell from opening a second Help window');
 });
 
 test('the keys keep working after a card has been clicked', () => {
     /* The table is drawn again after every move, which takes the card with the
        keyboard off the page; the window takes the keys back so F2, Ctrl+Z, H
        and F1 do not fall silent after the first click on a card. */
-    assert.match(app, /if \(s\.wm\.active === w && \(!document\.activeElement \|\| document\.activeElement === document\.body\)\)\s*\n\s*w\.element\.focus\(\{ preventScroll: true \}\);/, 'the window takes the keyboard back when the focus falls to the page');
+    assert.match(app, /function keepKeys\(s, w\) \{\s*\n\s*if \(s\.wm\.active === w && \(!document\.activeElement \|\| document\.activeElement === document\.body\)\)\s*\n\s*w\.element\.focus\(\{ preventScroll: true \}\);/, 'the window takes the keyboard back when the focus falls to the page');
 });
 
 test('the guide is written in both languages, with the same shape', () => {
