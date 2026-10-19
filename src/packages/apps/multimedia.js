@@ -1,7 +1,7 @@
 import { el, button, field, fileInput, download, uniqueId } from '@win95/ui/dom.js';
 import { trackbar } from '@win95/ui/trackbar.js';
 import { icon } from '@win95/ui/icons.js';
-import { menuBar } from '@win95/ui/menu.js';
+import { menuBar, swallowNativeMenuInFrame } from '@win95/ui/menu.js';
 import { baseName } from '@win95/core/filesystem.js';
 function waveTone() {
     const sampleRate = 22050, seconds = 5, count = sampleRate * seconds, buffer = new ArrayBuffer(44 + count * 2), v = new DataView(buffer);
@@ -376,7 +376,11 @@ export function internet(s, args = {}) {
             page.append(el('p', {}, el('a', { href: '#', text: 'Browse your documents', onclick: e => { e.preventDefault(); s.launch('explorer', { path: 'C:\\My Documents' }); } })));
         }
         else if (s.fs.exists(url)) {
-            const frame = el('iframe', { title: baseName(url), sandbox: '', srcdoc: s.fs.read(url), style: { width: '100%', height: '100%', border: 0 } });
+            /* The frame keeps its scripts switched off, but stays readable from
+               here - that is the only way to keep the browser's own menu out of
+               a document that is shown inside the desktop. */
+            const frame = el('iframe', { title: baseName(url), sandbox: 'allow-same-origin', srcdoc: s.fs.read(url), style: { width: '100%', height: '100%', border: 0 } });
+            swallowNativeMenuInFrame(frame);
             page.append(frame);
         }
         else {
@@ -392,6 +396,9 @@ export function internet(s, args = {}) {
             }
             address.value = parsed.href;
             page.style.padding = '0';
+            /* A site from the internet is another origin, and the browser will
+               not let this page look inside its frame to keep the browser's
+               menu out of it; the notice is the way back to a full tab. */
             const notice = el('div', { style: { padding: '5px 8px', background: '#ffffe1', font: '12px var(--ui-font)' } }, 'If the website does not allow embedded viewing, ', el('a', { href: parsed.href, target: '_blank', rel: 'noopener noreferrer', text: 'open it in a browser tab' }), '.');
             page.append(notice, el('iframe', { title: 'Website', src: parsed.href, sandbox: 'allow-scripts allow-forms allow-popups', referrerPolicy: 'no-referrer', style: { width: '100%', height: 'calc(100% - 34px)', border: 0, background: '#fff' } }));
         }
