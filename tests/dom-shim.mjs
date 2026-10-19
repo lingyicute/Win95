@@ -222,7 +222,7 @@ const matches = (node, selector) => selector.split(',').some(part => {
     if (test.startsWith('#'))
         return node.id === test.slice(1);
     if (test.startsWith('.'))
-        return node.classList.contains(test.slice(1));
+        return test.slice(1).split('.').every(name => node.classList.contains(name));
     const dot = test.indexOf('.');
     if (dot > 0)
         return node.tagName === test.slice(0, dot).toUpperCase() && node.classList.contains(test.slice(dot + 1));
