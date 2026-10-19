@@ -2,6 +2,7 @@ import { dataText, el, button, download, fileInput, formatSize, infoGrid, onDoub
 import { icon, fileIcon } from '@win95/ui/icons.js';
 import { menuBar, popup } from '@win95/ui/menu.js';
 import { NAME_LIMIT, normalizePath, parentPath, baseName, displayName, nameError } from '@win95/core/filesystem.js';
+import { shellFolder } from '@win95/shell/shell-folders.js';
 /**
  * A host file name has to fit the volume's cap. The extension survives the cut
  * when it is short enough to be worth keeping; a 300 character "extension" is
@@ -166,6 +167,10 @@ export function explorer(s, args = {}) {
     const computer = [{ name: '3½ Floppy (A:)', icon: 'floppy', path: 'A:\\' }, { name: '(C:)', icon: 'disk', path: 'C:\\' }, { name: 'Windows 95 (D:)', icon: 'cd', path: 'D:\\' }, { name: 'Control Panel', icon: 'control', app: 'control' }, { name: 'Printers', icon: 'printer', app: 'printers' }, { name: 'Dial-Up Networking', icon: 'connection', app: 'network' }];
     let entries = [];
     const realPath = () => path === 'recycle' ? 'C:\\Recycled' : path === 'desktop' ? 'C:\\Windows\\Desktop' : s.fs.exists(path) ? path : 'C:\\';
+    /* The Recycle Bin and the Desktop are the shell's folders: a restored
+       backup can arrive without them, and reading one through the shell's own
+       view keeps the window drawing instead of throwing on the first paint. */
+    const listFolder = () => (path === 'recycle' || path === 'desktop') ? shellFolder(s.fs, realPath()) : s.fs.list(realPath());
     const selectedPaths = () => [...selection].filter(p => s.fs.exists(p));
     const openEntry = e => e.app ? s.launch(e.app) : e.path && s.fs.get(e.path)?.type === 'folder' ? navigate(e.path) : s.open(e.path);
     const navigate = p => {
@@ -194,6 +199,15 @@ export function explorer(s, args = {}) {
     const render = () => {
         if (w.closed)
             return;
+        /* The folder can be deleted or renamed in another window while it is
+           being shown. realPath() already fell back to the drive, so the list
+           was C:\ under the missing folder's name, and New Folder or Paste went
+           there while the caption disagreed. Follow the folder instead. */
+        if (!['computer', 'recycle', 'network', 'desktop'].includes(path) && !s.fs.exists(path)) {
+            path = 'C:\\';
+            hist[hIndex] = path;
+            selection.clear();
+        }
         const folderOptions = s.settings.get('applet-folder-options', {});
         const rawTitle = path !== 'computer' && path !== 'recycle' && path !== 'network' && path !== 'desktop' && !tree && path.length > 3;
         w.setTitle(path === 'computer' ? 'My Computer' : path === 'recycle' ? 'Recycle Bin' : path === 'network' ? 'Network Neighborhood' : path === 'desktop' ? 'Desktop' : tree ? `Exploring - ${folderOptions.fullPath ? realPath() : baseName(path)}` : path.length <= 3 ? `(${path[0]}:)` : folderOptions.fullPath ? realPath() : baseName(path), { raw: rawTitle });
@@ -214,7 +228,7 @@ export function explorer(s, args = {}) {
         addTree('Recycle Bin', 'recycle', 'recycle', 1);
         toolbar.hidden = !showToolbar;
         toolbar.replaceChildren(button('↰', upOneLevel, { title: 'Up One Level' }), el('div', { class: 'toolbar-divider' }), button('Cut', () => s.files.copy(selectedPaths(), true)), button('Copy', () => s.files.copy(selectedPaths())), button('Paste', () => s.files.paste(realPath())), el('div', { class: 'toolbar-divider' }), button('Large Icons', () => { view = 'large'; render(); }), button('Details', () => { view = 'details'; render(); }));
-        entries = path === 'computer' ? computer : path === 'network' ? [{ name: 'Entire Network', icon: 'network', app: 'network' }, { name: 'My Computer', icon: 'computer', path: 'C:\\' }] : (folderOptions.allFiles === false ? s.fs.list(realPath()).filter(n => !n.hidden) : s.fs.list(realPath())).map(n => ({ name: displayName(n, folderOptions.extensions === false), icon: fileIcon(n), path: n.path, node: n, nameIsData: true }));
+        entries = path === 'computer' ? computer : path === 'network' ? [{ name: 'Entire Network', icon: 'network', app: 'network' }, { name: 'My Computer', icon: 'computer', path: 'C:\\' }] : (folderOptions.allFiles === false ? listFolder().filter(n => !n.hidden) : listFolder()).map(n => ({ name: displayName(n, folderOptions.extensions === false), icon: fileIcon(n), path: n.path, node: n, nameIsData: true }));
         if (sort === 'type')
             entries.sort((a, b) => (a.node?.type || '').localeCompare(b.node?.type || ''));
         else if (sort === 'size')

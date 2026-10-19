@@ -317,13 +317,16 @@ export class WindowManager extends EventTarget {
             if (e.key.startsWith('Arrow')) {
                 e.preventDefault();
                 const d = e.shiftKey ? 1 : 8, dx = e.key === 'ArrowRight' ? d : e.key === 'ArrowLeft' ? -d : 0, dy = e.key === 'ArrowDown' ? d : e.key === 'ArrowUp' ? -d : 0;
+                /* The same stops the mouse drag uses: a strip of the window
+                   must stay on the desktop, or its caption - the handle that
+                   would bring it back - is gone with it. */
                 if (w.moveKeys) {
-                    w.rect.x += dx;
-                    w.rect.y += dy;
+                    w.rect.x = Math.max(-w.rect.width + 80, Math.min(innerWidth - 50, w.rect.x + dx));
+                    w.rect.y = Math.max(0, Math.min(innerHeight - 65, w.rect.y + dy));
                 }
                 else {
-                    w.rect.width = Math.max(w.options.minWidth, w.rect.width + dx);
-                    w.rect.height = Math.max(w.options.minHeight, w.rect.height + dy);
+                    w.rect.width = Math.max(w.options.minWidth, Math.min(innerWidth - w.rect.x, w.rect.width + dx));
+                    w.rect.height = Math.max(w.options.minHeight, Math.min(innerHeight - 30 - w.rect.y, w.rect.height + dy));
                 }
                 this.layout(w);
             }

@@ -84,7 +84,10 @@ test('DOS history skips empty lines', () => {
 
 test('Folder Options settings drive the folder views', () => {
     assert.match(explorer, /folderOptions\.fullPath \? realPath\(\) : baseName\(path\)/);
-    assert.match(explorer, /folderOptions\.allFiles === false \? s\.fs\.list\(realPath\(\)\)\.filter\(n => !n\.hidden\)/);
+    /* The list is read through listFolder() so the shell's own folders survive a
+       restore without them; the option still decides whether hidden files show. */
+    assert.match(explorer, /const listFolder = \(\) =>/);
+    assert.match(explorer, /folderOptions\.allFiles === false \? listFolder\(\)\.filter\(n => !n\.hidden\)/);
     assert.match(explorer, /displayName\(n, folderOptions\.extensions === false\)/);
     assert.match(explorer, /startsWith\('applet-folder-options'\)/);
     assert.match(main, /displayName\(n, folderOptions\.extensions === false\)/);
