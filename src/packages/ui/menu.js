@@ -7,9 +7,36 @@ let openMenus = [], origin = null;
  * every application has already had the event: one that wanted it has opened
  * its menu, and a right click nobody wanted is dropped here instead of being
  * handed to the browser.
+ *
+ * The page installs the same rule in its own <head>, before a single module
+ * loads, so the splash screen is covered too; the marker it leaves behind
+ * keeps this from adding a second listener for the same job.
  */
 export function swallowNativeMenu(target = document) {
+    const host = target.documentElement ?? target;
+    if (host.getAttribute?.('data-native-menu'))
+        return;
+    host.setAttribute?.('data-native-menu', 'off');
     target.addEventListener('contextmenu', event => event.preventDefault());
+}
+/**
+ * A page shown inside a desktop window is still part of the desktop, so the
+ * browser's menu is kept out of the frame as well. Only a frame the page is
+ * allowed to look into can be guarded: one that shows a site from the
+ * internet belongs to another origin, and the browser will not let this
+ * document reach inside it at all.
+ */
+export function swallowNativeMenuInFrame(frame) {
+    const guard = () => {
+        try {
+            frame.contentDocument?.addEventListener('contextmenu', event => event.preventDefault());
+        }
+        catch {
+            /* Another origin: the browser stops us at the door. */
+        }
+    };
+    frame.addEventListener('load', guard);
+    guard();
 }
 export function closeMenus() {
     for (const m of openMenus)
