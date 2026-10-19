@@ -117,6 +117,8 @@ export class Element extends Node {
         this.tabIndex = 0;
         this.offsetWidth = 0;
         this.offsetHeight = 0;
+        /* As in the DOM, a fresh element is not hidden. */
+        this.hidden = false;
     }
 
     set className(value) { this._className = String(value ?? ''); }
@@ -157,6 +159,20 @@ export class Element extends Node {
 
     scrollIntoView() {}
 
+    /* The shell flies a copy of a window's title bar; the copy is a deep clone. */
+    cloneNode(deep = false) {
+        const copy = new Element(this.tagName.toLowerCase());
+        copy.ownerDocument = this.ownerDocument;
+        copy.attributes = { ...this.attributes };
+        copy.dataset = { ...this.dataset };
+        copy.className = this.className;
+        copy.style = { ...this.style };
+        if (deep)
+            for (const child of this.childNodes)
+                copy.append(child.cloneNode(true));
+        return copy;
+    }
+
     closest(selector) {
         for (let node = this; node instanceof Element; node = node.parentNode) {
             if (matches(node, selector))
@@ -186,6 +202,8 @@ export class Text extends Node {
         super();
         this.textContent = String(text);
     }
+
+    cloneNode() { return new Text(this.textContent); }
 }
 
 const camel = name => name.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
