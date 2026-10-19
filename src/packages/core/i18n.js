@@ -266,7 +266,7 @@ const ZH = {
     'Fill with color': '用颜色填充', 'Pick color': '取色', 'Magnifier': '放大镜',
     'Pencil': '铅笔', 'Brush': '刷子', 'Airbrush': '喷枪', 'Text': '文字', 'Text:': '文字：', 'Line': '直线',
     'Curve': '曲线', 'Rectangle': '矩形', 'Polygon': '多边形', 'Ellipse': '椭圆',
-    'Rounded rectangle': '圆角矩形', 'Filled shapes': '填充形状', 'Color': '颜色',
+    'Rounded rectangle': '圆角矩形', 'Tool options': '工具选项', 'Outline': '空心', 'Outline and fill': '空心并填充', 'Fill': '填充', 'Color': '颜色',
     'Edit colors': '编辑颜色', 'Custom color': '自定义颜色',
     'Width × height (pixels):': '宽度 × 高度（像素）：', 'Attributes': '属性',
     'Enter a width and height between 1 and 4096.': '输入 1 到 4096 之间的宽度和高度。',
@@ -417,7 +417,7 @@ function applyPatterns(core) {
     if ((m = /^ScanDisk found no errors in (\d+) files and folders\.$/.exec(core))) return `磁盘扫描在 ${m[1]} 个文件和文件夹中未发现错误。`;
     if ((m = /^Restored (\d+) files and folders\.$/.exec(core))) return `已还原 ${m[1]} 个文件和文件夹。`;
     if ((m = /^Selected area: (.+) pixels\. Use Edit to copy or cut\.$/.exec(core))) return `选定区域：${m[1]} 像素。使用“编辑”进行复制或剪切。`;
-    if ((m = /^Line width (\d+)$/.exec(core))) return `线宽 ${m[1]}`;
+    if ((m = /^Line size (\d+)px$/.exec(core))) return `线宽 ${m[1]} 像素`;
     if ((m = /^(.+) Properties$/.exec(core))) return `${name(m[1])} 属性`;
     if ((m = /^(.+) - (Media Player|CD Player)$/.exec(core))) return `${translateText(m[1], 'zh')} - ${name(m[2])}`;
     if ((m = /^(.+) - Sound Recorder$/.exec(core))) return `${m[1]} - 录音机`;
