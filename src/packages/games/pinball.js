@@ -76,8 +76,13 @@ export function pinball(s) {
     const shellKeys = event => {
         if (event.source !== frame.contentWindow)
             return;
-        if (event.data?.type === 'pinball-shell-key' && event.data.key === 'Control+Escape')
+        if (event.data?.type !== 'pinball-shell-key')
+            return;
+        if (event.data.key === 'Control+Escape')
             document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', ctrlKey: true, bubbles: true, cancelable: true }));
+        /* F1 is the shell's Help key, as it is in every other program. */
+        else if (event.data.key === 'F1')
+            openHelp();
     };
     window.addEventListener('message', shellKeys);
     w.onClosed.push(() => window.removeEventListener('message', shellKeys));
@@ -91,6 +96,7 @@ export function pinball(s) {
             game.chooseMenu(top, item, sub);
     };
     const press = key => table()?.press(key);
+    const openHelp = () => s.launch('help', { topic: 'pinball' });
     const setAudio = () => {
         state.audio = !state.audio;
         table()?.setMuted(!state.audio);
@@ -136,7 +142,7 @@ export function pinball(s) {
         {
             label: 'Help',
             items: () => [
-                { label: 'Help Topics', shortcut: 'F1', disabled: true },
+                { label: 'Help Topics', shortcut: 'F1', action: openHelp },
                 null,
                 { label: 'About Pinball', action: about }
             ]
@@ -144,8 +150,8 @@ export function pinball(s) {
     ]));
 
     const about = () => s.ui.message(
-        '3D Pinball for Windows - Space Cadet\n\nLeft flipper: Z\nRight flipper: /\nPlunger: Space\nTable bump: X, . and the up arrow\n\nNew game: F2\nPause: F3',
-        'About Pinball', ['OK'], { owner: w, height: 272, icon: 'pinball' });
+        '3D Pinball for Windows - Space Cadet\n\nLeft flipper: Z\nRight flipper: /\nPlunger: Space\nTable bump: X, . and the up arrow\n\nNew game: F2\nPause: F3\n\nHelp Topics has the full guide to the table.',
+        'About Pinball', ['OK'], { owner: w, height: 290, icon: 'pinball' });
 
     frame.addEventListener('load', () => {
         /* The page loads the game itself; this is only the polite wait. */

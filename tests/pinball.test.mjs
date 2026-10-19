@@ -3,8 +3,20 @@ import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { register } from 'node:module';
+import { installDom } from './dom-shim.mjs';
 import { translateText } from '../src/packages/core/i18n.js';
 import { ICON_DATA } from '../src/packages/ui/icon-data.js';
+
+/* The Help topics live in a module that expects a document, as they do when the
+   desktop runs; the shim and the resolver give it just enough of one. */
+installDom();
+globalThis.devicePixelRatio = 1;
+Object.defineProperty(globalThis, 'navigator', { value: { language: 'zh-CN', languages: ['zh-CN'] }, configurable: true });
+document.documentElement = document.createElement('html');
+globalThis.localStorage = { getItem: () => null, setItem() { }, removeItem() { }, key: () => null, length: 0 };
+register('./win95-resolver.mjs', import.meta.url);
+const { helpTopic } = await import('../src/packages/apps/utilities.js');
 
 /**
  * 3D Pinball for Windows - Space Cadet lives in `src/programs/pinball` with its
@@ -91,8 +103,9 @@ test('the page and the desktop share one small handshake', () => {
     assert.match(page, /menuColumn = function \(index\) \{ return 30 \+ index \* 50; \}/);
     assert.match(app, /game\.chooseMenu\(top, item, sub\)/, 'the desktop asks the page to choose, rather than clicking blind');
     assert.match(app, /game\.freeze\(\) : game\.thaw\(\)/, 'a menu of the desktop freezes the picture until it closes');
-    assert.match(page, /parent\.postMessage\(\{ type: 'pinball-shell-key', key: 'Control\+Escape' \}/, 'the page hands Ctrl+Esc back to the desktop');
-    assert.match(app, /pinball-shell-key' && event\.data\.key === 'Control\+Escape'/, 'and the desktop answers it');
+    assert.match(page, /var shellKey = event\.ctrlKey && event\.key === 'Escape' \? 'Control\+Escape'/, 'the page recognises Ctrl+Esc');
+    assert.match(page, /postMessage\(\{ type: 'pinball-shell-key', key: shellKey \}/, 'and hands it back to the desktop');
+    assert.match(app, /event\.data\.key === 'Control\+Escape'\)/, 'which answers it');
     assert.match(page, /contextmenu', function \(event\) \{ event\.preventDefault\(\); \}/, 'a right click on the glass opens nothing');
 });
 
@@ -106,8 +119,36 @@ test('the desktop\'s menus name the entries the game\'s own menus have', () => {
     assert.match(app, /label: 'Sound', shortcut: 'F5', checked: state\.sound, action: \(\) => \{ state\.sound = !state\.sound; press\('F5'\); \}/);
     assert.match(app, /label: 'Music', shortcut: 'F6', checked: state\.music, action: \(\) => \{ state\.music = !state\.music; press\('F6'\); \}/);
     assert.match(app, /label: 'Audio', checked: state\.audio, action: setAudio/, 'Audio is the desktop\'s own gain control');
+    assert.match(app, /label: 'Help Topics', shortcut: 'F1', action: openHelp/, 'Help Topics opens the guide to the table');
+    assert.match(app, /const openHelp = \(\) => s\.launch\('help', \{ topic: 'pinball' \}\)/, 'and it is the shell\'s own Help window');
     assert.match(app, /label: 'About Pinball', action: about/);
     assert.match(app, /Left flipper: Z\\nRight flipper: \/\\nPlunger: Space/, 'the About box tells the player the table\'s keys');
+});
+
+test('the table comes with a guide to playing it, in both languages', () => {
+    const en = helpTopic('pinball', 'en'), zh = helpTopic('pinball', 'zh');
+    assert.ok(en && zh, 'Help Topics has a topic for the table');
+    assert.match(zh.title, /[\u4e00-\u9fff]/, 'the Chinese topic has a Chinese name');
+    for (const [lang, topic] of [['en', en], ['zh', zh]]) {
+        assert.match(topic.body, /<h1>/, `${lang} has a heading`);
+        assert.match(topic.body, /<h2>/, `${lang} is laid out in sections`);
+        for (const key of ['<kbd>Z</kbd>', '<kbd>/</kbd>', '<kbd>Space</kbd>', '<kbd>X</kbd>', '<kbd>.</kbd>', '<kbd>F2</kbd>', '<kbd>F3</kbd>', '<kbd>F5</kbd>', '<kbd>F6</kbd>', '<kbd>F8</kbd>'])
+            assert.ok(topic.body.includes(key), `${lang} names ${key}`);
+        assert.match(topic.body, /Careful/, `${lang} warns what too much bumping brings`);
+        assert.match(topic.body, /TILT/, `${lang} names the tilt`);
+    }
+    for (const rank of ['Cadet', 'Ensign', 'Lieutenant', 'Captain', 'Lt Commander', 'Commander', 'Commodore', 'Admiral', 'Fleet Admiral'])
+        assert.ok(en.body.includes(rank), `the English guide names ${rank}`);
+    for (const rank of ['军校生', '少尉', '中尉', '上尉', '少校', '中校', '准将', '少将', '舰队上将'])
+        assert.ok(zh.body.includes(rank), `the Chinese guide names ${rank}`);
+    assert.match(en.body, /Select Players/, 'the English guide shows where more players join in');
+    assert.match(zh.body, /选择玩家/, 'and the Chinese guide names the menu as it is');
+});
+
+test('F1 opens the guide from inside the table', () => {
+    assert.match(page, /event\.key === 'F1' \? 'F1' : null/, 'the page recognises F1');
+    assert.match(page, /postMessage\(\{ type: 'pinball-shell-key', key: shellKey \}/, 'and hands it to the desktop');
+    assert.match(app, /else if \(event\.data\.key === 'F1'\)\s*openHelp\(\)/, 'which opens Help Topics');
 });
 
 test('the new labels speak Chinese like the rest of the shell', () => {

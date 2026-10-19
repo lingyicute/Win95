@@ -17,7 +17,7 @@ globalThis.localStorage = { getItem: () => null, setItem() { }, removeItem() { }
 register('./win95-resolver.mjs', import.meta.url);
 const { helpTopic, help } = await import('../src/packages/apps/utilities.js');
 
-const TOPICS = ['welcome', 'files', 'windows', 'applications', 'notepad', 'wordpad', 'paint', 'calculator', 'settings', 'keyboard', 'dos', 'about'];
+const TOPICS = ['welcome', 'files', 'windows', 'applications', 'notepad', 'wordpad', 'paint', 'calculator', 'pinball', 'settings', 'keyboard', 'dos', 'about'];
 const tags = html => html.match(/<\/?[a-zA-Z]+[^>]*>/g) ?? [];
 
 test('every help topic is written in Chinese too, with the same structure', () => {
