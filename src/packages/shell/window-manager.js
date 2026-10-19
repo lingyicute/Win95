@@ -116,7 +116,8 @@ export class WindowManager extends EventTarget {
         this.changed();
         return w;
     }
-    layout(w) { const r = w.maximized ? { x: 0, y: 0, width: innerWidth, height: innerHeight - 30 } : w.rect; Object.assign(w.element.style, { left: Math.round(r.x) + 'px', top: Math.round(r.y) + 'px', width: Math.round(r.width) + 'px', height: Math.round(r.height) + 'px' }); }
+    frameOf(w) { return w.maximized ? { x: 0, y: 0, width: innerWidth, height: innerHeight - 30 } : w.rect; }
+    layout(w) { const r = this.frameOf(w); Object.assign(w.element.style, { left: Math.round(r.x) + 'px', top: Math.round(r.y) + 'px', width: Math.round(r.width) + 'px', height: Math.round(r.height) + 'px' }); }
     focus(w) {
         if (w.closed)
             return;
@@ -172,6 +173,10 @@ export class WindowManager extends EventTarget {
     minimize(w) {
         if (w.options.modal || w.minimized)
             return;
+        /* A window whose bar is still on its way somewhere lands first, so
+           this flight starts from the box the window really occupies. */
+        w.motion?.cancel();
+        w.motion = null;
         const from = w.element.hidden ? null : titleBarRect(w.element);
         const to = rectOf(w.task);
         w.minimized = true;
@@ -196,16 +201,64 @@ export class WindowManager extends EventTarget {
             w.element.hidden = true;
         this.changed();
     }
+    /**
+     * Maximizing moves the title bar, not the frame: a copy of the bar travels
+     * from where the window stands to the top of the desktop, widening as it
+     * goes, and the window takes the larger box at the moment the copy lands.
+     * Restoring sends the bar back the same way. A window with nothing to
+     * measure, or a reader who asked for less motion, changes box at once.
+     */
     maximize(w) {
         if (!w.options.resizable)
             return;
-        w.maximized = !w.maximized;
-        w.element.classList.toggle('maximized', w.maximized);
-        const b = w.element.querySelector('.caption-button.maximize');
-        b?.classList.toggle('restore', w.maximized);
-        b?.setAttribute('aria-label', w.maximized ? 'Restore' : 'Maximize');
-        this.layout(w);
-        this.focus(w);
+        /* A bar that is still travelling lands first, so this click starts from
+           the box the window is really in - and a second click during the
+           flight means restore, not a second maximize. */
+        w.motion?.cancel();
+        w.motion = null;
+        /* A window sitting on the taskbar comes back on screen first: there is
+           no bar of its own on screen to send to the top otherwise. */
+        if (w.minimized) {
+            w.minimized = false;
+            w.element.hidden = false;
+            w.task?.classList.remove('active');
+        }
+        if (this.active !== w)
+            this.focus(w);
+        const from = w.element.hidden ? null : titleBarRect(w.element);
+        const box = rectOf(w.element);
+        const maximizing = !w.maximized;
+        /* The flag flips now so the caption button and the menus agree with
+           what the window is about to be, while the frame stays put until the
+           bar arrives. */
+        w.maximized = maximizing;
+        w.element.classList.toggle('maximized', maximizing);
+        const target = this.frameOf(w);
+        /* The bar keeps the offset it has inside the frame, so the copy starts
+           and ends exactly where the real bar would sit. */
+        const to = from && box ? {
+            left: target.x + from.left - box.left,
+            top: target.y + from.top - box.top,
+            width: Math.max(1, target.width - (box.width - from.width)),
+            height: from.height
+        } : null;
+        const settle = () => {
+            if (w.closed)
+                return;
+            w.motion = null;
+            this.layout(w);
+            const button = w.element.querySelector('.caption-button.maximize');
+            button?.classList.toggle('restore', maximizing);
+            button?.setAttribute('aria-label', maximizing ? 'Restore' : 'Maximize');
+            this.changed();
+        };
+        const flight = flyTitleBar({ windowElement: w.element, from, to, onDone: settle });
+        if (flight.animates)
+            /* Clicking the window while its bar is on the way lands the move
+               rather than leaving the frame at its old size. */
+            w.motion = { animates: true, cancel: () => { flight.cancel(); settle(); } };
+        else
+            settle();
     }
     async close(w, force = false) {
         if (w.closed)
@@ -331,7 +384,7 @@ export class WindowManager extends EventTarget {
             i++;
         }
     }
-    tile(vertical = true) { const wins = this.windows.filter(w => !w.minimized && !w.options.modal); wins.forEach((w, i) => { w.maximized = false; w.rect = vertical ? { x: i * innerWidth / wins.length, y: 0, width: innerWidth / wins.length, height: innerHeight - 30 } : { x: 0, y: i * (innerHeight - 30) / wins.length, width: innerWidth, height: (innerHeight - 30) / wins.length }; this.layout(w); }); }
+    tile(vertical = true) { const wins = this.windows.filter(w => !w.minimized && !w.options.modal); wins.forEach((w, i) => { w.motion?.cancel(); w.motion = null; w.maximized = false; w.rect = vertical ? { x: i * innerWidth / wins.length, y: 0, width: innerWidth / wins.length, height: innerHeight - 30 } : { x: 0, y: i * (innerHeight - 30) / wins.length, width: innerWidth, height: (innerHeight - 30) / wins.length }; this.layout(w); }); }
     fit() {
         for (const w of this.windows) {
             w.rect.x = Math.max(0, Math.min(w.rect.x, innerWidth - 80));
