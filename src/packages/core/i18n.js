@@ -315,6 +315,12 @@ const ZH = {
     'Congratulations!': '恭喜！', 'You won the game.': '您赢了。', 'Deal Again': '再发一局',
     'Hint': '提示', 'Select Game': '选择游戏', 'Game number (1–32000):': '游戏编号（1–32000）：',
     'New Game': '新游戏', 'Deal': '发牌', 'Select Game…': '选择游戏…', 'Restart Game': '重新开始游戏',
+    // Pinball (3D Pinball for Windows - Space Cadet)
+    '3D Pinball': '三维弹球', '3D Pinball for Windows - Space Cadet': '三维弹球：太空军校生',
+    'Launch Ball': '发射球', 'Pause/Resume Game': '暂停/继续游戏', 'High Scores…': '最高分数…',
+    'Demo': '演示', 'Select Players': '选择玩家', 'Sound': '声音', 'Music': '音乐',
+    'Player Controls…': '玩家控制…', 'About Pinball': '关于三维弹球', 'Loading…': '正在载入…',
+    'The table could not be loaded.': '无法载入球台。',
     'Draw One': '抽一张', 'Draw Three': '抽三张', 'Statistics…': '统计…', 'FreeCell Statistics': '空当接龙统计',
     'Game Over': '游戏结束', 'Hand Complete': '本局结束',
     'Scores have been added to the total.': '分数已计入总分。', 'Next Hand': '下一局',
