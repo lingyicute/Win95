@@ -5,6 +5,14 @@ import { cellClass, cellMarkup, counterChars, counterMarkup, faceFor, faceMarkup
 import { createTouchFlagHandler } from './mines-input.js';
 import { FreeCell } from './freecell-engine.js';
 const suitSymbols = { clubs: '♣', diamonds: '♦', hearts: '♥', spades: '♠' };
+/* A game table is drawn again after every move, which takes the card or square
+   that had the keyboard off the page with it. The keys belong to the window, so
+   it takes them back - otherwise F1, F2 and the rest fall silent after the first
+   click. */
+function keepKeys(s, w) {
+    if (s.wm.active === w && (!document.activeElement || document.activeElement === document.body))
+        w.element.focus({ preventScroll: true });
+}
 function cardNode(card, { selected = false, onClick, onDoubleClick, top = 0, inert = false } = {}) {
     const n = el('button', { class: 'card' + (card.faceUp ? ' ' + (cardColor(card) === 'red' ? 'red' : '') : ' face-down') + (selected ? ' selected' : ''), style: { top: top + 'px' }, 'aria-label': card.faceUp ? `${({ 1: 'Ace', 11: 'Jack', 12: 'Queen', 13: 'King' })[card.rank] || card.rank} of ${card.suit}` : 'Face-down card', onclick: onClick, ondblclick: onDoubleClick, draggable: !inert && !!card.faceUp });
     if (inert)
@@ -87,6 +95,7 @@ export function minesweeper(s) {
             };
             board.append(b);
         }
+        keepKeys(s, w);
     };
     const touchFlags = createTouchFlagHandler(i => {
         game.flag(i);
@@ -129,11 +138,16 @@ export function minesweeper(s) {
                             else
                                 s.ui.message('Use 8–24 rows, 8–30 columns, and fewer mines than squares.', 'Minesweeper', ['OK'], { owner: w });
                         }
-                    } }, null, { label: 'Best Times…', action: () => s.ui.message(`Beginner: ${best['8x8:10'] ?? '—'} seconds\nIntermediate: ${best['16x16:40'] ?? '—'} seconds\nExpert: ${best['16x30:99'] ?? '—'} seconds`, 'Fastest Mine Sweepers', ['OK'], { owner: w, height: 210 }) }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Help', items: [{ label: 'How to Play', action: () => s.ui.message('Uncover every empty square without hitting a mine.\n\nLeft-click reveals a square. Right-click places a flag. Numbers count nearby mines. Double-click a number after flagging all adjacent mines to reveal its neighbors.', 'Minesweeper', ['OK'], { owner: w, height: 240 }) }, { label: 'About Minesweeper', action: () => s.about('Minesweeper', 'minesweeper') }] }]));
+                    } }, null, { label: 'Best Times…', action: () => s.ui.message(`Beginner: ${best['8x8:10'] ?? '—'} seconds\nIntermediate: ${best['16x16:40'] ?? '—'} seconds\nExpert: ${best['16x30:99'] ?? '—'} seconds`, 'Fastest Mine Sweepers', ['OK'], { owner: w, height: 210 }) }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Help', items: [{ label: 'How to Play', shortcut: 'F1', action: () => s.launch('help', { topic: 'minesweeper' }) }, { label: 'About Minesweeper', action: () => s.about('Minesweeper', 'minesweeper') }] }]));
     w.element.addEventListener('keydown', e => {
         if (e.key === 'F2') {
             e.preventDefault();
             reset();
+        }
+        else if (e.key === 'F1') {
+            e.preventDefault();
+            e.stopPropagation();
+            s.launch('help', { topic: 'minesweeper' });
         }
     });
     const releaseFace = e => {
@@ -294,12 +308,7 @@ export function solitaire(s, args = {}) {
             }
             board.append(el('div', { class: 'game-victory' }, el('h2', { text: 'Congratulations!' }), el('p', { text: 'You won the game.' }), button('Deal Again', () => newGame())));
         }
-        /* The table is drawn again after every move, which takes away the card
-           that had the keyboard. The keys belong to the window, so it takes them
-           back - otherwise F2, Ctrl+Z, H and F1 would all fall silent after the
-           first click on a card. */
-        if (s.wm.active === w && (!document.activeElement || document.activeElement === document.body))
-            w.element.focus({ preventScroll: true });
+        keepKeys(s, w);
     };
     const newGame = seed => { game = isFree ? new FreeCell(seed || Math.floor(Math.random() * 32000) + 1) : new Klondike(); selected = null; elapsed = 0; winRecorded = false; dealToken = uniqueId(); w.setTitle(isFree ? `FreeCell Game #${game.seed}` : 'Solitaire'); render(); board.scrollTop = 0; };
     /* Draw One and Draw Three are a choice about the table, so it outlives the
@@ -341,7 +350,7 @@ export function solitaire(s, args = {}) {
     };
     const selectGame = async () => { const r = await s.ui.prompt('Game number (1–32000):', String(game.seed), 'Select Game', { owner: w }); const n = Number(r); if (r && Number.isInteger(n) && n >= 1 && n <= 32000)
         newGame(n); };
-    w.setMenu(menuBar([{ label: 'Game', items: () => [{ label: isFree ? 'New Game' : 'Deal', shortcut: 'F2', action: () => newGame() }, ...(isFree ? [{ label: 'Select Game…', shortcut: 'F3', action: selectGame }, { label: 'Restart Game', action: () => newGame(game.seed) }] : []), { label: 'Undo', shortcut: 'Ctrl+Z', disabled: !game.canUndo, action: () => { game.undo(); selected = null; render(); } }, { label: 'Hint', shortcut: 'H', action: hint }, null, ...(!isFree ? [{ label: 'Draw One', checked: !drawThree, action: () => setDraw(false) }, { label: 'Draw Three', checked: drawThree, action: () => setDraw(true) }] : [{ label: 'Statistics…', action: () => s.ui.message(`Games won: ${s.settings.get('freecellWins', 0)}`, 'FreeCell Statistics', ['OK'], { owner: w }) }]), null, { label: 'Exit', action: () => w.close() }] }, { label: 'Help', items: [{ label: 'How to Play', shortcut: !isFree ? 'F1' : undefined, action: () => isFree ? s.ui.message('Move all cards to the four foundations, building from Ace to King in each suit.\n\nBuild tableau columns in descending order with alternating colors. Any card may occupy a free cell. Empty cells and columns determine how many cards can be moved together.\n\nClick a card, then its destination, or drag it. Double-click to move it to a foundation.', 'FreeCell', ['OK'], { owner: w, width: 440, height: 290 }) : s.launch('help', { topic: 'solitaire' }) }, { label: 'About ' + (isFree ? 'FreeCell' : 'Solitaire'), action: () => s.about(isFree ? 'FreeCell' : 'Solitaire', isFree ? 'freecell' : 'solitaire') }] }]));
+    w.setMenu(menuBar([{ label: 'Game', items: () => [{ label: isFree ? 'New Game' : 'Deal', shortcut: 'F2', action: () => newGame() }, ...(isFree ? [{ label: 'Select Game…', shortcut: 'F3', action: selectGame }, { label: 'Restart Game', action: () => newGame(game.seed) }] : []), { label: 'Undo', shortcut: 'Ctrl+Z', disabled: !game.canUndo, action: () => { game.undo(); selected = null; render(); } }, { label: 'Hint', shortcut: 'H', action: hint }, null, ...(!isFree ? [{ label: 'Draw One', checked: !drawThree, action: () => setDraw(false) }, { label: 'Draw Three', checked: drawThree, action: () => setDraw(true) }] : [{ label: 'Statistics…', action: () => s.ui.message(`Games won: ${s.settings.get('freecellWins', 0)}`, 'FreeCell Statistics', ['OK'], { owner: w }) }]), null, { label: 'Exit', action: () => w.close() }] }, { label: 'Help', items: [{ label: 'How to Play', shortcut: 'F1', action: () => s.launch('help', { topic: isFree ? 'freecell' : 'solitaire' }) }, { label: 'About ' + (isFree ? 'FreeCell' : 'Solitaire'), action: () => s.about(isFree ? 'FreeCell' : 'Solitaire', isFree ? 'freecell' : 'solitaire') }] }]));
     w.element.addEventListener('keydown', e => {
         if (e.key === 'F2') {
             e.preventDefault();
@@ -359,13 +368,13 @@ export function solitaire(s, args = {}) {
         }
         else if (e.key.toLowerCase() === 'h')
             hint();
-        else if (e.key === 'F1' && !isFree) {
+        else if (e.key === 'F1') {
             /* The shell's own F1 opens Help at the contents; from the table it
                opens the page about this game. Stopping here keeps the two from
                both opening. */
             e.preventDefault();
             e.stopPropagation();
-            s.launch('help', { topic: 'solitaire' });
+            s.launch('help', { topic: isFree ? 'freecell' : 'solitaire' });
         }
         else if (e.key === 'Escape') {
             selected = null;
@@ -428,6 +437,7 @@ export async function hearts(s) {
             board.append(el('div', { class: 'game-victory' }, el('h2', { text: game.state === 'finished' ? 'Game Over' : 'Hand Complete' }), el('p', { text: game.state === 'finished' ? `${game.winners.map(i => names[i]).join(' & ')} won.` : 'Scores have been added to the total.' }), button(game.state === 'finished' ? 'New Game' : 'Next Hand', () => { game.state === 'finished' ? game.newGame() : game.nextRound(); render(); advance(); })));
         }
         w.status(`Hand ${game.round}       Hearts ${game.heartsBroken ? 'broken' : 'not broken'}       No-passing game`);
+        keepKeys(s, w);
     };
     const advance = () => {
         clearTimeout(timer);
@@ -441,11 +451,18 @@ export async function hearts(s) {
             }, 550);
     };
     const newGame = () => { game = new Hearts(); render(); advance(); };
-    w.setMenu(menuBar([{ label: 'Game', items: [{ label: 'New Game', shortcut: 'F2', action: newGame }, { label: 'Exit', action: () => w.close() }] }, { label: 'Help', items: [{ label: 'How to Play', action: () => s.ui.message('Avoid winning hearts (1 point each) and the queen of spades (13 points). Follow the suit led whenever possible. The two of clubs leads the first trick.\n\nTaking all 26 points gives each opponent 26 points. The match ends at 100; the lowest score wins.\n\nThis version plays no-passing hands.', 'Hearts', ['OK'], { owner: w, height: 300, width: 440 }) }, { label: 'About Hearts', action: () => s.about('Hearts', 'hearts') }] }]));
-    w.element.addEventListener('keydown', e => { if (e.key === 'F2') {
-        e.preventDefault();
-        newGame();
-    } });
+    w.setMenu(menuBar([{ label: 'Game', items: [{ label: 'New Game', shortcut: 'F2', action: newGame }, { label: 'Exit', action: () => w.close() }] }, { label: 'Help', items: [{ label: 'How to Play', shortcut: 'F1', action: () => s.launch('help', { topic: 'hearts' }) }, { label: 'About Hearts', action: () => s.about('Hearts', 'hearts') }] }]));
+    w.element.addEventListener('keydown', e => {
+        if (e.key === 'F2') {
+            e.preventDefault();
+            newGame();
+        }
+        else if (e.key === 'F1') {
+            e.preventDefault();
+            e.stopPropagation();
+            s.launch('help', { topic: 'hearts' });
+        }
+    });
     w.onClosed.push(() => clearTimeout(timer));
     render();
     advance();
