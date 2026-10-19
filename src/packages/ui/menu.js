@@ -1,6 +1,16 @@
 import { el, separator } from './dom.js';
 import { icon } from './icons.js';
 let openMenus = [], origin = null;
+/**
+ * Windows 95 answers a right click with a menu of its own or with nothing at
+ * all, never with the browser's menu. This listener sits at the very top, so
+ * every application has already had the event: one that wanted it has opened
+ * its menu, and a right click nobody wanted is dropped here instead of being
+ * handed to the browser.
+ */
+export function swallowNativeMenu(target = document) {
+    target.addEventListener('contextmenu', event => event.preventDefault());
+}
 export function closeMenus() {
     for (const m of openMenus)
         m.remove();

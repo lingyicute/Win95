@@ -8,7 +8,7 @@ import { shellFolder } from './packages/shell/shell-folders.js';
 import { installCursors, setPointerBusy } from './packages/shell/cursors.js';
 import { el, button, dataText, field, onDoubleActivate, setDoubleClickDelay } from './packages/ui/dom.js';
 import { icon, fileIcon } from './packages/ui/icons.js';
-import { popup, closeMenus } from './packages/ui/menu.js';
+import { popup, closeMenus, swallowNativeMenu } from './packages/ui/menu.js';
 import { createDialogs } from './packages/ui/dialogs.js';
 import { combo } from './packages/ui/select.js';
 import { DesktopGraphics } from './packages/graphics/renderer.js';
@@ -723,6 +723,10 @@ else
     window.addEventListener('load', showBootTap, { once: true });
 pointerTrails(s);
 installCursors(s);
+/* The last word on a right click: an application that showed a menu of its
+   own has already had the event; everywhere else the browser's menu - which
+   belongs to no part of this desktop - is dropped. */
+swallowNativeMenu();
 // The left-handed configuration swaps the roles of the two buttons: the
 // physical left button becomes the secondary one (context menus) and the
 // physical right button becomes the primary one (select, activate, drag).
