@@ -72,6 +72,15 @@ export class Node {
         this.listeners.get(type).push(handler);
     }
 
+    removeEventListener(type, handler) {
+        const list = this.listeners.get(type);
+        if (!list)
+            return;
+        const index = list.indexOf(handler);
+        if (index >= 0)
+            list.splice(index, 1);
+    }
+
     dispatchEvent(event) {
         event.target = event.target || this;
         event.preventDefault = event.preventDefault || (() => { event.defaultPrevented = true; });
@@ -239,6 +248,14 @@ export function installDom() {
             if (!document.listeners.has(type))
                 document.listeners.set(type, []);
             document.listeners.get(type).push(handler);
+        },
+        removeEventListener: (type, handler) => {
+            const list = document.listeners.get(type);
+            if (!list)
+                return;
+            const index = list.indexOf(handler);
+            if (index >= 0)
+                list.splice(index, 1);
         },
         querySelector: selector => document.body.querySelector(selector),
         querySelectorAll: selector => document.body.querySelectorAll(selector)

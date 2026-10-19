@@ -6,6 +6,7 @@ import { pointerTrails } from './packages/shell/pointer-trails.js';
 import { revealDesktopLayers } from './packages/shell/desktop-reveal.js';
 import { shellFolder } from './packages/shell/shell-folders.js';
 import { installCursors, setPointerBusy } from './packages/shell/cursors.js';
+import { installSuspend } from './packages/shell/suspend.js';
 import { el, button, dataText, field, onDoubleActivate, setDoubleClickDelay } from './packages/ui/dom.js';
 import { icon, fileIcon } from './packages/ui/icons.js';
 import { popup, closeMenus, swallowNativeMenu } from './packages/ui/menu.js';
@@ -483,7 +484,7 @@ function startMenu() {
     }
     const accessories = [...appMenu('accessory'), null, { label: 'Multimedia', icon: 'media', items: () => appMenu('multimedia') }, { label: 'System Tools', icon: 'computer', items: () => appMenu('system').filter(x => x.label !== 'Windows Explorer' && x.label !== 'MS-DOS Prompt') }];
     const programs = [{ label: 'Accessories', icon: 'folder', items: accessories }, { label: 'Games', icon: 'folder', items: () => appMenu('game') }, { label: 'Communications', icon: 'folder', items: () => appMenu('communication') }, null, { label: 'MS-DOS Prompt', icon: 'dos', action: () => s.launch('dos') }, { label: 'Windows Explorer', icon: 'folder', action: () => s.launch('explorer', { path: 'C:\\', tree: true }) }];
-    const items = [{ label: 'Programs', icon: 'programs', items: programs }, { label: 'Documents', icon: 'documents', items: () => { const docs = s.settings.get('recentDocuments', []).filter(p => s.fs.exists(p)).map(path => ({ label: baseName(path), icon: fileIcon(s.fs.get(path)), action: () => s.open(path) })); return docs.length ? docs : [{ label: '(Empty)', disabled: true }]; } }, { label: 'Settings', icon: 'settings', items: [{ label: 'Control Panel', icon: 'control', action: () => s.launch('control') }, { label: 'Printers', icon: 'printer', action: () => s.launch('printers') }, { label: 'Taskbar…', icon: 'windows', action: () => s.launch('taskbar-properties') }] }, { label: 'Find', icon: 'find', items: [{ label: 'Files or Folders…', icon: 'find', action: () => s.launch('find') }, { label: 'Computer…', icon: 'network', action: () => s.launch('network') }] }, { label: 'Help', icon: 'help', action: () => s.launch('help') }, { label: 'Run…', icon: 'run', action: runDialog }, null, { label: 'Log Off…', icon: 'logoff', action: s.logoff }, { label: 'Shut Down…', icon: 'shutdown', action: s.shutdown }];
+    const items = [{ label: 'Programs', icon: 'programs', items: programs }, { label: 'Documents', icon: 'documents', items: () => { const docs = s.settings.get('recentDocuments', []).filter(p => s.fs.exists(p)).map(path => ({ label: baseName(path), icon: fileIcon(s.fs.get(path)), action: () => s.open(path) })); return docs.length ? docs : [{ label: '(Empty)', disabled: true }]; } }, { label: 'Settings', icon: 'settings', items: [{ label: 'Control Panel', icon: 'control', action: () => s.launch('control') }, { label: 'Printers', icon: 'printer', action: () => s.launch('printers') }, { label: 'Taskbar…', icon: 'windows', action: () => s.launch('taskbar-properties') }] }, { label: 'Find', icon: 'find', items: [{ label: 'Files or Folders…', icon: 'find', action: () => s.launch('find') }, { label: 'Computer…', icon: 'network', action: () => s.launch('network') }] }, { label: 'Help', icon: 'help', action: () => s.launch('help') }, { label: 'Run…', icon: 'run', action: runDialog }, null, { label: 'Log Off…', icon: 'logoff', action: s.logoff }, { label: 'Suspend', icon: 'suspend', action: s.suspend }, { label: 'Shut Down…', icon: 'shutdown', action: s.shutdown }];
     popup(items, 2, innerHeight - 30 - 310, { large: true, class: 'start-menu', brand: true });
     const m = document.querySelector('.start-menu');
     m.style.top = Math.max(0, innerHeight - 30 - m.offsetHeight) + 'px';
@@ -708,7 +709,7 @@ document.querySelector('#clock').hidden = !s.settings.get('showClock', true);
 setInterval(s.updateClock, 1000);
 setInterval(() => {
     const minutes = s.settings.get('saverMinutes', 0), kind = s.settings.get('screensaver', 'Mystify');
-    if (minutes > 0 && kind !== 'None' && !document.querySelector('.screensaver') && Date.now() - s.lastActivity > minutes * 60000)
+    if (minutes > 0 && kind !== 'None' && !s.suspended && !document.querySelector('.screensaver') && Date.now() - s.lastActivity > minutes * 60000)
         s.graphics.screensaver(kind);
 }, 5000);
 if (s.settings.get('loginPassword', ''))
@@ -723,6 +724,7 @@ else
     window.addEventListener('load', showBootTap, { once: true });
 pointerTrails(s);
 installCursors(s);
+installSuspend(s);
 /* The last word on a right click: an application that showed a menu of its
    own has already had the event; everywhere else the browser's menu - which
    belongs to no part of this desktop - is dropped. */
