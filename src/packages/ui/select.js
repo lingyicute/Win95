@@ -136,6 +136,11 @@ export function combo(options = {}) {
         if (!popup)
             return;
         const rect = node.getBoundingClientRect();
+        /* A list with more entries than the field can show scrolls inside itself;
+           capping it to the roomier side of the viewport keeps the scrollbar on
+           screen instead of letting the list run off the bottom edge. */
+        const room = Math.max(80, Math.max(innerHeight - rect.bottom - 2, rect.top - 2));
+        popup.style.maxHeight = Math.min(202, Math.floor(room)) + 'px';
         popup.style.minWidth = Math.ceil(rect.width) + 'px';
         const width = popup.offsetWidth, height = popup.offsetHeight;
         const fits = innerHeight - rect.bottom - 2;
@@ -260,7 +265,6 @@ export function combo(options = {}) {
         else
             openPopup();
     });
-    node.addEventListener('blur', () => closePopup());
     if (valueInput) {
         valueInput.addEventListener('input', () => { state.value = valueInput.value; });
         valueInput.addEventListener('keydown', event => {
@@ -293,7 +297,6 @@ export function combo(options = {}) {
                 closePopup();
             }
         });
-        valueInput.addEventListener('blur', () => closePopup());
     }
 
     Object.defineProperty(node, 'value', {
@@ -337,4 +340,22 @@ window.addEventListener('pointerdown', event => {
     }
 }, true);
 window.addEventListener('resize', () => closeCombos());
-window.addEventListener('scroll', () => closeCombos(), true);
+/* A dropdown scrolls its own list: the wheel, the scrollbar, and scrollIntoView
+   when the arrow keys walk past the visible rows. Reading that scroll as "the
+   page moved, close everything" shut the list before its lower entries could be
+   reached, so a long list could not be browsed at all. The list is positioned
+   against the viewport, so only a scroll that moves the field out from under it
+   (or the page itself) has to dismiss it. */
+window.addEventListener('scroll', event => {
+    const scrolled = event.target;
+    for (const entry of [...openCombo]) {
+        if (scrolled === entry.popup || entry.popup.contains(scrolled))
+            continue;
+        // The page scrolls the document; nothing else has to move the list.
+        if (scrolled === document || !scrolled.contains || scrolled.contains(entry.node))
+            entry.close();
+    }
+}, true);
+/* Focus leaving the page still dismisses the list. Focus leaving the combo for
+   the list's own scrollbar does not - that press is part of choosing an entry. */
+window.addEventListener('blur', () => closeCombos());

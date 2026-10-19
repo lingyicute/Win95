@@ -4,6 +4,10 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { installDom, keydown } from './dom-shim.mjs';
+import { register } from 'node:module';
+
+// Window-manager.js speaks the browser import map's names, so load its resolver.
+register('./win95-resolver.mjs', import.meta.url);
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { document, window, menus } = installDom();
@@ -291,4 +295,130 @@ test('Chinese and Latin text share one apparent size', async () => {
     assert.match(face, /size-adjust:108%/, 'the bitmap song face is scaled to match the Latin face');
     assert.match(css, /--ui-font:W95FA,Roboto,'WenQuanYi Bitmap Song 12px'/);
     assert.match(css, /body\{font-family:var\(--ui-font\);font-size:12px/);
+});
+
+test('scrolling the open list keeps it open', () => {
+    /* The list scrolls itself: the wheel, the scrollbar, and scrollIntoView when
+       the arrow keys walk past the visible rows. A capture-phase scroll listener
+       that closed every combo on any scroll killed all three, so a list long
+       enough to scroll could never be browsed. */
+    const node = setup({ value: 'en-US' });
+    keydown(node, 'ArrowDown');
+    const list = popup();
+    assert.ok(list, 'the list is open');
+    window.dispatchEvent({ type: 'scroll', target: list });
+    assert.equal(popup(), list, 'scrolling the list does not close it');
+    assert.equal(node.getAttribute('aria-expanded'), 'true');
+    node.remove();
+    closeCombos();
+});
+
+test('a scroll that moves the field closes the list', () => {
+    /* The list is placed against the viewport, so when the container around the
+       field scrolls the list would be left pointing at the wrong place. */
+    const node = setup({ value: 'en-US' });
+    keydown(node, 'ArrowDown');
+    window.dispatchEvent({ type: 'scroll', target: document });
+    assert.equal(popup(), null, 'a page scroll takes the field away from the list');
+    node.remove();
+});
+
+test('a scroll somewhere else leaves the list alone', () => {
+    /* Another window's list scrolling has nothing to do with this field, and the
+       list has not moved, so closing it would be surprising. */
+    const node = setup({ value: 'en-US' });
+    keydown(node, 'ArrowDown');
+    const elsewhere = document.createElement('div');
+    window.dispatchEvent({ type: 'scroll', target: elsewhere });
+    assert.ok(popup(), 'the list stays where it was put');
+    node.remove();
+    closeCombos();
+});
+
+test('pressing the list scrollbar keeps the list open', () => {
+    /* Pressing a scrollbar moves focus off the combo, and a blur listener used
+       to take that as "the user is done" and shut the list the moment the
+       thumb was grabbed. The press belongs to the popup, so it must survive. */
+    const node = setup({ value: 'en-US' });
+    keydown(node, 'ArrowDown');
+    const list = popup();
+    node.dispatchEvent({ type: 'blur' });
+    assert.equal(popup(), list, 'losing focus to the scrollbar does not close the list');
+    window.dispatchEvent({ type: 'pointerdown', target: list });
+    assert.equal(popup(), list, 'a press on the popup itself is not a press outside');
+    rows().at(-1).dispatchEvent({ type: 'click' });
+    assert.equal(node.value, 'pl-PL', 'an entry that was scrolled into view can still be chosen');
+    node.remove();
+});
+
+test('the list closes when the page itself loses focus', () => {
+    const node = setup({ value: 'en-US' });
+    keydown(node, 'ArrowDown');
+    assert.ok(popup());
+    window.dispatchEvent({ type: 'blur' });
+    assert.equal(popup(), null);
+    node.remove();
+});
+
+test('an editable combo keeps its list when the field loses focus to the list', () => {
+    const node = setup({ editable: true, value: 'en-US' });
+    keydown(node.querySelector('.win95-combo-input'), 'ArrowDown');
+    assert.ok(popup());
+    node.querySelector('.win95-combo-input').dispatchEvent({ type: 'blur' });
+    assert.ok(popup(), 'the scrollbar of the list is not somewhere else to be');
+    node.remove();
+    closeCombos();
+});
+
+test('closing the window takes an open list with it', async () => {
+    /* Alt+F4 and the taskbar menu shut a window without a pointer press, so
+       nothing else would dismiss a list still floating over a window that no
+       longer exists - it would stay behind, over whatever is beneath. */
+    for (const id of ['windows', 'tasks'])
+        if (!document.querySelector('#' + id))
+            document.body.append(Object.assign(document.createElement('div'), { id }));
+    const { WindowManager } = await import('../src/packages/shell/window-manager.js');
+    const wm = new WindowManager();
+    const w = wm.create({ title: 'Regional Settings' });
+    const node = combo({ ariaLabel: 'Locale', options: OPTIONS, value: 'en-US' });
+    w.body.append(node);
+    keydown(node, 'ArrowDown');
+    assert.ok(popup(), 'the list is open before the window goes away');
+    await wm.close(w);
+    assert.equal(popup(), null, 'the list closes with its window');
+});
+
+test('scrolling the container around the field closes the list', () => {
+    const node = setup({ value: 'en-US' });
+    const scroller = document.createElement('div');
+    document.body.append(scroller);
+    scroller.append(node);
+    keydown(node, 'ArrowDown');
+    assert.ok(popup());
+    window.dispatchEvent({ type: 'scroll', target: scroller });
+    assert.equal(popup(), null, 'the field moved, so the list no longer points at it');
+    node.remove();
+    scroller.remove();
+});
+
+test('a long list is capped to the room the viewport leaves', () => {
+    /* The list is what scrolls, so it has to end inside the screen: a fixed
+       202px box hung off a field near the bottom edge would put its scrollbar
+       under the taskbar, where it cannot be grabbed. */
+    const many = Array.from({ length: 60 }, (_, i) => 'item-' + i);
+    const node = setup({ options: many, value: 'item-0' });
+    const viewport = globalThis.innerHeight;
+    try {
+        globalThis.innerHeight = 200;
+        node.getBoundingClientRect = () => ({ top: 90, bottom: 112, left: 40, right: 140, width: 100, height: 22 });
+        keydown(node, 'ArrowDown');
+        // A 200px screen leaves 88px above the field and 86px below it, so the
+        // list is cut to the roomier side and scrolls inside itself.
+        assert.equal(popup().style.maxHeight, '88px', 'cut down to the room above the field');
+    }
+    finally {
+        globalThis.innerHeight = viewport;
+        node.remove();
+        closeCombos();
+    }
 });

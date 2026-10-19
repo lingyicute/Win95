@@ -1,6 +1,7 @@
 import { el, dataText, onDoubleActivate } from '@win95/ui/dom.js';
 import { icon } from '@win95/ui/icons.js';
 import { popup, closeMenus } from '@win95/ui/menu.js';
+import { closeCombos } from '@win95/ui/select.js';
 export class WindowManager extends EventTarget {
     constructor() { super(); this.primary = null; this.windows = []; this.sequence = 0; this.z = 10; this.active = null; this.host = document.querySelector('#windows'); this.tasks = document.querySelector('#tasks'); window.addEventListener('resize', () => this.fit()); document.addEventListener('keydown', e => this.keydown(e)); }
     create(options = {}) {
@@ -176,6 +177,10 @@ export class WindowManager extends EventTarget {
                 await this.close(child, true);
             w.closed = true;
             w.element.remove();
+            /* A drop-down list is a child of the shared pop-up layer, not of the
+               window, so it does not leave with the element it belongs to and
+               would hang over whatever the window was covering. */
+            closeCombos();
             w.task?.remove();
             w.onClosed.forEach(fn => fn());
             this.windows = this.windows.filter(x => x !== w);
