@@ -21,6 +21,7 @@ import { findFiles, help, characterMap, clipboardViewer, registryEditor, systemM
 import { mediaPlayer, volumeControl, soundRecorder, internet, inbox } from './packages/apps/multimedia.js';
 import { dosPrompt } from './packages/apps/dos.js';
 import { minesweeper, solitaire, hearts } from './packages/games/apps.js';
+import { pinball } from './packages/games/pinball.js';
 const MIN_BOOT_MS = 1700;
 const bootEl = document.querySelector('#boot');
 const bootSpinnerEl = bootEl?.querySelector('.boot-spinner');
@@ -234,6 +235,7 @@ register('minesweeper', 'Minesweeper', 'minesweeper', minesweeper, 'game');
 register('solitaire', 'Solitaire', 'solitaire', solitaire, 'game');
 register('freecell', 'FreeCell', 'freecell', (s, a) => solitaire(s, { ...a, freecell: true }), 'game');
 register('hearts', 'Hearts', 'hearts', hearts, 'game');
+register('pinball', '3D Pinball', 'pinball', pinball, 'game');
 register('control', 'Control Panel', 'control', controlPanel);
 register('display', 'Display', 'display', displayProperties);
 register('datetime', 'Date/Time', 'clock', dateTime);
@@ -255,7 +257,7 @@ register('volume', 'Volume Control', 'volume', volumeControl, 'multimedia');
 register('recorder', 'Sound Recorder', 'sound', soundRecorder, 'multimedia');
 register('internet', 'Internet Explorer', 'internet', internet, 'communication');
 register('inbox', 'Microsoft Exchange', 'mail', inbox, 'communication');
-const aliases = { 'explorer.exe': 'explorer', explorer: 'explorer', notepad: 'notepad', wordpad: 'wordpad', write: 'wordpad', mspaint: 'paint', pbrush: 'paint', paint: 'paint', calc: 'calculator', calculator: 'calculator', sol: 'solitaire', winmine: 'minesweeper', mshearts: 'hearts', freecell: 'freecell', control: 'control', cmd: 'dos', command: 'dos', 'command.com': 'dos', regedit: 'regedit', sysmon: 'monitor', scandisk: 'scandisk', defrag: 'defrag', mplayer: 'media', sndrec32: 'recorder', sndvol32: 'volume', cdplayer: 'cdplayer', charmap: 'charmap', clipbrd: 'clipbrd', iexplore: 'internet', inbox: 'inbox', winhelp: 'help', help: 'help', winver: 'about', taskman: 'taskman', msbackup: 'backup', welcome: 'welcome', shutdown: 'shutdown' };
+const aliases = { 'explorer.exe': 'explorer', explorer: 'explorer', notepad: 'notepad', wordpad: 'wordpad', write: 'wordpad', mspaint: 'paint', pbrush: 'paint', paint: 'paint', calc: 'calculator', calculator: 'calculator', sol: 'solitaire', winmine: 'minesweeper', mshearts: 'hearts', freecell: 'freecell', pinball: 'pinball', '3dpinball': 'pinball', 'spacecadet': 'pinball', control: 'control', cmd: 'dos', command: 'dos', 'command.com': 'dos', regedit: 'regedit', sysmon: 'monitor', scandisk: 'scandisk', defrag: 'defrag', mplayer: 'media', sndrec32: 'recorder', sndvol32: 'volume', cdplayer: 'cdplayer', charmap: 'charmap', clipbrd: 'clipbrd', iexplore: 'internet', inbox: 'inbox', winhelp: 'help', help: 'help', winver: 'about', taskman: 'taskman', msbackup: 'backup', welcome: 'welcome', shutdown: 'shutdown' };
 s.run = command => {
     const text = String(command || '').trim();
     if (!text)

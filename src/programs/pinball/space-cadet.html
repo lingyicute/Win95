@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>3D Pinball for Windows - Space Cadet</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #stage {
+            position: relative;
+            width: 600px;
+            height: 416px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        /* The game's picture begins 12 pixels down its canvas, under the menu
+           bar it draws for itself. The stage shows the picture, not the bar. */
+        #canvas {
+            position: absolute;
+            top: -12px;
+            left: 0;
+            display: block;
+            outline: 0;
+            touch-action: none;
+        }
+
+        /* The strip that stands in for the game's own bar: the top of its title
+           picture, which reads as the bezel over the table. */
+        #cover {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 600px;
+            height: 9px;
+            background: url(pinball-overlay.png) no-repeat 0 0;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* Laid over the picture while a menu is open, so the game's own bar and
+           its menus never show. */
+        #freeze {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 600px;
+            height: 416px;
+            pointer-events: none;
+            z-index: 3;
+            display: none;
+        }
+
+        #splash {
+            position: absolute;
+            inset: 0;
+            z-index: 4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000 url(pinball-splash.png) no-repeat center center;
+            color: #c0c0c0;
+            font: 13px "Lucida Console", monospace;
+        }
+
+        #splash span {
+            position: absolute;
+            bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="stage">
+        <canvas id="canvas" width="600" height="440" tabindex="0" aria-label="Space Cadet pinball table"></canvas>
+        <div id="cover" aria-hidden="true"></div>
+        <canvas id="freeze" width="600" height="416" aria-hidden="true"></canvas>
+        <div id="splash"><span id="loading">Loading…</span></div>
+    </div>
+
+    <script>
+        /* The game's own measurements. */
+        var PICTURE_TOP = 12, TABLE_WIDTH = 600, TABLE_HEIGHT = 416;
+        /* Where it lays out its own menus: three menus 50 pixels apart, rows 16
+           pixels apart, and a submenu opening level with the entry it belongs
+           to. The game reads one click per frame at most, so they are spaced a
+           little further apart than a frame. */
+        var MENU_BAR_Y = 15, MENU_FIRST_ROW_Y = 35, MENU_ROW = 16, CLICK_GAP = 100;
+        var menuColumn = function (index) { return 30 + index * 50; };
+        var submenuColumn = function (index) { return 200 + index * 50; };
+
+        var canvas = document.getElementById('canvas');
+        var freeze = document.getElementById('freeze');
+        var freezeContext = freeze.getContext('2d');
+        var splash = document.getElementById('splash');
+        var loading = document.getElementById('loading');
+        var timers = [];
+
+        /* Claim the WebGL context here so a freeze frame can read the picture. */
+        canvas.getContext('webgl', { preserveDrawingBuffer: true });
+
+        var frozen = 0;
+        function freezePicture() {
+            if (frozen++) return;
+            try {
+                freezeContext.drawImage(canvas, 0, PICTURE_TOP, TABLE_WIDTH, TABLE_HEIGHT, 0, 0, TABLE_WIDTH, TABLE_HEIGHT);
+            } catch (e) {
+                freezeContext.fillStyle = '#000';
+                freezeContext.fillRect(0, 0, TABLE_WIDTH, TABLE_HEIGHT);
+            }
+            freeze.style.display = 'block';
+        }
+        function thawPicture() {
+            frozen = Math.max(0, frozen - 1);
+            if (frozen) return;
+            freeze.style.display = 'none';
+            freezeContext.clearRect(0, 0, TABLE_WIDTH, TABLE_HEIGHT);
+        }
+
+        /* A click at a point of the game's own canvas. */
+        function clickTable(x, y) {
+            var box = canvas.getBoundingClientRect();
+            var shared = {
+                clientX: box.left + x, clientY: box.top + y,
+                pageX: box.left + x, pageY: box.top + y,
+                screenX: box.left + x, screenY: box.top + y,
+                offsetX: x, offsetY: y,
+                bubbles: true, cancelable: true, view: window, button: 0
+            };
+            canvas.dispatchEvent(new MouseEvent('mouseenter', Object.assign({}, shared, { buttons: 0 })));
+            canvas.dispatchEvent(new MouseEvent('mousedown', Object.assign({}, shared, { buttons: 1 })));
+            canvas.dispatchEvent(new MouseEvent('mouseup', Object.assign({}, shared, { buttons: 0 })));
+        }
+
+        /* The numbers the game reads a key by: a bare `key` is not enough. */
+        var NAMED_KEYS = {
+            ' ': [32, 'Space'], Enter: [13, 'Enter'], Escape: [27, 'Escape'], Tab: [9, 'Tab'],
+            ArrowLeft: [37, 'ArrowLeft'], ArrowUp: [38, 'ArrowUp'], ArrowRight: [39, 'ArrowRight'], ArrowDown: [40, 'ArrowDown'],
+            Shift: [16, 'ShiftLeft'], Control: [17, 'ControlLeft'], Alt: [18, 'AltLeft']
+        };
+        var PRINTABLE_KEYS = { '/': [191, 'Slash'], '.': [190, 'Period'], ',': [188, 'Comma'], '-': [189, 'Minus'], '=': [187, 'Equal'], ';': [186, 'Semicolon'], "'": [222, 'Quote'], '[': [219, 'BracketLeft'], ']': [221, 'BracketRight'], '\\': [220, 'Backslash'], '`': [192, 'Backquote'] };
+        function keyFacts(key) {
+            var match = /^F(\d+)$/.exec(key);
+            if (match) return [+match[1] + 111, key];
+            if (NAMED_KEYS[key]) return NAMED_KEYS[key];
+            if (/^[a-z]$/i.test(key)) return [key.toUpperCase().charCodeAt(0), 'Key' + key.toUpperCase()];
+            if (/^\d$/.test(key)) return [key.charCodeAt(0), 'Digit' + key];
+            if (PRINTABLE_KEYS[key]) return PRINTABLE_KEYS[key];
+            return [0, key];
+        }
+
+        function pressTable(key) {
+            var facts = keyFacts(key);
+            ['keydown', 'keyup'].forEach(function (type) {
+                canvas.dispatchEvent(new KeyboardEvent(type, {
+                    key: key, code: facts[1], keyCode: facts[0], which: facts[0],
+                    bubbles: true, cancelable: true
+                }));
+            });
+        }
+
+        var gain = null, muted = false;
+        function applyAudio() {
+            if (gain) gain.gain.value = muted ? 0 : 1;
+        }
+
+        /* Runs the steps one click at a time, at the pace the game reads them,
+           and then takes the picture back. An entry it cannot pick - one the
+           game has greyed out - would leave its menu open, so the bar is
+           clicked once more and the table itself once after that: whichever
+           way it ended up, nothing of the game's own menus is left showing. */
+        function runClicks(steps) {
+            var index = 0;
+            function next() {
+                if (index >= steps.length) {
+                    setTimeout(thawPicture, 80);
+                    return;
+                }
+                steps[index++]();
+                timers.push(setTimeout(next, CLICK_GAP));
+            }
+            next();
+        }
+
+        window.pinball = {
+            ready: false,
+            /* Chooses the entry `item` rows down the game's menu `top`, or the
+               entry `sub` rows down the submenu of that entry. */
+            chooseMenu: function (top, item, sub) {
+                freezePicture();
+                var steps = [
+                    function () { clickTable(menuColumn(top), MENU_BAR_Y); },
+                    function () { clickTable(menuColumn(top), MENU_FIRST_ROW_Y + item * MENU_ROW); }
+                ];
+                if (sub !== undefined)
+                    steps.push(function () { clickTable(submenuColumn(top), MENU_FIRST_ROW_Y + item * MENU_ROW + sub * MENU_ROW); });
+                steps.push(
+                    function () { clickTable(menuColumn(top), MENU_BAR_Y); },
+                    function () { clickTable(TABLE_WIDTH / 2 + 60, TABLE_HEIGHT / 2 + PICTURE_TOP); }
+                );
+                runClicks(steps);
+            },
+            press: pressTable,
+            freeze: freezePicture,
+            thaw: thawPicture,
+            setMuted: function (value) { muted = !!value; applyAudio(); },
+            focus: function () { canvas.focus({ preventScroll: true }); }
+        };
+
+        /* Keys the desktop answers itself. Everything else is the table's, and
+           keys never cross a frame boundary on their own, so the desktop's
+           shortcuts are handed back to the page that owns them. */
+        window.addEventListener('keydown', function (event) {
+            if (event.ctrlKey && event.key === 'Escape') {
+                event.preventDefault();
+                try { parent.postMessage({ type: 'pinball-shell-key', key: 'Control+Escape' }, '*'); } catch (e) { }
+            }
+        });
+        window.addEventListener('contextmenu', function (event) { event.preventDefault(); });
+        window.addEventListener('pagehide', function () { timers.forEach(clearTimeout); });
+        window.addEventListener('message', function (event) {
+            if (event.data && event.data.type === 'pinball-focus') window.pinball.focus();
+        });
+
+        window.Module = {
+            canvas: canvas,
+            postRun: [function () {
+                window.pinball.ready = true;
+                splash.remove();
+                try {
+                    var audio = Module.SDL2 && Module.SDL2.audioContext;
+                    if (audio) {
+                        gain = audio.createGain();
+                        gain.connect(audio.destination);
+                        var processor = Module.SDL2.audio && Module.SDL2.audio.scriptProcessorNode;
+                        if (processor) {
+                            processor.disconnect();
+                            processor.connect(gain);
+                        }
+                    }
+                } catch (e) { }
+                applyAudio();
+                window.pinball.focus();
+            }],
+            print: function (text) { console.log(text); },
+            printErr: function (text) { console.error(text); }
+        };
+
+        var script = document.createElement('script');
+        script.src = 'SpaceCadetPinball.js';
+        script.async = true;
+        script.onerror = function () { loading.textContent = 'The table could not be loaded.'; };
+        document.head.append(script);
+    </script>
+</body>
+
+</html>
