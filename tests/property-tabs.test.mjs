@@ -15,12 +15,14 @@ const rule = selector => [...css.matchAll(new RegExp(`(?:^|})${selector.replace(
 
 test('tab cards sit tight on their text with rounded top corners', () => {
     const tab = rule('.tab-strip button');
-    assert.match(tab, /padding:2px 6px/, 'the label keeps 6 px at its sides, not 10');
-    assert.match(tab, /border-radius:3px 3px 0 0/, 'top-left and top-right corners are rounded, the feet stay square');
+    assert.match(tab, /padding:3px 6px 1px/, 'the label keeps 6 px at its sides and sits a touch low in its card');
+    assert.match(tab, /border-radius:5px 5px 0 0/, 'top-left and top-right corners are rounded, the feet stay square');
     assert.match(tab, /border-bottom:0/, 'the card opens into the panel below');
-    assert.match(rule('.tab-strip button.active'), /padding-top:4px/, 'the active card lifts by two pixels without moving its label');
+    assert.match(rule('.tab-strip button.active'), /padding:5px 9px 4px/, 'the active card is wider than its neighbours and its label rides a pixel higher');
+    assert.match(rule('.tab-strip button.active'), /height:26px/, 'and taller, rising above them');
+    assert.match(rule('.tab-strip button.active'), /margin-top:-5px/, 'the extra height goes above the strip, not into the panel');
     assert.match(rule('.tab-strip button+button'), /margin-left:-1px/, 'neighbouring cards share a single separator line');
     assert.match(rule('.tab-strip'), /padding-left:0/, 'the first card starts flush with the panel');
-    assert.match(rule('.tab-strip button:active:not(:disabled)'), /padding:2px 6px/, 'pressing a card does not resize it');
-    assert.match(rule('.tab-strip button.active:active:not(:disabled)'), /padding-top:4px/, 'nor does the active card lose its lift while pressed');
+    assert.match(rule('.tab-strip button:active:not(:disabled)'), /padding:3px 6px 1px/, 'pressing a card does not resize it');
+    assert.match(rule('.tab-strip button.active:active:not(:disabled)'), /padding:5px 9px 4px/, 'nor does the active card lose its size while pressed');
 });
