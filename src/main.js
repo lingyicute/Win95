@@ -4,6 +4,7 @@ import { installClipboard } from './packages/core/clipboard.js';
 import { WindowManager } from './packages/shell/window-manager.js';
 import { pointerTrails } from './packages/shell/pointer-trails.js';
 import { revealDesktopLayers } from './packages/shell/desktop-reveal.js';
+import { shellFolder } from './packages/shell/shell-folders.js';
 import { installCursors, setPointerBusy } from './packages/shell/cursors.js';
 import { el, button, dataText, field, onDoubleActivate, setDoubleClickDelay } from './packages/ui/dom.js';
 import { icon, fileIcon } from './packages/ui/icons.js';
@@ -507,14 +508,17 @@ function renderDesktop() {
     desktopIcons.replaceChildren();
     const entries = fixed.map(([app, name, ic]) => ({ app, name, ic, key: app }));
     const folderOptions = s.settings.get('applet-folder-options', {});
-    for (const n of s.fs.list('C:\\Windows\\Desktop')) {
+    /* Read through the shell's own view of the folder: deleting or renaming it
+       in Explorer used to throw here on every change and leave the desktop
+       blank, because the icons were cleared before the list that failed. */
+    for (const n of shellFolder(s.fs, 'C:\\Windows\\Desktop')) {
         if (folderOptions.allFiles === false && n.hidden)
             continue;
         entries.push({ path: n.path, name: displayName(n, folderOptions.extensions === false), ic: fileIcon(n), key: n.path, nameIsData: true });
     }
     entries.sort((a, b) => arrangeEntry(a, b, desktopArrangement()));
     for (const e of entries) {
-        const b = el('button', { class: 'desktop-icon' + (selected.has(e.key) ? ' selected' : ''), 'aria-label': e.name, 'data-i18n-skip-attrs': e.nameIsData ? 'aria-label' : undefined, 'data-desktop-key': e.key, draggable: !!e.path }, icon(e.app === 'recycle' && s.fs.list('C:\\Recycled').length ? 'recycleFull' : e.ic, 32), e.nameIsData ? dataText(e.name) : el('span', { text: e.name }));
+        const b = el('button', { class: 'desktop-icon' + (selected.has(e.key) ? ' selected' : ''), 'aria-label': e.name, 'data-i18n-skip-attrs': e.nameIsData ? 'aria-label' : undefined, 'data-desktop-key': e.key, draggable: !!e.path }, icon(e.app === 'recycle' && shellFolder(s.fs, 'C:\\Recycled').length ? 'recycleFull' : e.ic, 32), e.nameIsData ? dataText(e.name) : el('span', { text: e.name }));
         const open = () => e.app ? s.launch(e.app) : s.open(e.path);
         onDoubleActivate(b, open);
         b.onclick = event => {

@@ -62,7 +62,15 @@ export function dosPrompt(s, args = {}) {
         if (e.key === 'Tab') {
             e.preventDefault();
             const tokens = input.value.split(' '), prefix = tokens.at(-1);
-            const matches = s.fs.list(engine.cwd).filter(n => n.path.split('\\').at(-1).toLowerCase().startsWith(prefix.toLowerCase()));
+            /* The folder the prompt stands in can be deleted in another window:
+               asking the volume for it then threw out of this handler and the
+               key stopped working. Nothing to complete is a valid answer. */
+            let here = [];
+            try {
+                here = s.fs.list(engine.cwd);
+            }
+            catch { }
+            const matches = here.filter(n => n.path.split('\\').at(-1).toLowerCase().startsWith(prefix.toLowerCase()));
             if (matches.length === 1) {
                 tokens[tokens.length - 1] = matches[0].path.split('\\').at(-1);
                 input.value = tokens.join(' ');
