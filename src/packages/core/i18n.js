@@ -164,7 +164,7 @@ const ZH = {
     'Buttons': '按钮', 'Customize your pointing device.': '自定义指针设备。',
     'Left-handed button configuration': '左右键交换', 'Double-click speed:': '双击速度：',
     'Motion': '移动', 'Pointer Trail': '鼠标轨迹', 'Pointer trail length': '指针轨迹长度', 'Show pointer trails': '显示鼠标轨迹', 'Short': '短', 'Long': '长',
-    'Double-click to test': '双击此处测试', 'Folder opened': '文件夹已打开', 'Test area': '测试区域',
+    'Double-click to test': '双击此处测试', 'Test area': '测试区域',
     'Pointers': '指针', 'Large': '大', 'Crosshair': '十字线', 'Speed': '速度',
     'Customize:': '自定义：',
     'Normal Select': '正常选择', 'Help Select': '帮助选择', 'Working In Background': '后台运行', 'Busy': '忙',

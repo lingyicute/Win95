@@ -6,6 +6,9 @@ import { combo } from '@win95/ui/select.js';
 import { POINTER_ROLES, SCHEMES, currentSchemeName, cursorArt, listSchemes, parseCursorFile, resolveScheme, svgDataUrl } from '@win95/shell/cursors.js';
 import { saverWaitMinutes, saverWaitOptions } from './saver-wait.js';
 const applets = [['display', 'Display', 'display'], ['sounds', 'Sounds', 'volume'], ['keyboard', 'Keyboard', 'keyboard'], ['mouse', 'Mouse', 'mouse'], ['datetime', 'Date/Time', 'clock'], ['regional', 'Regional Settings', 'regional'], ['fonts', 'Fonts', 'font'], ['printers', 'Printers', 'printer'], ['network', 'Network', 'network'], ['system', 'System', 'computer'], ['addremove', 'Add/Remove Programs', 'task'], ['accessibility', 'Accessibility Options', 'accessibility'], ['multimedia', 'Multimedia', 'media'], ['passwords', 'Passwords', 'passwords'], ['modems', 'Modems', 'modem'], ['joystick', 'Joystick', 'joystick'], ['hardware', 'Add New Hardware', 'control'], ['power', 'Power', 'power']];
+
+/** Slider position (0 slowest … 100 fastest) to the double-click interval in ms. */
+export const doubleClickInterval = speed => Math.round(800 - (speed ?? 50) * 6);
 export function controlPanel(s) {
     const w = s.wm.create({ title: 'Control Panel', icon: 'control', width: 573, height: 388 });
     w.setMenu(menuBar([{ label: 'File', items: [{ label: 'Close', action: () => w.close() }] }, { label: 'View', items: [{ label: 'Large Icons', checked: true }, { label: 'Refresh', action: () => { } }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'settings' }) }, { label: 'About Windows 95', action: () => s.about() }] }]));
@@ -185,7 +188,30 @@ export function settingsApplet(s, id) {
     const range = (p, label, key, value = 50) => p.append(field(label, trackbar({ label, value: draft[key] ?? value, onChange: next => draft[key] = next })));
     const pages = [];
     if (id === 'mouse') {
-        pages.push(['Buttons', p => { p.append(el('div', { class: 'row' }, icon('mouse', 32), el('p', { text: 'Customize your pointing device.' }))); check(p, 'Left-handed button configuration', 'leftHanded', s.settings.get('leftHanded', false)); range(p, 'Double-click speed:', 'doubleClick', 50); const test = button('Double-click to test', () => { }, { ondblclick: e => { e.target.classList.toggle('pressed'); e.target.textContent = e.target.classList.contains('pressed') ? 'Folder opened' : 'Double-click to test'; } }); p.append(el('fieldset', {}, el('legend', { text: 'Test area' }), icon('folder', 32), test)); commits.push(() => s.settings.set('leftHanded', !!draft.leftHanded)); commits.push(() => s.settings.set('doubleClickMs', Math.round(800 - (draft.doubleClick ?? 50) * 6))); }], ['Motion', p => {
+        pages.push(['Buttons', p => {
+            p.append(el('div', { class: 'row' }, icon('mouse', 32), el('p', { text: 'Customize your pointing device.' })));
+            check(p, 'Left-handed button configuration', 'leftHanded', s.settings.get('leftHanded', false));
+            range(p, 'Double-click speed:', 'doubleClick', 50);
+            /* The folder is the test area: two clicks inside the interval set
+               on the slider above open it or close it, and a slower pair leaves
+               the picture as it was. */
+            let lastClick = null, open = false;
+            const folder = el('button', { class: 'mouse-test-folder', type: 'button', 'aria-label': 'Double-click to test', 'aria-pressed': 'false' }, icon('folder', 32));
+            folder.addEventListener('click', () => {
+                const now = Date.now();
+                if (lastClick === null || now - lastClick > doubleClickInterval(draft.doubleClick)) {
+                    lastClick = now;
+                    return;
+                }
+                lastClick = null;
+                open = !open;
+                folder.replaceChildren(icon(open ? 'folderOpen' : 'folder', 32));
+                folder.setAttribute('aria-pressed', String(open));
+            });
+            p.append(el('fieldset', { class: 'mouse-test-area' }, el('legend', { text: 'Test area' }), folder));
+            commits.push(() => s.settings.set('leftHanded', !!draft.leftHanded));
+            commits.push(() => s.settings.set('doubleClickMs', doubleClickInterval(draft.doubleClick)));
+        }], ['Motion', p => {
             const trailsOn = draft.pointerTrails ?? s.settings.get('pointerTrails', false);
             const trail = trackbar({ label: 'Pointer trail length', min: 0, max: 100, value: draft.trailLength ?? s.settings.get('trailLength', 50), ticks: 7, onChange: next => draft.trailLength = next });
             trail.disabled = !trailsOn;

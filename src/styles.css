@@ -31,3 +31,6 @@
 .trail-emblem{flex:none}
 .reveal-icons #desktop-icons,.reveal-taskbar #taskbar,.reveal-windows #windows{visibility:hidden}
 body.busy-cursor,body.busy-cursor *{cursor:var(--cur-busy,wait)!important}body.dragging-cursor,body.dragging-cursor *{cursor:var(--cur-move,move)!important}body[data-resize=n],body[data-resize=n] *,body[data-resize=s],body[data-resize=s] *{cursor:var(--cur-vresize,ns-resize)!important}body[data-resize=e],body[data-resize=e] *,body[data-resize=w],body[data-resize=w] *{cursor:var(--cur-hresize,ew-resize)!important}body[data-resize=ne],body[data-resize=ne] *,body[data-resize=sw],body[data-resize=sw] *{cursor:var(--cur-dresize2,nesw-resize)!important}body[data-resize=nw],body[data-resize=nw] *,body[data-resize=se],body[data-resize=se] *{cursor:var(--cur-dresize1,nwse-resize)!important}.pointer-role-list{height:170px}.pointer-preview{width:100%;height:84px;display:flex;align-items:center;justify-content:center;overflow:hidden}.pointer-file{text-align:center;color:#555;font-size:11px;margin:7px 0 0}
+.mouse-test-area{display:flex;justify-content:center;padding:12px}
+.mouse-test-folder{background:none;box-shadow:none;padding:4px;min-height:0;display:flex;align-items:center;justify-content:center;flex:none}
+.mouse-test-folder:active:not(:disabled){box-shadow:none;padding:4px}
