@@ -385,8 +385,21 @@ export function wordpad(s, args = {}) {
     title();
     return w;
 }
+/*
+ * A calculator is sized to its keys, not the other way round. The window frame
+ * spends 3px above the title bar, 19px on the title bar, 22px on the menu bar
+ * and 3px below the body - 47px - and the body spends 9px of padding twice,
+ * a 30px display and a 24px action row, an 8px gap between each of those, and
+ * a key pad of five 32px rows with 5px between them. Adding those up gives the
+ * heights below: a window any shorter squeezes the display and cuts the last
+ * row of keys off at the bottom. tests/calculator-window.test.mjs recomputes
+ * both numbers from the stylesheet, so a change to any of those sizes shows up
+ * there instead of as a clipped keypad.
+ */
+const CALCULATOR_WIDTH = 294, CALCULATOR_HEIGHT = 315;
+const CALCULATOR_SCIENTIFIC_WIDTH = 354, CALCULATOR_SCIENTIFIC_HEIGHT = 373;
 export function calculator(s) {
-    const w = s.wm.create({ title: 'Calculator', icon: 'calculator', width: 294, height: 287, resizable: false });
+    const w = s.wm.create({ title: 'Calculator', icon: 'calculator', width: CALCULATOR_WIDTH, height: CALCULATOR_HEIGHT, resizable: false });
     w.body.classList.add('calculator-body');
     let value = '0', acc = null, op = null, newEntry = true, memory = 0, lastOp = null, lastArg = null, scientific = false, degrees = true;
     const display = el('input', { class: 'calculator-display', value: '0', readOnly: true, 'aria-label': 'Calculator display' }), mem = el('span', { class: 'memory-indicator' });
@@ -490,7 +503,7 @@ export function calculator(s) {
     for (const k of layout)
         keys.append(button(k, () => apply(k), { class: (['+', '−', '×', '÷', '='].includes(k) ? 'operator ' : '') + (k.startsWith('M') ? 'memory ' : '') + (k === '=' ? 'wide' : '') }));
     w.body.append(display, actions, scientificKeys, keys);
-    const setMode = mode => { scientific = mode; scientificKeys.hidden = !mode; w.rect.height = mode ? 365 : 287; w.rect.width = mode ? 354 : 294; s.wm.layout(w); };
+    const setMode = mode => { scientific = mode; scientificKeys.hidden = !mode; w.rect.height = mode ? CALCULATOR_SCIENTIFIC_HEIGHT : CALCULATOR_HEIGHT; w.rect.width = mode ? CALCULATOR_SCIENTIFIC_WIDTH : CALCULATOR_WIDTH; s.wm.layout(w); };
     w.setMenu(menuBar([{ label: 'Edit', items: [{ label: 'Copy', shortcut: 'Ctrl+C', action: () => s.copyText(value) }, { label: 'Paste', shortcut: 'Ctrl+V', action: async () => {
                         const v = await s.pasteText();
                         if (v !== null && Number.isFinite(Number(v))) {
