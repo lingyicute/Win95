@@ -5,8 +5,10 @@ import { cellClass, cellMarkup, counterChars, counterMarkup, faceFor, faceMarkup
 import { createTouchFlagHandler } from './mines-input.js';
 import { FreeCell } from './freecell-engine.js';
 const suitSymbols = { clubs: '♣', diamonds: '♦', hearts: '♥', spades: '♠' };
-function cardNode(card, { selected = false, onClick, onDoubleClick, top = 0 } = {}) {
-    const n = el('button', { class: 'card' + (card.faceUp ? ' ' + (cardColor(card) === 'red' ? 'red' : '') : ' face-down') + (selected ? ' selected' : ''), style: { top: top + 'px' }, 'aria-label': card.faceUp ? `${({ 1: 'Ace', 11: 'Jack', 12: 'Queen', 13: 'King' })[card.rank] || card.rank} of ${card.suit}` : 'Face-down card', onclick: onClick, ondblclick: onDoubleClick, draggable: !!card.faceUp });
+function cardNode(card, { selected = false, onClick, onDoubleClick, top = 0, inert = false } = {}) {
+    const n = el('button', { class: 'card' + (card.faceUp ? ' ' + (cardColor(card) === 'red' ? 'red' : '') : ' face-down') + (selected ? ' selected' : ''), style: { top: top + 'px' }, 'aria-label': card.faceUp ? `${({ 1: 'Ace', 11: 'Jack', 12: 'Queen', 13: 'King' })[card.rank] || card.rank} of ${card.suit}` : 'Face-down card', onclick: onClick, ondblclick: onDoubleClick, draggable: !inert && !!card.faceUp });
+    if (inert)
+        n.tabIndex = -1;
     if (card.faceUp) {
         const rank = ({ 1: 'A', 11: 'J', 12: 'Q', 13: 'K' })[card.rank] || String(card.rank), sym = suitSymbols[card.suit];
         const corner = () => el('span', { class: 'card-corner' }, rank, el('span', { text: sym }));
@@ -157,7 +159,7 @@ export function minesweeper(s) {
 }
 export function solitaire(s, args = {}) {
     const isFree = args.freecell === true;
-    let game = isFree ? new FreeCell(args.seed || Math.floor(Math.random() * 32000) + 1) : new Klondike(), selected = null, drawThree = false, elapsed = 0, winRecorded = false, dealToken = uniqueId();
+    let game = isFree ? new FreeCell(args.seed || Math.floor(Math.random() * 32000) + 1) : new Klondike(), selected = null, drawThree = !isFree && !!s.settings.get('solitaireDrawThree', false), elapsed = 0, winRecorded = false, dealToken = uniqueId();
     const w = s.wm.create({ title: isFree ? `FreeCell Game #${game.seed}` : 'Solitaire', icon: isFree ? 'freecell' : 'solitaire', width: isFree ? 641 : 600, height: 470 });
     const board = el('div', { class: 'solitaire-board' + (isFree ? ' freecell-board' : '') });
     w.body.append(board);
@@ -229,13 +231,23 @@ export function solitaire(s, args = {}) {
             const stock = el('div', { class: 'card-slot stock', 'aria-label': 'Stock', text: game.stock.length ? '' : '↻', onclick: () => { game.draw(drawThree ? 3 : 1); selected = null; render(); } });
             if (game.stock.length)
                 stock.append(cardNode({ faceUp: false }));
-            const waste = el('div', { class: 'card-slot', 'aria-label': 'Waste' });
-            if (game.waste.length) {
-                const from = { zone: 'waste' }, node = cardNode(game.waste.at(-1), { selected: same(selected, from), onClick: e => choose(from, e), onDoubleClick: () => auto(from) });
-                wire(node, from);
+            /* The waste is a fan of the cards the stock last turned over: one
+               in Draw One, three in Draw Three, laid out so the difference is
+               there to see. Only the face of the fan - the last card drawn -
+               can be taken, as on a real table. */
+            const shown = game.waste.slice(-(drawThree ? 3 : 1));
+            const waste = el('div', { class: 'card-slot waste', 'aria-label': 'Waste' });
+            shown.forEach((card, i) => {
+                const isFace = i === shown.length - 1;
+                const from = { zone: 'waste' };
+                const node = cardNode(card, { inert: !isFace, selected: isFace && same(selected, from), onClick: isFace ? e => choose(from, e) : undefined, onDoubleClick: isFace ? () => auto(from) : undefined });
+                if (i)
+                    node.classList.add('waste-' + i);
+                if (isFace)
+                    wire(node, from);
                 waste.append(node);
-            }
-            top.append(stock, waste, el('div', { style: { width: '66px', flexShrink: 0 } }));
+            });
+            top.append(stock, waste, el('div', { style: { flex: 1, minWidth: '12px' } }));
         }
         for (let i = 0; i < 4; i++) {
             const slot = el('div', { class: 'card-slot foundation', 'aria-label': 'Foundation ' + (i + 1), text: isFree ? 'A' : '' });
@@ -282,8 +294,23 @@ export function solitaire(s, args = {}) {
             }
             board.append(el('div', { class: 'game-victory' }, el('h2', { text: 'Congratulations!' }), el('p', { text: 'You won the game.' }), button('Deal Again', () => newGame())));
         }
+        /* The table is drawn again after every move, which takes away the card
+           that had the keyboard. The keys belong to the window, so it takes them
+           back - otherwise F2, Ctrl+Z, H and F1 would all fall silent after the
+           first click on a card. */
+        if (s.wm.active === w && (!document.activeElement || document.activeElement === document.body))
+            w.element.focus({ preventScroll: true });
     };
     const newGame = seed => { game = isFree ? new FreeCell(seed || Math.floor(Math.random() * 32000) + 1) : new Klondike(); selected = null; elapsed = 0; winRecorded = false; dealToken = uniqueId(); w.setTitle(isFree ? `FreeCell Game #${game.seed}` : 'Solitaire'); render(); board.scrollTop = 0; };
+    /* Draw One and Draw Three are a choice about the table, so it outlives the
+       window: the next deal, and the next visit, start the way the last one was
+       left. */
+    const setDraw = three => {
+        drawThree = three;
+        s.settings.set('solitaireDrawThree', three);
+        selected = null;
+        render();
+    };
     const hint = () => {
         const sources = [];
         game.tableau.forEach((pile, i) => pile.forEach((c, j) => {
@@ -314,7 +341,7 @@ export function solitaire(s, args = {}) {
     };
     const selectGame = async () => { const r = await s.ui.prompt('Game number (1–32000):', String(game.seed), 'Select Game', { owner: w }); const n = Number(r); if (r && Number.isInteger(n) && n >= 1 && n <= 32000)
         newGame(n); };
-    w.setMenu(menuBar([{ label: 'Game', items: () => [{ label: isFree ? 'New Game' : 'Deal', shortcut: 'F2', action: () => newGame() }, ...(isFree ? [{ label: 'Select Game…', shortcut: 'F3', action: selectGame }, { label: 'Restart Game', action: () => newGame(game.seed) }] : []), { label: 'Undo', shortcut: 'Ctrl+Z', disabled: !game.canUndo, action: () => { game.undo(); selected = null; render(); } }, { label: 'Hint', shortcut: 'H', action: hint }, null, ...(!isFree ? [{ label: 'Draw One', checked: !drawThree, action: () => drawThree = false }, { label: 'Draw Three', checked: drawThree, action: () => drawThree = true }] : [{ label: 'Statistics…', action: () => s.ui.message(`Games won: ${s.settings.get('freecellWins', 0)}`, 'FreeCell Statistics', ['OK'], { owner: w }) }]), null, { label: 'Exit', action: () => w.close() }] }, { label: 'Help', items: [{ label: 'How to Play', action: () => s.ui.message(isFree ? 'Move all cards to the four foundations, building from Ace to King in each suit.\n\nBuild tableau columns in descending order with alternating colors. Any card may occupy a free cell. Empty cells and columns determine how many cards can be moved together.\n\nClick a card, then its destination, or drag it. Double-click to move it to a foundation.' : 'Build four foundations from Ace to King in each suit. Tableau columns descend with alternating colors. An empty column accepts a King.\n\nClick a card, then its destination, or drag it. Double-click to move to a foundation. Click the stock to draw.', isFree ? 'FreeCell' : 'Solitaire', ['OK'], { owner: w, width: 440, height: 290 }) }, { label: 'About ' + (isFree ? 'FreeCell' : 'Solitaire'), action: () => s.about(isFree ? 'FreeCell' : 'Solitaire', isFree ? 'freecell' : 'solitaire') }] }]));
+    w.setMenu(menuBar([{ label: 'Game', items: () => [{ label: isFree ? 'New Game' : 'Deal', shortcut: 'F2', action: () => newGame() }, ...(isFree ? [{ label: 'Select Game…', shortcut: 'F3', action: selectGame }, { label: 'Restart Game', action: () => newGame(game.seed) }] : []), { label: 'Undo', shortcut: 'Ctrl+Z', disabled: !game.canUndo, action: () => { game.undo(); selected = null; render(); } }, { label: 'Hint', shortcut: 'H', action: hint }, null, ...(!isFree ? [{ label: 'Draw One', checked: !drawThree, action: () => setDraw(false) }, { label: 'Draw Three', checked: drawThree, action: () => setDraw(true) }] : [{ label: 'Statistics…', action: () => s.ui.message(`Games won: ${s.settings.get('freecellWins', 0)}`, 'FreeCell Statistics', ['OK'], { owner: w }) }]), null, { label: 'Exit', action: () => w.close() }] }, { label: 'Help', items: [{ label: 'How to Play', shortcut: !isFree ? 'F1' : undefined, action: () => isFree ? s.ui.message('Move all cards to the four foundations, building from Ace to King in each suit.\n\nBuild tableau columns in descending order with alternating colors. Any card may occupy a free cell. Empty cells and columns determine how many cards can be moved together.\n\nClick a card, then its destination, or drag it. Double-click to move it to a foundation.', 'FreeCell', ['OK'], { owner: w, width: 440, height: 290 }) : s.launch('help', { topic: 'solitaire' }) }, { label: 'About ' + (isFree ? 'FreeCell' : 'Solitaire'), action: () => s.about(isFree ? 'FreeCell' : 'Solitaire', isFree ? 'freecell' : 'solitaire') }] }]));
     w.element.addEventListener('keydown', e => {
         if (e.key === 'F2') {
             e.preventDefault();
@@ -332,6 +359,14 @@ export function solitaire(s, args = {}) {
         }
         else if (e.key.toLowerCase() === 'h')
             hint();
+        else if (e.key === 'F1' && !isFree) {
+            /* The shell's own F1 opens Help at the contents; from the table it
+               opens the page about this game. Stopping here keeps the two from
+               both opening. */
+            e.preventDefault();
+            e.stopPropagation();
+            s.launch('help', { topic: 'solitaire' });
+        }
         else if (e.key === 'Escape') {
             selected = null;
             render();
