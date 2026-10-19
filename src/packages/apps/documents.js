@@ -1,6 +1,6 @@
 import { htmlToRtf, rtfToHtml } from '@win95/core/rtf.js';
 import { el, button, download, fileInput } from '@win95/ui/dom.js';
-import { menuBar } from '@win95/ui/menu.js';
+import { menuBar, popup } from '@win95/ui/menu.js';
 import { combo } from '@win95/ui/select.js';
 import { baseName, parentPath } from '@win95/core/filesystem.js';
 const printDocument = (content, html = false) => {
@@ -144,6 +144,26 @@ export function notepad(s, args = {}) {
             editor.value = last;
             dirty = true;
         }
+        /* Whichever way Undo was asked for - the Edit menu or a right click -
+           the caret goes back to the text, ready to type. */
+        editor.focus();
+    };
+    /* The commands Notepad offers twice over: in the Edit menu, where the
+       keyboard hints are worth showing, and on a right click, where Windows 95
+       lists them without hints. One list keeps the two from drifting apart. */
+    const editCommands = hints => [
+        { label: 'Undo', shortcut: hints && 'Ctrl+Z', disabled: !undo.length, action: undoAction }, null,
+        { label: 'Cut', shortcut: hints && 'Ctrl+X', action: cut },
+        { label: 'Copy', shortcut: hints && 'Ctrl+C', action: copy },
+        { label: 'Paste', shortcut: hints && 'Ctrl+V', action: paste },
+        { label: 'Delete', shortcut: hints && 'Del', action: () => insert('') }, null,
+        { label: 'Select All', shortcut: hints && 'Ctrl+A', action: () => { editor.focus(); editor.select(); } }
+    ];
+    /* A right click in the text brings up that menu, in the order Windows 95
+       lists it: Undo, then the clipboard commands, then Select All. */
+    editor.oncontextmenu = e => {
+        e.preventDefault();
+        popup(editCommands(false), e.clientX, e.clientY, { origin: editor });
     };
     editor.addEventListener('beforeinput', () => {
         undo.push(editor.value);
@@ -160,7 +180,7 @@ export function notepad(s, args = {}) {
                             dirty = true;
                             title();
                         }
-                    }) }, { label: 'Export…', action: () => download(path ? baseName(path) : 'Untitled.txt', editor.value) }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [{ label: 'Undo', shortcut: 'Ctrl+Z', disabled: !undo.length, action: undoAction }, null, { label: 'Cut', shortcut: 'Ctrl+X', action: cut }, { label: 'Copy', shortcut: 'Ctrl+C', action: copy }, { label: 'Paste', shortcut: 'Ctrl+V', action: paste }, { label: 'Delete', shortcut: 'Del', action: () => insert('') }, null, { label: 'Select All', shortcut: 'Ctrl+A', action: () => { editor.focus(); editor.select(); } }, { label: 'Time/Date', shortcut: 'F5', action: () => insert(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString()) }, null, { label: 'Word Wrap', checked: wrap, action: () => { wrap = !wrap; editor.classList.toggle('wrap', wrap); s.settings.set('notepadWrap', wrap); } }] }, { label: 'Search', items: [{ label: 'Find…', action: () => find() }, { label: 'Find Next', shortcut: 'F3', action: () => find(true) }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'notepad' }) }, { label: 'About Notepad', action: () => s.about('Notepad', 'notepad') }] }]));
+                    }) }, { label: 'Export…', action: () => download(path ? baseName(path) : 'Untitled.txt', editor.value) }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [...editCommands(true), { label: 'Time/Date', shortcut: 'F5', action: () => insert(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString()) }, null, { label: 'Word Wrap', checked: wrap, action: () => { wrap = !wrap; editor.classList.toggle('wrap', wrap); s.settings.set('notepadWrap', wrap); } }] }, { label: 'Search', items: [{ label: 'Find…', action: () => find() }, { label: 'Find Next', shortcut: 'F3', action: () => find(true) }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'notepad' }) }, { label: 'About Notepad', action: () => s.about('Notepad', 'notepad') }] }]));
     editor.onkeydown = e => {
         if (e.key === 'Tab') {
             e.preventDefault();
