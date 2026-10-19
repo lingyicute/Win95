@@ -35,15 +35,15 @@
         }
 
         /* The strip that stands in for the game's own bar: the top of its title
-           picture, which reads as the bezel over the table. */
+           picture, which reads as the bezel over the table. It takes the clicks
+           as well as the looks, so the bar underneath can never be pressed. */
         #cover {
             position: absolute;
             top: 0;
             left: 0;
             width: 600px;
             height: 9px;
-            background: url(pinball-overlay.png) no-repeat 0 0;
-            pointer-events: none;
+            background: #484848 url(pinball-overlay.png) no-repeat 0 0;
             z-index: 2;
         }
 

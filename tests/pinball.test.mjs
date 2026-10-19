@@ -75,7 +75,11 @@ test('the window is the table plus its title bar, menu bar and frame', () => {
 test('the page hides the game\'s own menu bar behind a strip of its title picture', () => {
     assert.match(page, /<canvas id="canvas" width="600" height="440" tabindex="0"/, 'the game draws into its own canvas');
     assert.match(page, /top: -12px/, 'the picture sits 12 pixels up, under the bar the game draws for itself');
-    assert.match(page, /#cover \{[^}]*width: 600px;[^}]*height: 9px;[^}]*background: url\(pinball-overlay\.png\) no-repeat 0 0/, 'the strip is the top of the title picture');
+    assert.match(page, /#cover \{[^}]*width: 600px;[^}]*height: 9px;[^}]*background: #484848 url\(pinball-overlay\.png\) no-repeat 0 0/, 'the strip is the top of the title picture');
+    const cover = /#cover \{([^}]*)\}/.exec(page)[1];
+    assert.doesNotMatch(cover, /pointer-events:\s*none/, 'the strip takes the clicks too: a press on it must not reach the game\'s own bar underneath');
+    assert.match(cover, /z-index: 2/, 'and it sits over the picture');
+    assert.match(page, /<canvas id="canvas" width="600" height="440"/, 'the picture itself has no z-index, so the strip is above it');
     assert.match(page, /#freeze \{[^}]*width: 600px;[^}]*height: 416px/, 'a still frame can cover the picture while a menu is open');
     assert.match(page, /aria-label="Space Cadet pinball table"/, 'the table has a name, as the desktop requires of its windows');
 });
