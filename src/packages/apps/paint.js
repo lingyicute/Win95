@@ -4,14 +4,14 @@ import { baseName } from '@win95/core/filesystem.js';
 import { RasterPresenter } from '@win95/graphics/renderer.js';
 export async function paint(s, args = {}) {
     const w = s.wm.create({ title: 'untitled - Paint', icon: 'paint', width: 720, height: 510, x: args.x, y: args.y });
-    let path = args.path || null, dirty = false, generation = 0, tool = 'pencil', foreground = '#000000', background = '#ffffff', lineWidth = 1, fillShape = false, zoom = 1, selection = null, clip = null, undo = [], redo = [], drawing = false, start = null, snapshot = null, last = null, polygon = [], curveLine = null;
+    let path = args.path || null, dirty = false, generation = 0, tool = 'pencil', foreground = '#000000', background = '#ffffff', lineWidth = 1, shapeStyle = 'outline', zoom = 1, selection = null, clip = null, undo = [], redo = [], drawing = false, start = null, snapshot = null, last = null, polygon = [], curveLine = null;
     const source = document.createElement('canvas');
     source.width = 640;
     source.height = 360;
     let ctx = source.getContext('2d', { willReadFrequently: true });
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, source.width, source.height);
-    const workspace = el('div', { class: 'paint-workspace' }), tools = el('div', { class: 'paint-tools' }), surface = el('div', { class: 'paint-surface' }), visible = el('canvas', { 'aria-label': 'Paint drawing canvas', role: 'img' });
+    const workspace = el('div', { class: 'paint-workspace' }), tools = el('div', { class: 'paint-tools' }), toolGrid = el('div', { class: 'paint-tool-grid' }), surface = el('div', { class: 'paint-surface' }), visible = el('canvas', { 'aria-label': 'Paint drawing canvas', role: 'img' });
     surface.append(visible);
     workspace.append(tools, surface);
     const palette = el('div', { class: 'paint-palette' });
@@ -145,12 +145,55 @@ export async function paint(s, args = {}) {
             polygon = [];
         }
         tool = t;
-        tools.querySelectorAll('[data-tool]').forEach(n => n.classList.toggle('selected', n.dataset.tool === t)); w.status(({ select: 'Select a rectangular area of the picture.', pencil: 'Draws a free-form line one pixel wide.', fill: 'Fills an area with the selected color.', text: 'Click the picture to insert text.', polygon: 'Click to add points. Double-click to complete the polygon.', curve: 'Drag a line, then click to set the curve.' })[t] || `Draw with the ${t} tool.`); };
+        refreshOptions();
+        const title = definitions.find(([id]) => id === t)?.[2] ?? t;
+        tools.querySelectorAll('[data-tool]').forEach(n => n.classList.toggle('selected', n.dataset.tool === t)); w.status(({ select: 'Select a rectangular area of the picture.', pencil: 'Draws a free-form line one pixel wide.', fill: 'Fills an area with the selected color.', text: 'Click the picture to insert text.', polygon: 'Click to add points. Double-click to complete the polygon.', curve: 'Drag a line, then click to set the curve.' })[t] || `Draw with the ${title} tool.`); };
     const definitions = [['select', '⬚', 'Select'], ['freeSelect', '♧', 'Free-form select'], ['eraser', '▱', 'Eraser'], ['fill', '◩', 'Fill with color'], ['picker', '⌁', 'Pick color'], ['magnifier', '⌕', 'Magnifier'], ['pencil', '╱', 'Pencil'], ['brush', '▰', 'Brush'], ['spray', '⁙', 'Airbrush'], ['text', 'A', 'Text'], ['line', '╲', 'Line'], ['curve', '∿', 'Curve'], ['rectangle', '□', 'Rectangle'], ['polygon', '⬠', 'Polygon'], ['ellipse', '○', 'Ellipse'], ['roundrect', '▢', 'Rounded rectangle']];
     for (const [t, label, title] of definitions)
-        tools.append(button(label, () => choose(t), { title, 'aria-label': title, 'data-tool': t, class: t === tool ? 'selected' : '' }));
-    const options = el('div', { class: 'paint-tool-options' }, ...['1', '3', '5', '8'].map(n => button('━', () => lineWidth = Number(n), { title: `Line width ${n}`, style: { fontSize: (+n + 7) + 'px' } })), button('▣', () => { fillShape = !fillShape; options.lastChild.classList.toggle('pressed', fillShape); }, { title: 'Filled shapes' }));
-    tools.append(options);
+        toolGrid.append(button(label, () => choose(t), { title, 'aria-label': title, 'data-tool': t, class: t === tool ? 'selected' : '' }));
+    /* One box under the tools holds whatever the chosen tool can be told,
+       and nothing else: a tool with no options leaves it blank, as Paint
+       does. The five line sizes live in here rather than in a column of
+       their own, and are drawn as lines of their own thickness. */
+    const options = el('div', { class: 'paint-tool-options', role: 'group', 'aria-label': 'Tool options' });
+    tools.append(toolGrid, options);
+    const STROKE_SIZES = [1, 2, 3, 4, 5];
+    const SHAPE_STYLES = [
+        { id: 'outline', label: 'Outline', stroke: true, fill: false },
+        { id: 'both', label: 'Outline and fill', stroke: true, fill: true },
+        { id: 'fill', label: 'Fill', stroke: false, fill: true }
+    ];
+    const shapeStyleChoice = () => SHAPE_STYLES.find(style => style.id === shapeStyle) || SHAPE_STYLES[0];
+    const option = (chosen, label, ...children) => el('button', { type: 'button', class: 'paint-option' + (chosen ? ' selected' : ''), title: label, 'aria-label': label, 'aria-pressed': String(chosen) }, ...children);
+    const strokeSizeChooser = () => {
+        const box = el('div', { class: 'paint-chooser paint-stroke-sizes' });
+        for (const size of STROKE_SIZES) {
+            const b = option(lineWidth === size, `Line size ${size}px`, el('span', { class: 'paint-stroke-sample', style: { height: size + 'px' } }));
+            b.onclick = () => { lineWidth = size; refreshOptions(); };
+            box.append(b);
+        }
+        return box;
+    };
+    const shapeStyleChooser = () => {
+        const box = el('div', { class: 'paint-chooser paint-shape-styles' });
+        for (const style of SHAPE_STYLES) {
+            const sample = el('span', { class: 'paint-shape-sample', style: { borderColor: style.stroke ? '#000' : 'transparent', background: style.fill ? '#808080' : 'transparent' } });
+            const b = option(shapeStyle === style.id, style.label, sample);
+            b.onclick = () => { shapeStyle = style.id; refreshOptions(); };
+            box.append(b);
+        }
+        return box;
+    };
+    function refreshOptions() {
+        const kind = tool === 'line' || tool === 'curve' ? 'stroke' : ['rectangle', 'polygon', 'ellipse', 'roundrect'].includes(tool) ? 'shapes' : '';
+        options.dataset.options = kind;
+        options.replaceChildren();
+        if (kind === 'stroke')
+            options.append(strokeSizeChooser());
+        else if (kind === 'shapes')
+            options.append(shapeStyleChooser());
+    }
+    refreshOptions();
     const colors = ['#000000', '#808080', '#800000', '#808000', '#008000', '#008080', '#000080', '#800080', '#808040', '#004040', '#0080ff', '#004080', '#8000ff', '#804000', '#ffffff', '#c0c0c0', '#ff0000', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#ff00ff', '#ffff80', '#00ff80', '#80ffff', '#8080ff', '#ff0080', '#ff8040'];
     const swatches = el('div', { class: 'paint-colors' });
     for (const color of colors) {
@@ -184,8 +227,9 @@ export async function paint(s, args = {}) {
         ctx.putImageData(im, 0, 0);
     };
     const shape = (a, b) => {
+        const style = shapeStyleChoice(), plain = ['line', 'curve', 'select', 'freeSelect'].includes(tool);
         ctx.strokeStyle = foreground;
-        ctx.fillStyle = fillShape ? foreground : background;
+        ctx.fillStyle = style.id === 'both' ? background : foreground;
         ctx.lineWidth = lineWidth;
         ctx.setLineDash([]);
         const x = Math.min(a.x, b.x) + .5, y = Math.min(a.y, b.y) + .5, width = Math.abs(a.x - b.x), height = Math.abs(a.y - b.y);
@@ -206,9 +250,10 @@ export async function paint(s, args = {}) {
         }
         else
             ctx.rect(x, y, width, height);
-        if (fillShape && !['line', 'curve', 'select', 'freeSelect'].includes(tool))
+        if (style.fill && !plain)
             ctx.fill();
-        ctx.stroke();
+        if (style.stroke || plain)
+            ctx.stroke();
         ctx.setLineDash([]);
     };
     surface.oncontextmenu = e => e.preventDefault();
@@ -342,14 +387,16 @@ export async function paint(s, args = {}) {
     surface.addEventListener('lostpointercapture', finish);
     onDoubleActivate(surface, () => {
         if (tool === 'polygon' && polygon.length > 1) {
-            stroke(polygon.at(-1), polygon[0]);
-            if (fillShape) {
-                ctx.fillStyle = foreground;
+            const style = shapeStyleChoice();
+            if (style.fill) {
+                ctx.fillStyle = style.id === 'both' ? background : foreground;
                 ctx.beginPath();
                 polygon.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
                 ctx.closePath();
                 ctx.fill();
             }
+            if (style.stroke)
+                stroke(polygon.at(-1), polygon[0]);
             polygon = [];
             render();
         }
