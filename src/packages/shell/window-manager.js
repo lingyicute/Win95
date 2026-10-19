@@ -2,6 +2,7 @@ import { el, dataText, onDoubleActivate } from '@win95/ui/dom.js';
 import { icon } from '@win95/ui/icons.js';
 import { popup, closeMenus } from '@win95/ui/menu.js';
 import { closeCombos } from '@win95/ui/select.js';
+import { flyTitleBar, rectOf, titleBarRect } from './minimize-animation.js';
 export class WindowManager extends EventTarget {
     constructor() { super(); this.primary = null; this.windows = []; this.sequence = 0; this.z = 10; this.active = null; this.host = document.querySelector('#windows'); this.tasks = document.querySelector('#tasks'); window.addEventListener('resize', () => this.fit()); document.addEventListener('keydown', e => this.keydown(e)); }
     create(options = {}) {
@@ -47,13 +48,14 @@ export class WindowManager extends EventTarget {
         w.minimize = () => this.minimize(w);
         w.maximize = () => this.maximize(w);
         w.restore = () => {
-            if (w.minimized) {
-                w.minimized = false;
-                node.hidden = false;
-            }
-            if (w.maximized)
+            /* Bringing a window back from the taskbar is not un-maximizing it:
+               a window that was maximized when it went away comes back the way
+               it was. Only a window that is already on screen is restored in
+               the other sense - put back to the size it had before. */
+            if (w.maximized && !w.minimized)
                 this.maximize(w);
-            this.focus(w);
+            else
+                this.focus(w);
         };
         w.close = () => this.close(w);
         w.setMenu = menus => { w.menu?.remove(); w.menu = menus; body.before(menus); };
@@ -91,13 +93,12 @@ export class WindowManager extends EventTarget {
             }
         if (!o.modal) {
             w.task = el('button', { class: 'task-button', 'aria-label': w.title, 'data-i18n-skip-attrs': w.titleRaw ? 'aria-label' : undefined }, icon(w.icon, 16), w.titleRaw ? el('span', { class: 'task-label' }, dataText(w.title)) : el('span', { class: 'task-label', text: w.title }));
-            w.task.onclick = () => { if (this.active === w && !w.minimized)
-                this.minimize(w);
-            else {
-                w.minimized = false;
-                w.element.hidden = false;
-                this.focus(w);
-            } };
+            w.task.onclick = () => {
+                if (this.active === w && !w.minimized)
+                    this.minimize(w);
+                else
+                    this.focus(w);
+            };
             w.task.oncontextmenu = e => { e.preventDefault(); this.systemMenu(w, e.clientX, e.clientY); };
             this.tasks.append(w.task);
         }
@@ -122,6 +123,13 @@ export class WindowManager extends EventTarget {
         const modal = this.windows.find(m => m.options.owner === w && m.options.modal && !m.closed);
         if (modal)
             return this.focus(modal);
+        w.motion?.cancel();
+        w.motion = null;
+        const landing = w.minimized;
+        /* A window that was sitting on the taskbar has to be kept off the
+           screen until its bar arrives; one that is already drawn (it was
+           caught in the middle of minimizing) stays drawn throughout. */
+        const arriving = landing && w.element.hidden;
         if (w.minimized) {
             w.minimized = false;
             w.element.hidden = false;
@@ -133,17 +141,40 @@ export class WindowManager extends EventTarget {
             other.task?.classList.toggle('active', other === w);
             other.task?.setAttribute('aria-pressed', String(other === w));
         }
-        if (!w.element.contains(document.activeElement)) {
-            const target = w.lastFocused?.isConnected ? w.lastFocused : w.element;
-            target.focus({ preventScroll: true });
+        const settle = () => {
+            if (!w.element.contains(document.activeElement)) {
+                const target = w.lastFocused?.isConnected ? w.lastFocused : w.element;
+                target.focus({ preventScroll: true });
+            }
+        };
+        /* Arriving from the taskbar, the title bar grows back out of the button
+           and the window appears under it as it lands, rather than hanging on
+           screen while a second copy of its own title bar flies up to it. */
+        if (landing) {
+            const to = titleBarRect(w.element);
+            const flight = flyTitleBar({ windowElement: w.element, from: rectOf(w.task), to, onDone: () => {
+                    w.element.hidden = false;
+                    w.motion = null;
+                    settle();
+                } });
+            if (flight.animates) {
+                if (arriving)
+                    w.element.hidden = true;
+                w.motion = flight;
+            }
+            else
+                settle();
         }
+        else
+            settle();
         this.changed();
     }
     minimize(w) {
-        if (w.options.modal)
+        if (w.options.modal || w.minimized)
             return;
+        const from = w.element.hidden ? null : titleBarRect(w.element);
+        const to = rectOf(w.task);
         w.minimized = true;
-        w.element.hidden = true;
         w.task?.classList.remove('active');
         if (this.active === w) {
             this.active = null;
@@ -151,6 +182,18 @@ export class WindowManager extends EventTarget {
             if (next)
                 this.focus(next);
         }
+        /* The window keeps its place while a copy of its title bar travels to
+           the button, and is taken off the screen when the copy lands. */
+        w.motion?.cancel();
+        const flight = flyTitleBar({ windowElement: w.element, from, to, onDone: () => {
+                w.motion = null;
+                if (w.minimized)
+                    w.element.hidden = true;
+            } });
+        if (flight.animates)
+            w.motion = flight;
+        else
+            w.element.hidden = true;
         this.changed();
     }
     maximize(w) {
@@ -175,6 +218,8 @@ export class WindowManager extends EventTarget {
                 return false;
             for (const child of this.windows.filter(x => x.options.owner === w))
                 await this.close(child, true);
+            w.motion?.cancel();
+            w.motion = null;
             w.closed = true;
             w.element.remove();
             /* A drop-down list is a child of the shared pop-up layer, not of the
@@ -275,6 +320,8 @@ export class WindowManager extends EventTarget {
     cascade() {
         let i = 0;
         for (const w of this.windows.filter(w => !w.options.modal)) {
+            w.motion?.cancel();
+            w.motion = null;
             w.maximized = false;
             w.minimized = false;
             w.element.hidden = false;
