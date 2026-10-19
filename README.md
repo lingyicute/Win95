@@ -52,7 +52,7 @@ It is built with **plain ES modules, HTML, and CSS** — no framework, no bundle
   - **Minesweeper** with Beginner, Intermediate, Expert, and Custom boards and best times.
   - **Solitaire** with Draw One and Draw Three.
   - **FreeCell** and **Hearts**, each backed by its own game engine.
-  - **3D Pinball for Windows - Space Cadet**, the original table built for the browser (MIT, see `src/programs/pinball/`).
+  - **3D Pinball for Windows - Space Cadet**, the original table built for the browser (MIT, see `src/programs/pinball/`), with a guide to playing it under Help → Help Topics.
 
 - **⌨️ A Working MS-DOS Prompt**
   - Built-in commands include `DIR`, `CD`, `MD`, `RD`, `COPY`, `MOVE`, `DEL`, `REN`, `TYPE`, `TREE`, `ATTRIB`, `FIND`, `SORT`, `SET`, `PATH`, `PROMPT`, `ECHO`, `CALL`, `GOTO`, and more.

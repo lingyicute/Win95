@@ -21,3 +21,7 @@ picture while the desktop's menus are open. It asks the desktop for
 The keys are the game's own: `Z` and `/` for the flippers, `Space` for the
 plunger, `X`, `.` and the up arrow to bump the table, `F2` for a new game,
 `F3` to pause, `F4` for full screen, `F5` and `F6` for sound and music.
+
+How to play - the shots, the keys, the ranks from Cadet to Fleet Admiral - is
+written for the desktop's Help window as the `pinball` topic in
+`src/packages/apps/utilities.js`; the window's Help menu and `F1` open it.

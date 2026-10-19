@@ -218,12 +218,15 @@
 
         /* Keys the desktop answers itself. Everything else is the table's, and
            keys never cross a frame boundary on their own, so the desktop's
-           shortcuts are handed back to the page that owns them. */
+           shortcuts are handed back to the page that owns them: Ctrl+Esc for
+           Start, F1 for Help, as in every other program. */
         window.addEventListener('keydown', function (event) {
-            if (event.ctrlKey && event.key === 'Escape') {
-                event.preventDefault();
-                try { parent.postMessage({ type: 'pinball-shell-key', key: 'Control+Escape' }, '*'); } catch (e) { }
-            }
+            var shellKey = event.ctrlKey && event.key === 'Escape' ? 'Control+Escape'
+                : event.key === 'F1' ? 'F1' : null;
+            if (!shellKey)
+                return;
+            event.preventDefault();
+            try { parent.postMessage({ type: 'pinball-shell-key', key: shellKey }, '*'); } catch (e) { }
         });
         window.addEventListener('contextmenu', function (event) { event.preventDefault(); });
         window.addEventListener('pagehide', function () { timers.forEach(clearTimeout); });
