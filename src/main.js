@@ -670,6 +670,10 @@ register('addressbook', 'Address Book', 'mail', () => {
     render();
     return w;
 });
+/* The Start flag is inlined with every other icon in ICON_DATA, so the
+   taskbar costs no extra request. The placeholder marks the spot and the
+   helper fills it in before the desktop is revealed. */
+document.querySelector('#start-button img').replaceWith(icon('start-flag', 16));
 document.querySelector('#start-button').onpointerdown = e => e.stopPropagation();
 document.querySelector('#start-button').onclick = e => { e.stopPropagation(); startMenu(); };
 onDoubleActivate(document.querySelector('#clock'), () => s.launch('datetime'));
