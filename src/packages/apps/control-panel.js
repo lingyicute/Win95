@@ -29,18 +29,30 @@ export function controlPanel(s) {
     w.status(`${applets.length} object(s)`);
     return w;
 }
-function propertySheet(s, title, ic, tabs, width = 420, height = 420) {
+/**
+ * A property sheet: tab strip, one page at a time, and OK / Cancel / Apply.
+ * A sheet that passes `dirtyApply` starts with Apply greyed out and asks
+ * `w.markDirty()` from the controls that change something, the way Windows
+ * only lights Apply once the user has changed a setting.
+ */
+export function propertySheet(s, title, ic, tabs, width = 420, height = 420, options = {}) {
     const w = s.wm.create({ title, icon: ic, width, height, resizable: false });
     w.body.classList.add('properties-layout');
     const strip = el('div', { class: 'tab-strip' }), panel = el('div', { class: 'tab-panel' }), buttons = el('div', { class: 'dialog-buttons' });
     let tabIndex = 0;
     const panels = tabs.map(([name, build], i) => { const p = el('div', { class: 'control-settings' }); build(p, w); const b = button(name, () => { tabIndex = i; render(); }); strip.append(b); return p; });
     const render = () => { [...strip.children].forEach((b, i) => b.classList.toggle('active', i === tabIndex)); panel.replaceChildren(panels[tabIndex]); };
+    const clean = () => { if (options.dirtyApply) apply.disabled = true; };
+    const apply = button('Apply', async () => { await w.apply?.(); clean(); });
+    if (options.dirtyApply) {
+        apply.disabled = true;
+        w.markDirty = () => { apply.disabled = false; };
+    }
     buttons.append(button('OK', async () => {
         if (w.apply)
             await w.apply();
         w.close();
-    }, { class: 'default-button' }), button('Cancel', () => w.close()), button('Apply', async () => w.apply?.()));
+    }, { class: 'default-button' }), button('Cancel', () => w.close()), apply);
     w.body.append(strip, panel, buttons);
     w.element.addEventListener('keydown', e => {
         if (e.ctrlKey && e.key === 'Tab') {

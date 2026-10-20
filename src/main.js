@@ -6,6 +6,7 @@ import { WindowManager } from './packages/shell/window-manager.js';
 import { pointerTrails } from './packages/shell/pointer-trails.js';
 import { revealDesktopLayers } from './packages/shell/desktop-reveal.js';
 import { shellFolder } from './packages/shell/shell-folders.js';
+import { applyTaskbarSettings, taskbarHeight } from './packages/shell/taskbar-settings.js';
 import { installCursors, setPointerBusy } from './packages/shell/cursors.js';
 import { installSuspend } from './packages/shell/suspend.js';
 import { el, button, dataText, field, onDoubleActivate, setDoubleClickDelay } from './packages/ui/dom.js';
@@ -17,7 +18,7 @@ import { DesktopGraphics } from './packages/graphics/renderer.js';
 import { createFileActions, explorer } from './packages/apps/explorer.js';
 import { notepad, wordpad, calculator } from './packages/apps/documents.js';
 import { paint } from './packages/apps/paint.js';
-import { controlPanel, settingsApplet, displayProperties, dateTime, systemProperties } from './packages/apps/control-panel.js';
+import { controlPanel, settingsApplet, displayProperties, dateTime, systemProperties, propertySheet } from './packages/apps/control-panel.js';
 import { findFiles, help, characterMap, clipboardViewer, registryEditor, systemMonitor, diskUtility, backup, briefcase } from './packages/apps/utilities.js';
 import { mediaPlayer, volumeControl, soundRecorder, internet, inbox } from './packages/apps/multimedia.js';
 import { dosPrompt } from './packages/apps/dos.js';
@@ -491,9 +492,12 @@ function startMenu() {
     const accessories = [...appMenu('accessory'), null, { label: 'Multimedia', icon: 'media', items: () => appMenu('multimedia') }, { label: 'System Tools', icon: 'computer', items: () => appMenu('system').filter(x => x.label !== 'Windows Explorer' && x.label !== 'MS-DOS Prompt') }];
     const programs = [{ label: 'Accessories', icon: 'folder', items: accessories }, { label: 'Games', icon: 'folder', items: () => appMenu('game') }, { label: 'Communications', icon: 'folder', items: () => appMenu('communication') }, null, { label: 'MS-DOS Prompt', icon: 'dos', action: () => s.launch('dos') }, { label: 'Windows Explorer', icon: 'folder', action: () => s.launch('explorer', { path: 'C:\\', tree: true }) }];
     const items = [{ label: 'Programs', icon: 'programs', items: programs }, { label: 'Documents', icon: 'documents', items: () => { const docs = s.settings.get('recentDocuments', []).filter(p => s.fs.exists(p)).map(path => ({ label: baseName(path), icon: fileIcon(s.fs.get(path)), action: () => s.open(path) })); return docs.length ? docs : [{ label: '(Empty)', disabled: true }]; } }, { label: 'Settings', icon: 'settings', items: [{ label: 'Control Panel', icon: 'control', action: () => s.launch('control') }, { label: 'Printers', icon: 'printer', action: () => s.launch('printers') }, { label: 'Taskbar…', icon: 'windows', action: () => s.launch('taskbar-properties') }] }, { label: 'Find', icon: 'find', items: [{ label: 'Files or Folders…', icon: 'find', action: () => s.launch('find') }, { label: 'Computer…', icon: 'network', action: () => s.launch('network') }] }, { label: 'Help', icon: 'help', action: () => s.launch('help') }, { label: 'Run…', icon: 'run', action: runDialog }, null, { label: 'Log Off…', icon: 'logoff', action: s.logoff }, { label: 'Suspend', icon: 'suspend', action: s.suspend }, { label: 'Shut Down…', icon: 'shutdown', action: s.shutdown }];
-    popup(items, 2, innerHeight - 30 - 310, { large: true, class: 'start-menu', brand: true });
+    /* "Show small icons in Start menu" drops the Windows 95 banner and the 32px
+       icons for a narrow menu of 16px ones, the way Windows 95 did. */
+    const small = s.settings.get('showSmallIcons', false);
+    popup(items, 2, innerHeight - taskbarHeight() - 310, { large: !small, class: 'start-menu' + (small ? ' small-icons' : ''), brand: !small });
     const m = document.querySelector('.start-menu');
-    m.style.top = Math.max(0, innerHeight - 30 - m.offsetHeight) + 'px';
+    m.style.top = Math.max(0, innerHeight - taskbarHeight() - m.offsetHeight) + 'px';
     b.setAttribute('aria-expanded', 'true');
 }
 const desktop = document.querySelector('#desktop'), desktopIcons = document.querySelector('#desktop-icons');
@@ -619,7 +623,31 @@ desktop.ondrop = async (e) => {
         s.ui.error(err);
     }
 };
-register('taskbar-properties', 'Taskbar Properties', 'windows', () => { const w = s.ui.modal('Taskbar Properties', { width: 365, height: 235 }); w.body.append(el('fieldset', {}, el('legend', { text: 'Taskbar options' }), el('label', { class: 'checkbox-label' }, el('input', { type: 'checkbox', checked: true, disabled: true }), 'Always on top'), el('label', { class: 'checkbox-label' }, el('input', { type: 'checkbox', checked: s.settings.get('showClock', true), onchange: e => { s.settings.set('showClock', e.target.checked); document.querySelector('#clock').hidden = !e.target.checked; } }), 'Show clock')), el('div', { class: 'dialog-buttons' }, button('Clear Documents', () => s.settings.set('recentDocuments', [])), button('OK', () => w.close()))); return w; });
+/* Taskbar Properties: the illustration and four switches on one tab, and the
+   Documents menu on the other. OK and Apply write the settings, Cancel drops
+   them; Apply only lights up once something has changed, as in Windows 95. */
+register('taskbar-properties', 'Taskbar Properties', 'windows', () => {
+    const draft = { onTop: s.settings.get('taskbarOnTop', true), autoHide: s.settings.get('taskbarAutoHide', false), smallIcons: s.settings.get('showSmallIcons', false), clock: s.settings.get('showClock', true) };
+    const check = (label, key) => el('label', { class: 'checkbox-label' }, el('input', { type: 'checkbox', checked: draft[key], onchange: e => { draft[key] = e.target.checked; w.markDirty?.(); } }), label);
+    const w = propertySheet(s, 'Taskbar Properties', 'windows', [
+        ['Taskbar Options', p => {
+            p.append(el('img', { class: 'taskbar-preview', src: './assets/taskbar-preview.jpg', alt: '', width: 271, height: 129 }));
+            p.append(check('Always on top', 'onTop'), check('Auto hide', 'autoHide'), check('Show small icons in Start menu', 'smallIcons'), check('Show clock', 'clock'));
+        }],
+        ['Start Menu Programs', p => {
+            p.append(el('fieldset', { class: 'documents-menu' }, el('legend', { text: 'Documents menu' }), el('div', { class: 'documents-row' }, icon('recycle', 32), el('p', { class: 'documents-copy', text: 'Click the Clear button to remove the contents of the Documents menu and other personal history lists.' })), el('div', { class: 'documents-actions' }, button('Clear', () => s.settings.set('recentDocuments', [])))));
+        }]
+    ], 348, 402, { dirtyApply: true });
+    w.apply = () => {
+        s.settings.set('taskbarOnTop', draft.onTop);
+        s.settings.set('taskbarAutoHide', draft.autoHide);
+        s.settings.set('showSmallIcons', draft.smallIcons);
+        s.settings.set('showClock', draft.clock);
+        applyTaskbarSettings(s.settings);
+        s.wm.fit();
+    };
+    return w;
+});
 register('addressbook', 'Address Book', 'mail', () => {
     let contacts = s.settings.get('contacts', []);
     const w = s.wm.create({ title: 'Address Book', icon: 'mail', width: 430, height: 320 }), list = el('div', { class: 'inset', style: { margin: '8px', padding: '8px', flex: 1, overflow: 'auto' } });
@@ -711,7 +739,7 @@ s.applyAppearance();
 await s.graphics.init();
 renderDesktop();
 s.updateClock();
-document.querySelector('#clock').hidden = !s.settings.get('showClock', true);
+applyTaskbarSettings(s.settings);
 setInterval(s.updateClock, 1000);
 setInterval(() => {
     const minutes = s.settings.get('saverMinutes', 0), kind = s.settings.get('screensaver', 'Mystify');

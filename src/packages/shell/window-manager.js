@@ -3,6 +3,7 @@ import { icon } from '@win95/ui/icons.js';
 import { popup, closeMenus } from '@win95/ui/menu.js';
 import { closeCombos } from '@win95/ui/select.js';
 import { flyTitleBar, rectOf, titleBarRect } from './minimize-animation.js';
+import { taskbarHeight } from './taskbar-settings.js';
 /**
  * A window's opening box, kept on the desktop.
  *
@@ -21,7 +22,7 @@ function placeOnDesktop(o, index = 0) {
     const keep = (value, room) => Math.max(0, Math.min(value, room));
     return {
         x: keep(o.x ?? Math.max(96, (innerWidth - width) / 2 + cascade), innerWidth - width),
-        y: keep(o.y ?? Math.max(25, (innerHeight - 32 - height) / 2 + cascade), innerHeight - 30 - height),
+        y: keep(o.y ?? Math.max(25, (innerHeight - 32 - height) / 2 + cascade), innerHeight - taskbarHeight() - height),
         width,
         height
     };
@@ -139,7 +140,7 @@ export class WindowManager extends EventTarget {
         this.changed();
         return w;
     }
-    frameOf(w) { return w.maximized ? { x: 0, y: 0, width: innerWidth, height: innerHeight - 30 } : w.rect; }
+    frameOf(w) { return w.maximized ? { x: 0, y: 0, width: innerWidth, height: innerHeight - taskbarHeight() } : w.rect; }
     layout(w) { const r = this.frameOf(w); Object.assign(w.element.style, { left: Math.round(r.x) + 'px', top: Math.round(r.y) + 'px', width: Math.round(r.width) + 'px', height: Math.round(r.height) + 'px' }); }
     focus(w) {
         if (w.closed)
@@ -343,13 +344,13 @@ export class WindowManager extends EventTarget {
             let { x, y, width, height } = start;
             if (direction === 'move') {
                 x = Math.max(-width + 80, Math.min(innerWidth - 50, x + dx));
-                y = Math.max(0, Math.min(innerHeight - 65, y + dy));
+                y = Math.max(0, Math.min(innerHeight - taskbarHeight() - 35, y + dy));
             }
             else {
                 if (direction.includes('e'))
                     width = Math.max(w.options.minWidth, Math.min(innerWidth - x, width + dx));
                 if (direction.includes('s'))
-                    height = Math.max(w.options.minHeight, Math.min(innerHeight - 30 - y, height + dy));
+                    height = Math.max(w.options.minHeight, Math.min(innerHeight - taskbarHeight() - y, height + dy));
                 if (direction.includes('w')) {
                     width = Math.max(w.options.minWidth, Math.min(start.x + start.width, start.width - dx));
                     x = start.x + start.width - width;
@@ -407,18 +408,18 @@ export class WindowManager extends EventTarget {
             i++;
         }
     }
-    tile(vertical = true) { const wins = this.windows.filter(w => !w.minimized && !w.options.modal); wins.forEach((w, i) => { w.motion?.cancel(); w.motion = null; w.maximized = false; w.rect = vertical ? { x: i * innerWidth / wins.length, y: 0, width: innerWidth / wins.length, height: innerHeight - 30 } : { x: 0, y: i * (innerHeight - 30) / wins.length, width: innerWidth, height: (innerHeight - 30) / wins.length }; this.layout(w); }); }
+    tile(vertical = true) { const wins = this.windows.filter(w => !w.minimized && !w.options.modal); wins.forEach((w, i) => { w.motion?.cancel(); w.motion = null; w.maximized = false; w.rect = vertical ? { x: i * innerWidth / wins.length, y: 0, width: innerWidth / wins.length, height: innerHeight - taskbarHeight() } : { x: 0, y: i * (innerHeight - taskbarHeight()) / wins.length, width: innerWidth, height: (innerHeight - taskbarHeight()) / wins.length }; this.layout(w); }); }
     fit() {
         for (const w of this.windows) {
             if (!w.options.allowOverflow) {
                 w.rect.width = Math.min(w.rect.width, innerWidth);
-                w.rect.height = Math.min(w.rect.height, innerHeight - 30);
+                w.rect.height = Math.min(w.rect.height, innerHeight - taskbarHeight());
             }
             /* The edges are measured against the size the window has now, not
                the 80px of strip the drag lets hang over: shrinking the browser
                used to leave a window 235px past the right edge. */
             w.rect.x = Math.max(0, Math.min(w.rect.x, innerWidth - w.rect.width));
-            w.rect.y = Math.max(0, Math.min(w.rect.y, innerHeight - 30 - w.rect.height));
+            w.rect.y = Math.max(0, Math.min(w.rect.y, innerHeight - taskbarHeight() - w.rect.height));
             this.layout(w);
         }
     }
@@ -448,11 +449,11 @@ export class WindowManager extends EventTarget {
                    would bring it back - is gone with it. */
                 if (w.moveKeys) {
                     w.rect.x = Math.max(-w.rect.width + 80, Math.min(innerWidth - 50, w.rect.x + dx));
-                    w.rect.y = Math.max(0, Math.min(innerHeight - 65, w.rect.y + dy));
+                    w.rect.y = Math.max(0, Math.min(innerHeight - taskbarHeight() - 35, w.rect.y + dy));
                 }
                 else {
                     w.rect.width = Math.max(w.options.minWidth, Math.min(innerWidth - w.rect.x, w.rect.width + dx));
-                    w.rect.height = Math.max(w.options.minHeight, Math.min(innerHeight - 30 - w.rect.y, w.rect.height + dy));
+                    w.rect.height = Math.max(w.options.minHeight, Math.min(innerHeight - taskbarHeight() - w.rect.y, w.rect.height + dy));
                 }
                 this.layout(w);
             }

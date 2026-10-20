@@ -1,5 +1,6 @@
 import { el, separator } from './dom.js';
 import { icon } from './icons.js';
+import { taskbarHeight } from '../shell/taskbar-settings.js';
 let openMenus = [], origin = null;
 /**
  * Windows 95 answers a right click with a menu of its own or with nothing at
@@ -134,7 +135,7 @@ export function popup(items, x, y, options = {}) {
     openMenus.push(menu);
     const rect = menu.getBoundingClientRect();
     menu.style.left = Math.max(0, Math.min(x, innerWidth - rect.width)) + 'px';
-    menu.style.top = Math.max(0, Math.min(y, innerHeight - 30 - rect.height)) + 'px';
+    menu.style.top = Math.max(0, Math.min(y, innerHeight - taskbarHeight() - rect.height)) + 'px';
     menu.addEventListener('pointerdown', e => e.stopPropagation());
     return menu;
 }
