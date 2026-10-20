@@ -53,6 +53,28 @@ function propertySheet(s, title, ic, tabs, width = 420, height = 420) {
     render();
     return w;
 }
+/**
+ * The button toggles the browser's full screen instead of only entering it, and
+ * it says which way it will go. Esc, F11 or the browser's own control can leave
+ * full screen behind the sheet's back, so the caption follows the document
+ * rather than the last click, and the listener goes when the sheet closes.
+ */
+function fullScreenButton(win) {
+    const toggle = button('Full Screen', async () => {
+        try {
+            if (document.fullscreenElement)
+                await document.exitFullscreen?.();
+            else
+                await document.documentElement.requestFullscreen?.();
+        }
+        catch { }
+        sync();
+    });
+    const sync = () => { toggle.textContent = document.fullscreenElement ? 'Exit Full Screen' : 'Full Screen'; };
+    document.addEventListener('fullscreenchange', sync);
+    win.onClosed.push(() => document.removeEventListener('fullscreenchange', sync));
+    return toggle;
+}
 export function displayProperties(s) {
     let wallpaper = s.settings.get('wallpaper', 'None'), color = s.settings.get('desktopColor', '#008080'), saver = s.settings.get('screensaver', 'Mystify'), saverMinutes = saverWaitMinutes(s.settings.get('saverMinutes', 0)), scheme = s.settings.get('scheme', 'Windows Standard'), backend = s.settings.get('renderer', 'auto');
     // Each page keeps its own monitor: a shared reference would be overwritten by the
@@ -79,7 +101,7 @@ export function displayProperties(s) {
                 win.onClosed.push(() => s.settings.removeEventListener?.('change', sync));
             }],
         ['Appearance', p => { const monitor = makeMonitor(); p.append(monitor.element); const select = combo({ ariaLabel: 'Color scheme', options: ['Windows Standard', 'Desert', 'Marine', 'Plum', 'High Contrast Black', 'High Contrast White'], value: scheme, onchange: value => scheme = value }); p.append(field('Scheme:', select), el('p', { text: 'Choose the colors used for window titles, menus, and controls.' }), el('fieldset', {}, el('legend', { text: 'Item' }), el('div', { class: 'row' }, icon('windows', 32), el('span', { text: 'Active Title Bar' })), el('p', { style: { marginTop: '12px' }, text: 'Windows Standard uses the original Windows 95 colors.' }))); }],
-        ['Settings', p => { p.append(el('div', { class: 'row', style: { marginBottom: '10px' } }, icon('display', 32), el('div', {}, el('b', { text: 'Display' }), el('p', { text: 'Browser display adapter' }))), el('fieldset', {}, el('legend', { text: 'Desktop area' }), el('p', { text: `${innerWidth} by ${innerHeight} pixels` }), el('p', { text: `Scale: ${devicePixelRatio}× device pixels` })), el('fieldset', {}, el('legend', { text: 'Graphics acceleration' }), el('p', { text: 'Current renderer: ' + s.graphics.presenter.backend }), field('Preferred:', combo({ ariaLabel: 'Renderer', options: [['auto', 'Automatic'], ['webgpu', 'WebGPU'], ['webgl2', 'WebGL2'], ['canvas2d', 'Canvas 2D']].map(([value, label]) => ({ value, label })), value: backend, onchange: value => backend = value }))), el('p', { text: 'A change to the renderer takes effect after restarting.' }), button('Full Screen', () => document.documentElement.requestFullscreen?.().catch(() => { }))); }]
+        ['Settings', (p, win) => { p.append(el('div', { class: 'row', style: { marginBottom: '10px' } }, icon('display', 32), el('div', {}, el('b', { text: 'Display' }), el('p', { text: 'Browser display adapter' }))), el('fieldset', {}, el('legend', { text: 'Desktop area' }), el('p', { text: `${innerWidth} by ${innerHeight} pixels` }), el('p', { text: `Scale: ${devicePixelRatio}× device pixels` })), el('fieldset', {}, el('legend', { text: 'Graphics acceleration' }), el('p', { text: 'Current renderer: ' + s.graphics.presenter.backend }), field('Preferred:', combo({ ariaLabel: 'Renderer', options: [['auto', 'Automatic'], ['webgpu', 'WebGPU'], ['webgl2', 'WebGL2'], ['canvas2d', 'Canvas 2D']].map(([value, label]) => ({ value, label })), value: backend, onchange: value => backend = value }))), el('p', { text: 'A change to the renderer takes effect after restarting.' }), fullScreenButton(win)); }]
     ], 430, 438);
     w.apply = () => { s.settings.set('desktopColor', color); s.settings.set('wallpaper', wallpaper); s.settings.set('screensaver', saver); s.settings.set('saverMinutes', saverMinutes); s.settings.set('scheme', scheme); s.settings.set('renderer', backend); s.applyAppearance(); };
     return w;

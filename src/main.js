@@ -1,6 +1,7 @@
 import { VirtualFileSystem, Settings, baseName, parentPath, displayName, nameError } from './packages/core/filesystem.js';
 import { installI18n, translateText, uiLocale } from './packages/core/i18n.js';
 import { installClipboard } from './packages/core/clipboard.js';
+import { createMixer } from './packages/core/mixer.js';
 import { WindowManager } from './packages/shell/window-manager.js';
 import { pointerTrails } from './packages/shell/pointer-trails.js';
 import { revealDesktopLayers } from './packages/shell/desktop-reveal.js';
@@ -31,6 +32,9 @@ const bootProgressEl = bootEl?.querySelector('.boot-progress');
 let bootReady = false;
 let bootPlaying = false;
 const s = { fs: new VirtualFileSystem(), settings: new Settings(), wm: new WindowManager(), registry: new Map(), clipboard: null, imageClipboard: null, audio: null, lastActivity: Date.now(), resettingData: false };
+/* Every sound the desktop makes runs through this mixer, so the faders in the
+   Volume Control window move real loudness. */
+s.mixer = createMixer(s.settings);
 if (s.settings.get('loginPassword', ''))
     document.body.classList.add('logged-off');
 /* Wallpaper first, desktop icons 150 ms later, taskbar 100 ms after that and
@@ -83,7 +87,7 @@ s.playSound = name => {
     if (!audio)
         return null;
     try {
-        audio.volume = Math.min(1, Math.max(0, s.settings.get('volume', 65) / 100));
+        s.mixer.attach(audio, 'wave');
         audio.currentTime = 0;
         const playing = audio.play();
         if (playing?.catch)
@@ -158,12 +162,12 @@ s.beep = (kind = 'click') => {
     if (s.settings.get('muted', false))
         return;
     try {
-        if (!s.audio)
-            s.audio = new (window.AudioContext || window.webkitAudioContext)();
-        if (s.audio.state === 'suspended')
-            s.audio.resume();
+        s.audio = s.mixer.context();
+        // The mixer applies the master and Wave faders, so a beep is scheduled
+        // at one level and follows the faders from there.
+        const output = s.mixer.input('wave');
         const frequencies = kind === 'startup' ? [261.6, 329.6, 392, 523.3] : kind === 'win' ? [523.3, 659.3, 784] : kind === 'error' ? [180] : [700];
-        frequencies.forEach((freq, i) => { const osc = s.audio.createOscillator(), gain = s.audio.createGain(), t = s.audio.currentTime + i * .1; osc.type = 'sine'; osc.frequency.value = freq; gain.gain.setValueAtTime(0, t); gain.gain.linearRampToValueAtTime(s.settings.get('volume', 65) / 100 * .075, t + .01); gain.gain.exponentialRampToValueAtTime(.0001, t + .22); osc.connect(gain); gain.connect(s.audio.destination); osc.start(t); osc.stop(t + .23); });
+        frequencies.forEach((freq, i) => { const osc = s.audio.createOscillator(), gain = s.audio.createGain(), t = s.audio.currentTime + i * .1; osc.type = 'sine'; osc.frequency.value = freq; gain.gain.setValueAtTime(0, t); gain.gain.linearRampToValueAtTime(.075, t + .01); gain.gain.exponentialRampToValueAtTime(.0001, t + .22); osc.connect(gain); gain.connect(output); osc.start(t); osc.stop(t + .23); });
     }
     catch { }
 };

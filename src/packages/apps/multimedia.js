@@ -45,8 +45,10 @@ export function mediaPlayer(s, args = {}) {
         }), time = el('span', { class: 'media-time', text: '00:00' });
     let srcUrl = null;
     const retitle = () => w.setTitle(trackName ? `${trackName} (${media.paused ? 'paused' : 'playing'})` : (cd ? 'CD Player' : 'Media Player'));
-    const applyVolume = () => { media.volume = s.settings.get('muted', false) ? 0 : s.settings.get('volume', 65) / 100; };
-    applyVolume();
+    /* Loudness and balance belong to the mixer: the CD player is the CD Audio
+       strip, the media player is Wave, and moving either fader is heard here
+       while the track plays. */
+    s.mixer?.attach(media, cd ? 'cd' : 'wave');
     const load = (url, name) => {
         if (srcUrl?.startsWith('blob:'))
             URL.revokeObjectURL(srcUrl);
@@ -189,14 +191,11 @@ export function mediaPlayer(s, args = {}) {
     };
     w.setMenu(menuBar([{ label: 'File', items: [{ label: 'Open…', shortcut: 'Ctrl+O', action: open }, { label: 'Import from Computer…', action: () => fileInput('audio/*,video/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'Play sample', action: () => { load(waveTone(), 'Windows Chimes'); play(); } }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [{ label: 'Select All', disabled: !Number.isFinite(media.duration), action: () => { selStart = 0; selEnd = media.duration; } }, { label: 'Clear Selection', disabled: selStart == null && selEnd == null, action: () => { selStart = selEnd = null; } }] }, { label: 'Device', items: [{ label: 'Wave Audio', action: () => fileInput('audio/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'Video', action: () => fileInput('video/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'CD Audio', action: () => { load(waveTone(), 'Track 01 — Windows Chimes'); } }, null, { label: 'Volume Control…', action: () => s.launch('volume') }] }, { label: 'Scale', items: () => [{ label: 'Seconds', checked: scale === 'time', action: () => setScale('time') }, { label: 'Frames', checked: scale === 'frames', action: () => setScale('frames') }] }, { label: 'Help', items: [{ label: 'About Media Player', action: () => s.about(cd ? 'CD Player' : 'Media Player', 'media') }] }]));
     refresh();
-    const change = () => applyVolume();
-    s.settings.addEventListener('change', change);
     w.onClosed.push(() => {
         media.pause();
         media.src = '';
         if (srcUrl?.startsWith('blob:'))
             URL.revokeObjectURL(srcUrl);
-        s.settings.removeEventListener('change', change);
     });
     if (args.path)
         load(s.fs.read(args.path), baseName(args.path));
@@ -262,6 +261,7 @@ export function soundRecorder(s) {
     const canvas = el('canvas', { class: 'sound-wave', width: 380, height: 75 }), ctx = canvas.getContext('2d'), info = el('div', { class: 'row' }, el('span', { text: 'Position: 0.00 sec.' }), el('span', { class: 'spacer' }), el('span', { text: 'Length: 0.00 sec.' }));
     let recording = null, stream = null, chunks = [], url = null, blob = null, started = 0, frame = 0, analyser = null, audioContext = null;
     const audio = el('audio');
+    s.mixer?.attach(audio, 'wave');
     const draw = () => {
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, 380, 75);

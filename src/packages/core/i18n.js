@@ -147,7 +147,7 @@ const ZH = {
     'Browser display adapter': '浏览器显示适配器', 'Desktop area': '桌面区域',
     'Graphics acceleration': '图形加速', 'Current renderer:': '当前渲染器：', 'Renderer': '渲染器',
     'Automatic': '自动', 'A change to the renderer takes effect after restarting.': '渲染器的更改将在重新启动后生效。',
-    'Full Screen': '全屏', 'Preferred:': '首选：', 'Date/Time Properties': '日期/时间属性',
+    'Full Screen': '全屏', 'Exit Full Screen': '取消全屏', 'Preferred:': '首选：', 'Date/Time Properties': '日期/时间属性',
     'Date & Time': '日期和时间', 'Year': '年', 'Month': '月', 'Calendar': '日历', 'Time': '时间',
     'Changes apply to the clock on this desktop.': '更改将应用到此桌面的时钟。',
     'Time Zone': '时区', 'Time Zone:': '时区：', 'Time zone': '时区',
