@@ -21,7 +21,7 @@ test('large Minesweeper boards keep their full window size on narrow viewports',
     assert.match(app, /w\.element\.classList\.add\('mines-window'\)/);
     assert.match(app, /w\.rect\.width = c \* 20 \+ 46\.5/, 'board columns still determine the requested width');
     assert.match(app, /w\.rect\.height = r \* 20 \+ 138/, 'board rows still determine the requested height');
-    assert.match(manager, /if \(!w\.options\.allowOverflow\)\s*\{\s*w\.rect\.width = Math\.min\(w\.rect\.width, innerWidth\);\s*w\.rect\.height = Math\.min\(w\.rect\.height, innerHeight - 30\);/);
+    assert.match(manager, /if \(!w\.options\.allowOverflow\)\s*\{\s*w\.rect\.width = Math\.min\(w\.rect\.width, innerWidth\);\s*w\.rect\.height = Math\.min\(w\.rect\.height, innerHeight - taskbarHeight\(\)\);/);
     assert.match(css, /\.window\.mines-window\{max-width:none\}/, 'the mobile max-width cap does not shrink the board window');
 });
 
