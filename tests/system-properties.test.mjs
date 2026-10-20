@@ -7,6 +7,12 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = relative => readFile(path.join(root, relative), 'utf8');
 
+/** Width and height from a PNG's IHDR chunk. */
+function pngSize(buffer) {
+    assert.equal(buffer.toString('latin1', 1, 4), 'PNG', 'PNG magic');
+    return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+}
+
 /** The System Properties registration, General page included. */
 async function systemSheet() {
     const panel = await source('src/packages/apps/control-panel.js');
@@ -16,11 +22,11 @@ async function systemSheet() {
 
 const generalPage = block => block.slice(block.indexOf("['General'"), block.indexOf("['Device Manager'"));
 
-test('the General page is a monitor and three facts, as Windows 95 drew it', async () => {
+test('the General page is the shipped monitor picture and three facts', async () => {
     const general = generalPage(await systemSheet());
-    for (const part of ['system-monitor-screen', 'system-monitor-neck', 'system-monitor-base', 'system-monitor-led'])
-        assert.ok(general.includes(part), `${part} is drawn`);
-    assert.match(general, /icon\('windows', 80\)/, 'the screen shows the Windows flag');
+    assert.match(general, /el\('img', \{ class: 'system-monitor', src: '\.\/assets\/system-monitor\.png', width: 139, height: 133, alt: '' \}\)/,
+        'the picture is the supplied bitmap at its half-scale size, not a drawing');
+    assert.doesNotMatch(general, /system-monitor-screen|icon\('windows', 80\)/, 'the monitor is no longer assembled from element edges');
     for (const label of ['System:', 'Registered to:', 'Hardware architecture:'])
         assert.ok(general.includes(`text: '${label}'`), `${label} is one of the three labels`);
     assert.equal((general.match(/class: 'system-fact'/g) || []).length, 3, 'exactly three facts, not a list of them');
@@ -61,12 +67,18 @@ test('the General page and both new Performance labels are translated', async ()
         assert.ok(!i18n.includes(dead), `${dead} was translated but nothing renders it now`);
 });
 
-test('the monitor is drawn from element edges, not a bitmap', async () => {
+test('the monitor picture is committed as supplied and never recoloured', async () => {
+    const [css, asset] = await Promise.all([source('src/styles.css'), readFile(path.join(root, 'src/assets/system-monitor.png'))]);
+    const size = pngSize(asset);
+    assert.deepEqual(size, { width: 278, height: 266 }, 'the asset is the 278x266 original');
+    assert.match(css, /\.system-monitor\{flex:0 0 auto;display:block;image-rendering:pixelated\}/, 'the picture is shown as a crisp bitmap');
+    assert.doesNotMatch(css, /system-monitor-(screen|neck|base|led)/, 'no part of the monitor is drawn in CSS any more');
+    assert.match(css, /\.system-fact dd\{margin:2px 0 0 16px;line-height:17px\}/, 'values sit 16px in from their label');
+    assert.doesNotMatch(css, /system-fact dd\{[^}]*margin:2px 0 0 40px/, 'the old 40px indent is gone');
+    assert.match(css, /\.system-general\{display:flex;align-items:flex-start;gap:22px/, 'picture and facts sit side by side');
+});
+
+test('the General facts are spaced and indented the way the reference is', async () => {
     const css = await source('src/styles.css');
-    assert.match(css, /\.system-monitor\{position:relative;flex:0 0 auto;width:150px;padding:9px 9px 7px;background:var\(--face\);box-shadow:inset 2px 2px #fff,inset -2px -2px #808080,2px 2px #000\}/);
-    assert.match(css, /\.system-monitor-screen\{height:96px;[^}]*background:var\(--desktop\);border:2px solid #000/, 'the screen is the desktop colour');
-    assert.match(css, /\.system-monitor-screen img\{image-rendering:pixelated\}/, 'the flag stays a crisp bitmap');
-    assert.match(css, /\.system-monitor-base\{width:96px;height:9px;/, 'the stand has its own base');
-    assert.match(css, /\.system-fact dd\{margin:3px 0 0 40px;line-height:17px\}/, 'values are indented under their label');
-    assert.match(css, /\.system-general\{display:flex;align-items:flex-start;gap:26px/, 'picture and facts sit side by side');
+    assert.match(css, /\.system-facts\{display:flex;flex-direction:column;gap:28px;padding-top:16px;min-width:0\}/);
 });
