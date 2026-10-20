@@ -24,6 +24,8 @@ const CHANNELS = {
 };
 
 const MIX_KEYS = new Set(Object.values(CHANNELS).flatMap(keys => Object.values(keys)));
+/** Every fader starts at 80, master and strips alike, until the settings say otherwise. */
+export const DEFAULT_VOLUME = 80;
 const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
 export const mixChannels = () => Object.keys(CHANNELS);
 /** The settings keys a channel drives; the Volume Control window writes the same ones. */
@@ -37,8 +39,8 @@ export function mixLevel(settings, channel = 'wave') {
     const keys = keysFor(channel);
     if (keys !== CHANNELS.master && settings.get(keys.muted, false))
         return 0;
-    const master = clamp(settings.get('volume', 65) / 100, 0, 1);
-    const own = channel === 'master' ? 1 : clamp(settings.get(keys.volume, 65) / 100, 0, 1);
+    const master = clamp(settings.get('volume', DEFAULT_VOLUME) / 100, 0, 1);
+    const own = channel === 'master' ? 1 : clamp(settings.get(keys.volume, DEFAULT_VOLUME) / 100, 0, 1);
     return master * own;
 }
 
