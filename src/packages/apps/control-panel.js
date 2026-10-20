@@ -199,13 +199,13 @@ export function dateTime(s) {
 }
 export function systemProperties(s) {
     return propertySheet(s, 'System Properties', 'computer', [
-        /* The General tab is a picture of the machine and three facts, the way
-           Windows 95 drew it; anything measured - adapter, disk, storage - lives
-           on Performance, where the numbers belong. */
+        /* The General tab is the monitor picture Windows 95 shipped and three
+           facts; anything measured - adapter, disk, storage - lives on
+           Performance, where the numbers belong. */
         ['General', p => {
                 const cores = navigator.hardwareConcurrency || 1;
                 p.append(el('div', { class: 'system-general' },
-                    el('div', { class: 'system-monitor', 'aria-hidden': 'true' }, el('div', { class: 'system-monitor-screen' }, icon('windows', 80)), el('span', { class: 'system-monitor-led' }), el('div', { class: 'system-monitor-neck' }), el('div', { class: 'system-monitor-base' })),
+                    el('img', { class: 'system-monitor', src: './assets/system-monitor.png', width: 139, height: 133, alt: '' }),
                     el('div', { class: 'system-facts' },
                         el('dl', { class: 'system-fact' }, el('dt', { text: 'System:' }), el('dd', { text: 'Microsoft Windows 95' })),
                         el('dl', { class: 'system-fact' }, el('dt', { text: 'Registered to:' }), el('dd', {}, dataText(s.settings.get('owner', 'Windows User')))),
