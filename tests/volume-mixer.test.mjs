@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mixChannels, mixKeys, mixLevel, mixPan, createMixer } from '../src/packages/core/mixer.js';
+import { DEFAULT_VOLUME, mixChannels, mixKeys, mixLevel, mixPan, createMixer } from '../src/packages/core/mixer.js';
 
 /**
  * The Volume Control window used to write settings that nothing read. The
@@ -53,8 +53,9 @@ const withAudio = run => {
 
 test('a channel is the master fader times its own strip', () => {
     assert.equal(mixChannels().join(','), 'master,wave,midi,cd');
-    assert.equal(mixLevel(settingsFor(), 'master'), 0.65);
-    assert.equal(mixLevel(settingsFor(), 'wave'), 0.65 * 0.65);
+    assert.equal(DEFAULT_VOLUME, 80, 'every fader starts at 80 percent');
+    assert.equal(mixLevel(settingsFor(), 'master'), 0.8);
+    assert.equal(mixLevel(settingsFor(), 'wave'), 0.8 * 0.8);
     assert.equal(mixLevel(settingsFor({ volume: 100, waveVolume: 100 }), 'wave'), 1);
     assert.equal(mixLevel(settingsFor({ volume: 50, cdVolume: 40 }), 'cd'), 0.2);
     assert.equal(mixLevel(settingsFor({ volume: 150, waveVolume: 150 }), 'wave'), 1, 'a fader past the top is clamped');
@@ -65,7 +66,7 @@ test('muting either the strip or the master silences that channel', () => {
     assert.equal(mixLevel(settingsFor({ muted: true, waveVolume: 100 }), 'wave'), 0);
     assert.equal(mixLevel(settingsFor({ muted: true }), 'master'), 0);
     assert.equal(mixLevel(settingsFor({ waveVolumeMuted: true, waveVolume: 100 }), 'wave'), 0);
-    assert.equal(mixLevel(settingsFor({ waveVolumeMuted: true }), 'cd'), 0.65 * 0.65, 'one strip muted leaves the others alone');
+    assert.equal(mixLevel(settingsFor({ waveVolumeMuted: true }), 'cd'), 0.8 * 0.8, 'one strip muted leaves the others alone');
 });
 
 test('balance pans, and the master balance adds to the strip balance', () => {
@@ -113,7 +114,7 @@ test('attaching the same element twice does not build a second graph node', () =
     const first = media.routed;
     mixer.attach(media, 'wave');
     assert.equal(media.routed, first);
-    assert.equal(mixer.node('wave').gain, 0.65 * 0.65);
+    assert.equal(mixer.node('wave').gain, 0.8 * 0.8);
 }));
 
 test('without Web Audio the element volume still follows its strip', () => {
@@ -139,6 +140,7 @@ test('the shell and the players all go through the mixer', async () => {
     assert.match(main, /s\.mixer\.attach\(audio, 'wave'\)/, 'the system sounds are on the Wave strip');
     assert.match(main, /const output = s\.mixer\.input\('wave'\)/, 'the shell beeps feed the Wave strip');
     assert.doesNotMatch(main, /gain\.connect\(s\.audio\.destination\)/, 'no beep bypasses the mixer');
+    assert.match(media, /value: s\.settings\.get\(key, DEFAULT_VOLUME\)/, 'the faders start at the shared default');
     assert.match(media, /s\.mixer\?\.attach\(media, cd \? 'cd' : 'wave'\)/, 'the players attach their element');
     assert.match(media, /s\.mixer\?\.attach\(audio, 'wave'\)/, 'the recorder playback attaches too');
     assert.doesNotMatch(media, /applyVolume/, 'the once-at-open volume is gone');

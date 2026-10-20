@@ -4,6 +4,7 @@ import { icon } from '@win95/ui/icons.js';
 import { menuBar, swallowNativeMenuInFrame } from '@win95/ui/menu.js';
 import { baseName } from '@win95/core/filesystem.js';
 import { t, uiLang } from '@win95/core/i18n.js';
+import { DEFAULT_VOLUME } from '@win95/core/mixer.js';
 function waveTone() {
     const sampleRate = 22050, seconds = 5, count = sampleRate * seconds, buffer = new ArrayBuffer(44 + count * 2), v = new DataView(buffer);
     const str = (offset, s) => [...s].forEach((c, i) => v.setUint8(offset + i, c.charCodeAt(0)));
@@ -236,7 +237,7 @@ export function volumeControl(s) {
         });
         const volume = trackbar({
             label: `${name} volume`,
-            value: s.settings.get(key, 65),
+            value: s.settings.get(key, DEFAULT_VOLUME),
             orientation: 'vertical',
             valueText: value => `${value} percent`,
             onChange: value => s.settings.set(key, value)
