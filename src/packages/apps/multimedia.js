@@ -222,6 +222,12 @@ function volumeSpeaker(side) {
 export function volumeControl(s) {
     const w = s.wm.create({ title: 'Volume Control', icon: 'volume', width: 395, height: 292, resizable: false });
     const area = el('div', { class: 'volume-controls' });
+    // Every control that mirrors a setting, by the key it shows: the mixer
+    // strips below and the master fader at the top. Dragging one of them
+    // writes its key, and anything else that writes the same key - the
+    // Multimedia sheet's Volume slider, the Mute all checkbox, a player that
+    // resets the master - moves the control here through `sync`.
+    const faders = new Map(), mutes = new Map();
     for (const [name, key] of [['Volume Control', 'volume'], ['Wave', 'waveVolume'], ['MIDI', 'midiVolume'], ['CD Audio', 'cdVolume']]) {
         const muteKey = key === 'volume' ? 'muted' : `${key}Muted`;
         const balanceKey = key === 'volume' ? 'balance' : key.replace(/Volume$/, 'Balance');
@@ -243,6 +249,9 @@ export function volumeControl(s) {
             onChange: value => s.settings.set(key, value)
         });
         const muted = el('input', { type: 'checkbox', checked: s.settings.get(muteKey, false), 'aria-label': `${name} mute`, onchange: e => s.settings.set(muteKey, e.target.checked) });
+        faders.set(balanceKey, balance);
+        faders.set(key, volume);
+        mutes.set(muteKey, muted);
         area.append(el('div', { class: 'volume-channel' },
             el('div', { class: 'volume-channel-title', text: name }),
             el('div', { class: 'volume-control-label', text: 'Balance:' }),
@@ -252,6 +261,20 @@ export function volumeControl(s) {
             el('label', { class: 'volume-mute' }, muted, el('span', { class: 'volume-mute-text', text: key === 'volume' ? 'Mute all' : 'Mute' }))));
     }
     w.body.append(area);
+    /* One mixer, one set of keys: a fader moved anywhere - the Multimedia
+       sheet, another Volume Control, a setting restored at startup - moves
+       the matching thumb here. Assigning `value` moves the thumb without
+       calling onChange, so echoing a change cannot write it back. */
+    const sync = event => {
+        const fader = faders.get(event.detail?.name);
+        if (fader)
+            fader.value = event.detail.value;
+        const mute = mutes.get(event.detail?.name);
+        if (mute)
+            mute.checked = !!event.detail.value;
+    };
+    s.settings.addEventListener?.('change', sync);
+    w.onClosed.push(() => s.settings.removeEventListener?.('change', sync));
     w.setMenu(menuBar([{ label: 'Options', items: [{ label: 'Properties', action: () => s.launch('sounds') }, { label: 'Exit', action: () => w.close() }] }, { label: 'Help', items: [{ label: 'About Volume Control', action: () => s.about('Volume Control', 'volume') }] }]));
     return w;
 }
