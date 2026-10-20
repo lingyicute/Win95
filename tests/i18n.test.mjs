@@ -115,12 +115,12 @@ test('every translation key matches text the shell actually renders', async () =
 });
 
 test('System Properties names each hardware line in both languages', async () => {
-    for (const [en, zh] of [['Hardware architecture:', '硬件架构：'], ['Browser', '浏览器'], ['Processors:', '处理器：'], ['8 logical cores', '8 个逻辑核心'], ['Display adapter:', '显示适配器：'], ['Disk:', '磁盘：']])
+    for (const [en, zh] of [['System:', '系统：'], ['Hardware architecture:', '硬件架构：'], ['Browser', '浏览器'], ['8 logical cores', '8 个逻辑核心'], ['Virtual disk:', '虚拟磁盘：'], ['Used space:', '已用空间：'], ['Registered to:', '授权给：']])
         assert.equal(translateText(en, 'zh'), zh, en);
     const source = await readFile(path.join(root, 'src/packages/apps/control-panel.js'), 'utf8');
-    for (const label of ["'Hardware architecture:'", "'Processors:'", "'Display adapter:'", "'Disk:'"])
+    for (const label of ["'System:'", "'Hardware architecture:'", "'Virtual disk:'", "'Used space:'"])
         assert.ok(source.includes(label), `${label} is the label the dictionary translates`);
-    assert.doesNotMatch(source, /logical processors|'File storage:'|'System:'|'Computer:'|'Graphics:'/, 'the old labels are gone, so no dictionary entry is left behind');
+    assert.doesNotMatch(source, /'Version:'|'Processors:'|'Disk:'|'Volume size:'|Virtual disk used:/, 'the labels the General tab no longer shows are gone from the source');
 });
 
 test('name validation and sound captions translate to Chinese', () => {
