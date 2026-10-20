@@ -97,5 +97,5 @@ test('both sizes are the ones the window uses', () => {
 test('the body cannot scroll its way out of a short window', async () => {
     const manager = await readFile(path.join(root, 'src/packages/shell/window-manager.js'), 'utf8');
     assert.match(rule('.window-body'), /overflow:hidden/, 'a short window hides what does not fit rather than offering a scrollbar');
-    assert.match(manager, /height: Math\.min\(o\.height, innerHeight - 40\)/, 'and the window keeps the height it asked for');
+    assert.match(manager, /height = Math\.min\(o\.height, innerHeight - 40\)/, 'and the window keeps the height it asked for');
 });
