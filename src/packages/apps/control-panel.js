@@ -235,7 +235,14 @@ export function settingsApplet(s, id) {
     let uiLanguageChangedByUser = false;
     let w;
     const select = (p, label, key, values, value) => { const input = combo({ ariaLabel: label, options: values.map(x => typeof x === 'string' ? ({ value: x, label: x }) : x), value: draft[key] ?? value, onchange: next => draft[key] = next }); p.append(field(label, input)); };
-    const check = (p, label, key, value = false) => p.append(el('label', { class: 'checkbox-label' }, el('input', { type: 'checkbox', checked: draft[key] ?? value, onchange: e => draft[key] = e.target.checked }), label));
+    /* `onCommit` lets a box that is not only this sheet's business - the
+       mixer's Mute all - reach the shared setting while it is clicked. The
+       input comes back so a page that mirrors the setting can redraw it. */
+    const check = (p, label, key, value = false, onCommit = null) => {
+        const input = el('input', { type: 'checkbox', checked: draft[key] ?? value, onchange: e => { draft[key] = e.target.checked; onCommit?.(e.target.checked); } });
+        p.append(el('label', { class: 'checkbox-label' }, input, label));
+        return input;
+    };
     const range = (p, label, key, value = 50) => p.append(field(label, trackbar({ label, value: draft[key] ?? value, onChange: next => draft[key] = next })));
     const pages = [];
     if (id === 'mouse') {
@@ -358,7 +365,39 @@ export function settingsApplet(s, id) {
         pages.push(['Regional Settings', p => { select(p, 'Locale:', 'locale', ['en-US', 'en-GB', 'pl-PL', 'de-DE', 'fr-FR', 'ja-JP', 'zh-CN'], s.settings.get('locale', 'en-US')); p.append(el('fieldset', {}, el('legend', { text: 'Samples' }), el('p', { text: 'Number: ' + new Intl.NumberFormat(draft.locale || s.settings.get('locale', 'en-US')).format(1234567.89) }), el('p', { text: 'Date: ' + new Date().toLocaleDateString(draft.locale || s.settings.get('locale', 'en-US')) }))); commits.push(() => { s.settings.set('locale', draft.locale || 'en-US'); s.updateClock(); }); }], ['Language', p => { const currentLanguage = s.settings.get('ui-language', (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en'); draft.uiLanguage = currentLanguage; const language = combo({ ariaLabel: 'Display language:', options: [{ value: 'en', label: 'English' }, { value: 'zh', label: 'Chinese (Simplified)' }], value: currentLanguage, onchange: next => { draft.uiLanguage = next; uiLanguageChangedByUser = next !== currentLanguage; } }); p.append(field('Display language:', language)); }], ['Time', p => { check(p, 'Use 24-hour time', 'hour24'); commits.push(() => { s.settings.set('hour24', !!draft.hour24); s.updateClock(); }); }]);
     }
     else if (id === 'sounds' || id === 'multimedia') {
-        pages.push(['Audio', p => { select(p, 'Scheme:', 'scheme', ['Windows Default', 'No Sounds'], 'Windows Default'); range(p, 'Volume:', 'volume', s.settings.get('volume', DEFAULT_VOLUME)); check(p, 'Mute all sounds', 'muted', s.settings.get('muted', false)); p.append(button('Test', () => s.beep('startup')), button('Volume Control…', () => s.launch('volume'))); commits.push(() => { s.settings.set('volume', draft.volume ?? DEFAULT_VOLUME); s.settings.set('muted', draft.muted || draft.scheme === 'No Sounds'); }); }], ['Recording', p => p.append(el('p', { text: 'Record sound through the microphone selected by your browser.' }), button('Sound Recorder…', () => s.launch('recorder')))]);
+        pages.push(['Audio', (p, win) => {
+                select(p, 'Scheme:', 'scheme', ['Windows Default', 'No Sounds'], 'Windows Default');
+                /* The master fader is not this sheet's private value. Volume
+                   Control, the taskbar and every player read the same keys, so
+                   the page opens on what the mixer holds now - not on the copy
+                   stored with the sheet's other fields, which may be older -
+                   and a drag moves the mixer while it happens instead of
+                   waiting for OK. `sync` below finishes the job in the other
+                   direction, so whichever window writes, the other follows. */
+                draft.volume = s.settings.get('volume', DEFAULT_VOLUME);
+                draft.muted = s.settings.get('muted', false);
+                const volume = trackbar({
+                    label: 'Volume:',
+                    value: draft.volume,
+                    onChange: next => { draft.volume = next; s.settings.set('volume', next); }
+                });
+                p.append(field('Volume:', volume));
+                const muted = check(p, 'Mute all sounds', 'muted', draft.muted, next => s.settings.set('muted', next));
+                p.append(el('div', { class: 'row' }, button('Test', () => s.beep('startup')), button('Volume Control…', () => s.launch('volume'))));
+                commits.push(() => { s.settings.set('volume', draft.volume ?? DEFAULT_VOLUME); s.settings.set('muted', draft.muted || draft.scheme === 'No Sounds'); });
+                const sync = event => {
+                    if (event.detail?.name === 'volume') {
+                        draft.volume = event.detail.value;
+                        volume.value = event.detail.value;
+                    }
+                    else if (event.detail?.name === 'muted') {
+                        draft.muted = !!event.detail.value;
+                        muted.checked = !!event.detail.value;
+                    }
+                };
+                s.settings.addEventListener?.('change', sync);
+                win.onClosed.push(() => s.settings.removeEventListener?.('change', sync));
+            }], ['Recording', p => p.append(el('p', { text: 'Record sound through the microphone selected by your browser.' }), button('Sound Recorder…', () => s.launch('recorder')))]);
     }
     else if (id === 'accessibility') {
         pages.push(['Keyboard', p => { check(p, 'Use StickyKeys', 'sticky'); check(p, 'Use ToggleKeys', 'toggle'); p.append(el('p', { text: 'ToggleKeys plays a tone when Caps Lock changes.' })); commits.push(() => s.settings.set('toggleKeys', !!draft.toggle)); }], ['Display', p => { check(p, 'Use High Contrast', 'highContrast'); select(p, 'Scheme:', 'contrast', ['High Contrast Black', 'High Contrast White'], 'High Contrast Black'); commits.push(() => { s.settings.set('scheme', draft.highContrast ? (draft.contrast || 'High Contrast Black') : 'Windows Standard'); s.applyAppearance(); }); }], ['Sound', p => { check(p, 'Show captions for system sounds', 'captions'); commits.push(() => s.settings.set('soundCaptions', !!draft.captions)); }]);
