@@ -3,6 +3,7 @@ import { trackbar } from '@win95/ui/trackbar.js';
 import { icon } from '@win95/ui/icons.js';
 import { menuBar, swallowNativeMenuInFrame } from '@win95/ui/menu.js';
 import { baseName } from '@win95/core/filesystem.js';
+import { t, uiLang } from '@win95/core/i18n.js';
 function waveTone() {
     const sampleRate = 22050, seconds = 5, count = sampleRate * seconds, buffer = new ArrayBuffer(44 + count * 2), v = new DataView(buffer);
     const str = (offset, s) => [...s].forEach((c, i) => v.setUint8(offset + i, c.charCodeAt(0)));
@@ -219,7 +220,7 @@ function volumeSpeaker(side) {
     return speaker;
 }
 export function volumeControl(s) {
-    const w = s.wm.create({ title: 'Volume Control', icon: 'volume', width: 395, height: 278, resizable: false });
+    const w = s.wm.create({ title: 'Volume Control', icon: 'volume', width: 395, height: 292, resizable: false });
     const area = el('div', { class: 'volume-controls' });
     for (const [name, key] of [['Volume Control', 'volume'], ['Wave', 'waveVolume'], ['MIDI', 'midiVolume'], ['CD Audio', 'cdVolume']]) {
         const muteKey = key === 'volume' ? 'muted' : `${key}Muted`;
@@ -437,7 +438,16 @@ export function internet(s, args = {}) {
 export function inbox(s) {
     const w = s.wm.create({ title: 'Inbox - Microsoft Exchange', icon: 'mail', width: 685, height: 430 });
     let folder = 'Inbox';
-    const messages = s.settings.get('mailMessages', [{ id: 'welcome', folder: 'Inbox', from: 'Windows 95', to: 'Windows User', subject: 'Welcome to your Inbox', body: 'Welcome to Microsoft Exchange.\n\nCompose messages and keep drafts here. Messages placed in the Outbox remain local until a mail transport is configured.\n\nYour Windows 95 desktop' }]);
+    /* The sample message is written in the UI language, like the mailbox around
+       it. A mailbox the user has already saved is left as it is. */
+    const welcomeMail = () => [uiLang === 'zh'
+        ? { id: 'welcome', folder: 'Inbox', from: 'Windows 95', to: 'Windows User', subject: '欢迎使用收件箱', body: '欢迎使用 Microsoft Exchange。\n\n您可以在这里撰写邮件并保存草稿。在配置了邮件传输服务之前，放入发件箱的邮件会保留在本机。\n\n您的 Windows 95 桌面' }
+        : { id: 'welcome', folder: 'Inbox', from: 'Windows 95', to: 'Windows User', subject: 'Welcome to your Inbox', body: 'Welcome to Microsoft Exchange.\n\nCompose messages and keep drafts here. Messages placed in the Outbox remain local until a mail transport is configured.\n\nYour Windows 95 desktop' }];
+    const messages = s.settings.get('mailMessages', welcomeMail());
+    /* The preview opts out of the text walker so a message body is never
+       rewritten; its labels therefore translate here. English needs the space
+       after the colon that a fullwidth colon already supplies. */
+    const mailLabel = text => t(text) + (uiLang === 'zh' ? '' : ' ');
     const toolbar = el('div', { class: 'explorer-toolbar' }), layout = el('div', { class: 'mail-layout' }), folders = el('div', { class: 'mail-folders inset' }), content = el('div', { class: 'mail-messages inset' }), list = el('div', { class: 'mail-list' }), preview = el('div', { class: 'mail-preview' });
     let selected = null;
     const render = () => {
@@ -452,9 +462,9 @@ export function inbox(s) {
             selected = items[0];
         preview.replaceChildren();
         if (selected)
-            preview.append(el('p', {}, el('b', { text: 'From: ' }), selected.from || 'Windows User'), el('p', {}, el('b', { text: 'To: ' }), selected.to), el('p', {}, el('b', { text: 'Subject: ' }), selected.subject), el('div', { class: 'separator' }), el('div', { text: selected.body, style: { whiteSpace: 'pre-wrap' } }));
+            preview.append(el('p', {}, el('b', { text: mailLabel('From:') }), selected.from || 'Windows User'), el('p', {}, el('b', { text: mailLabel('To:') }), selected.to), el('p', {}, el('b', { text: mailLabel('Subject:') }), selected.subject), el('div', { class: 'separator' }), el('div', { text: selected.body, style: { whiteSpace: 'pre-wrap' } }));
         else
-            preview.append(el('p', { text: 'There are no items in this folder.' }));
+            preview.append(el('p', { text: t('There are no items in this folder.') }));
         w.status(`${items.length} item(s)`);
     };
     const save = () => { s.settings.set('mailMessages', messages); render(); };

@@ -3,6 +3,7 @@ import { el, button, download, fileInput } from '@win95/ui/dom.js';
 import { menuBar, popup } from '@win95/ui/menu.js';
 import { combo } from '@win95/ui/select.js';
 import { baseName, parentPath } from '@win95/core/filesystem.js';
+import { uiLocale } from '@win95/core/i18n.js';
 const printDocument = (content, html = false) => {
     document.querySelector('.print-area')?.remove();
     const area = el('div', { class: 'print-area' });
@@ -180,7 +181,7 @@ export function notepad(s, args = {}) {
                             dirty = true;
                             title();
                         }
-                    }) }, { label: 'Export…', action: () => download(path ? baseName(path) : 'Untitled.txt', editor.value) }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [...editCommands(true), { label: 'Time/Date', shortcut: 'F5', action: () => insert(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString()) }, null, { label: 'Word Wrap', checked: wrap, action: () => { wrap = !wrap; editor.classList.toggle('wrap', wrap); s.settings.set('notepadWrap', wrap); } }] }, { label: 'Search', items: [{ label: 'Find…', action: () => find() }, { label: 'Find Next', shortcut: 'F3', action: () => find(true) }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'notepad' }) }, { label: 'About Notepad', action: () => s.about('Notepad', 'notepad') }] }]));
+                    }) }, { label: 'Export…', action: () => download(path ? baseName(path) : 'Untitled.txt', editor.value) }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [...editCommands(true), { label: 'Time/Date', shortcut: 'F5', action: () => insert(new Date().toLocaleTimeString(uiLocale, { hour: 'numeric', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString(uiLocale)) }, null, { label: 'Word Wrap', checked: wrap, action: () => { wrap = !wrap; editor.classList.toggle('wrap', wrap); s.settings.set('notepadWrap', wrap); } }] }, { label: 'Search', items: [{ label: 'Find…', action: () => find() }, { label: 'Find Next', shortcut: 'F3', action: () => find(true) }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'notepad' }) }, { label: 'About Notepad', action: () => s.about('Notepad', 'notepad') }] }]));
     editor.onkeydown = e => {
         if (e.key === 'Tab') {
             e.preventDefault();
@@ -199,7 +200,7 @@ export function notepad(s, args = {}) {
         }
         if (e.key === 'F5') {
             e.preventDefault();
-            insert(new Date().toLocaleString());
+            insert(new Date().toLocaleString(uiLocale));
         }
     });
     w.onClose = confirm;
@@ -373,7 +374,7 @@ export function wordpad(s, args = {}) {
                                 n.nodeValue = n.nodeValue.split(a).join(b);
                             dirty = true;
                         }
-                    } }] }, { label: 'View', items: () => [{ label: 'Toolbar', checked: !toolbar.hidden, action: () => toolbar.hidden = !toolbar.hidden }, { label: 'Format Bar', checked: !format.hidden, action: () => format.hidden = !format.hidden }] }, { label: 'Insert', items: [{ label: 'Date and Time…', action: () => cmd('insertText', new Date().toLocaleString()) }, { label: 'Picture…', action: () => s.ui.message('Use Paint to work with pictures. Rich documents currently contain formatted text.', 'WordPad', ['OK'], { owner: w }) }] }, { label: 'Format', items: [{ label: 'Font…', action: () => fonts.focus() }, { label: 'Bold', shortcut: 'Ctrl+B', action: () => cmd('bold') }, { label: 'Italic', shortcut: 'Ctrl+I', action: () => cmd('italic') }, { label: 'Underline', shortcut: 'Ctrl+U', action: () => cmd('underline') }, null, { label: 'Bullet Style', action: () => cmd('insertUnorderedList') }, { label: 'Paragraph', items: [{ label: 'Left', action: () => cmd('justifyLeft') }, { label: 'Center', action: () => cmd('justifyCenter') }, { label: 'Right', action: () => cmd('justifyRight') }, { label: 'Indent', action: () => cmd('indent') }, { label: 'Outdent', action: () => cmd('outdent') }] }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'wordpad' }) }, { label: 'About WordPad', action: () => s.about('WordPad', 'wordpad') }] }]));
+                    } }] }, { label: 'View', items: () => [{ label: 'Toolbar', checked: !toolbar.hidden, action: () => toolbar.hidden = !toolbar.hidden }, { label: 'Format Bar', checked: !format.hidden, action: () => format.hidden = !format.hidden }] }, { label: 'Insert', items: [{ label: 'Date and Time…', action: () => cmd('insertText', new Date().toLocaleString(uiLocale)) }, { label: 'Picture…', action: () => s.ui.message('Use Paint to work with pictures. Rich documents currently contain formatted text.', 'WordPad', ['OK'], { owner: w }) }] }, { label: 'Format', items: [{ label: 'Font…', action: () => fonts.focus() }, { label: 'Bold', shortcut: 'Ctrl+B', action: () => cmd('bold') }, { label: 'Italic', shortcut: 'Ctrl+I', action: () => cmd('italic') }, { label: 'Underline', shortcut: 'Ctrl+U', action: () => cmd('underline') }, null, { label: 'Bullet Style', action: () => cmd('insertUnorderedList') }, { label: 'Paragraph', items: [{ label: 'Left', action: () => cmd('justifyLeft') }, { label: 'Center', action: () => cmd('justifyCenter') }, { label: 'Right', action: () => cmd('justifyRight') }, { label: 'Indent', action: () => cmd('indent') }, { label: 'Outdent', action: () => cmd('outdent') }] }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'wordpad' }) }, { label: 'About WordPad', action: () => s.about('WordPad', 'wordpad') }] }]));
     editor.addEventListener('paste', e => { e.preventDefault(); const text = e.clipboardData.getData('text/plain'); cmd('insertText', text); });
     w.element.addEventListener('keydown', e => {
         if ((e.ctrlKey || e.metaKey) && ['s', 'o', 'n', 'p', 'f'].includes(e.key.toLowerCase())) {

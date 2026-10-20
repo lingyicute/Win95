@@ -3,6 +3,7 @@ import { icon, fileIcon } from '@win95/ui/icons.js';
 import { menuBar, popup } from '@win95/ui/menu.js';
 import { NAME_LIMIT, normalizePath, parentPath, baseName, displayName, nameError } from '@win95/core/filesystem.js';
 import { shellFolder } from '@win95/shell/shell-folders.js';
+import { uiLocale } from '@win95/core/i18n.js';
 /**
  * A host file name has to fit the volume's cap. The extension survives the cut
  * when it is short enough to be worth keeping; a 300 character "extension" is
@@ -35,7 +36,7 @@ export function createFileActions(s) {
         const w = s.ui.modal(baseName(n.path) + ' Properties', { width: 385, height: 340 });
         const size = paths.reduce((a, p) => a + s.fs.size(p), 0);
         const name = el('input', { value: baseName(n.path), 'aria-label': 'File name' });
-        w.body.append(el('div', { class: 'tab-strip' }, button('General', () => { }, { class: 'active' })), el('div', { class: 'tab-panel' }, el('div', { class: 'row', style: { gap: '20px', marginBottom: '15px' } }, icon(fileIcon(n), 32), name), el('div', { class: 'separator' }), infoGrid([['Type:', n.type === 'folder' ? 'File Folder' : (n.mime || 'File')], ['Location:', parentPath(n.path)], ['Size:', formatSize(size)], ['Contains:', n.type === 'folder' ? `${s.fs.list(n.path).length} objects` : `${paths.length} file(s)`], ['Created:', new Date(n.created).toLocaleString()], ['Modified:', new Date(n.modified).toLocaleString()]]), el('div', { class: 'separator' }), el('label', { class: 'checkbox-label' }, el('input', { type: 'checkbox', checked: !!n.readOnly, onchange: e => { n.readOnly = e.target.checked; s.fs.changed(); } }), 'Read-only')));
+        w.body.append(el('div', { class: 'tab-strip' }, button('General', () => { }, { class: 'active' })), el('div', { class: 'tab-panel' }, el('div', { class: 'row', style: { gap: '20px', marginBottom: '15px' } }, icon(fileIcon(n), 32), name), el('div', { class: 'separator' }), infoGrid([['Type:', n.type === 'folder' ? 'File Folder' : (n.mime || 'File')], ['Location:', parentPath(n.path)], ['Size:', formatSize(size)], ['Contains:', n.type === 'folder' ? `${s.fs.list(n.path).length} objects` : `${paths.length} file(s)`], ['Created:', new Date(n.created).toLocaleString(uiLocale)], ['Modified:', new Date(n.modified).toLocaleString(uiLocale)]]), el('div', { class: 'separator' }), el('label', { class: 'checkbox-label' }, el('input', { type: 'checkbox', checked: !!n.readOnly, onchange: e => { n.readOnly = e.target.checked; s.fs.changed(); } }), 'Read-only')));
         w.body.append(el('div', { class: 'dialog-buttons' }, button('OK', () => {
             try {
                 if (name.value !== baseName(n.path))
@@ -239,7 +240,7 @@ export function explorer(s, args = {}) {
             list.append(el('div', { class: 'details-header' }, el('span', { text: 'Name' }), el('span', { text: 'Size' }), el('span', { text: 'Type' }), el('span', { text: 'Modified' })));
         for (const e of entries) {
             const id = e.path || e.app;
-            const b = el('button', { class: 'file-item', draggable: !!e.path, 'data-path': id, 'aria-label': e.name, 'data-i18n-skip-attrs': e.nameIsData ? 'aria-label' : undefined }, icon(e.icon, 32), e.nameIsData ? dataText(e.name, { class: 'file-name' }) : el('span', { class: 'file-name', text: e.name }), el('span', { class: 'file-detail', text: e.node?.type === 'file' ? formatSize(s.fs.size(e.path)) : '' }), el('span', { class: 'file-detail', text: e.node?.type === 'folder' ? 'File Folder' : e.node ? 'File' : '' }), el('span', { class: 'file-detail', text: e.node ? new Date(e.node.modified).toLocaleDateString() : '' }));
+            const b = el('button', { class: 'file-item', draggable: !!e.path, 'data-path': id, 'aria-label': e.name, 'data-i18n-skip-attrs': e.nameIsData ? 'aria-label' : undefined }, icon(e.icon, 32), e.nameIsData ? dataText(e.name, { class: 'file-name' }) : el('span', { class: 'file-name', text: e.name }), el('span', { class: 'file-detail', text: e.node?.type === 'file' ? formatSize(s.fs.size(e.path)) : '' }), el('span', { class: 'file-detail', text: e.node?.type === 'folder' ? 'File Folder' : e.node ? 'File' : '' }), el('span', { class: 'file-detail', text: e.node ? new Date(e.node.modified).toLocaleDateString(uiLocale) : '' }));
             b.onclick = ev => {
                 ev.stopPropagation();
                 if (ev.ctrlKey || ev.metaKey) {

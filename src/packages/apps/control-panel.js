@@ -5,6 +5,7 @@ import { menuBar } from '@win95/ui/menu.js';
 import { combo } from '@win95/ui/select.js';
 import { POINTER_ROLES, SCHEMES, currentSchemeName, cursorArt, listSchemes, parseCursorFile, resolveScheme, svgDataUrl } from '@win95/shell/cursors.js';
 import { saverWaitMinutes, saverWaitOptions } from './saver-wait.js';
+import { uiLocale } from '@win95/core/i18n.js';
 const applets = [['display', 'Display', 'display'], ['sounds', 'Sounds', 'volume'], ['keyboard', 'Keyboard', 'keyboard'], ['mouse', 'Mouse', 'mouse'], ['datetime', 'Date/Time', 'clock'], ['regional', 'Regional Settings', 'regional'], ['fonts', 'Fonts', 'font'], ['printers', 'Printers', 'printer'], ['network', 'Network', 'network'], ['system', 'System', 'computer'], ['addremove', 'Add/Remove Programs', 'task'], ['accessibility', 'Accessibility Options', 'accessibility'], ['multimedia', 'Multimedia', 'media'], ['passwords', 'Passwords', 'passwords'], ['modems', 'Modems', 'modem'], ['joystick', 'Joystick', 'joystick'], ['hardware', 'Add New Hardware', 'control'], ['power', 'Power', 'power']];
 
 /** Slider position (0 slowest … 100 fastest) to the double-click interval in ms. */
@@ -118,9 +119,13 @@ export function dateTime(s) {
     const w = propertySheet(s, 'Date/Time Properties', 'clock', [
         ['Date & Time', (p, w) => {
                 const layout = el('div', { class: 'row', style: { alignItems: 'flex-start' } }), calendar = el('div', { style: { flex: 1 } }), dial = el('div', { class: 'analog-clock' });
-                const year = el('input', { type: 'number', min: 1970, max: 2100, value: date.getFullYear(), style: { width: '65px' }, 'aria-label': 'Year' }), month = combo({ ariaLabel: 'Month', options: Array.from({ length: 12 }, (_, i) => ({ value: String(i), label: new Date(2000, i).toLocaleString(undefined, { month: 'long' }) })), value: String(date.getMonth()) }), grid = el('div', { class: 'calendar-grid inset' });
+                const year = el('input', { type: 'number', min: 1970, max: 2100, value: date.getFullYear(), style: { width: '65px' }, 'aria-label': 'Year' }), month = combo({ ariaLabel: 'Month', options: Array.from({ length: 12 }, (_, i) => ({ value: String(i), label: new Date(2000, i).toLocaleString(uiLocale, { month: 'long' }) })), value: String(date.getMonth()) }), grid = el('div', { class: 'calendar-grid inset' });
                 const draw = () => {
-                    grid.replaceChildren(...['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(v => el('span', { class: 'weekday', text: v })));
+                    /* The weekday initials follow the UI language: a Chinese calendar heads
+                   its columns with 日一二三四五六. The grid starts on Sunday, which
+                   the column order below has to keep. */
+                    grid.replaceChildren(...Array.from({ length: 7 }, (_, i) => new Date(2000, 0, 2 + i).toLocaleDateString(uiLocale, { weekday: 'narrow' }))
+                        .map(v => el('span', { class: 'weekday', text: v })));
                     const first = new Date(+year.value, +month.value, 1).getDay(), days = new Date(+year.value, +month.value + 1, 0).getDate();
                     for (let i = 0; i < first; i++)
                         grid.append(el('span'));
@@ -370,7 +375,7 @@ export function settingsApplet(s, id) {
         }], ['User Profiles', p => { p.append(field('User name:', el('input', { value: s.settings.get('owner', 'Windows User'), oninput: e => draft.owner = e.target.value })), el('p', { text: 'Documents and preferences belong to this browser profile.' })); commits.push(() => s.settings.set('owner', draft.owner || 'Windows User')); }], ['Privacy', p => p.append(el('p', { text: 'Your virtual drive is stored in this browser. Export a backup before clearing browser storage.' }), button('Back Up Files…', () => s.launch('backup')))]);
     }
     else if (id === 'printers') {
-        pages.push(['Printers', p => p.append(el('div', { class: 'row' }, icon('printer', 32), el('div', {}, el('b', { text: 'Browser Print Service' }), el('p', { text: 'Default printer' }))), el('p', { text: 'Use File → Print in Notepad or WordPad to choose a printer or save as PDF.' }), button('Print Test Page', () => { s.launch('notepad', { text: 'Windows 95 Printer Test Page\n\nBrowser Print Service\n\nThe quick brown fox jumps over the lazy dog.\n0123456789\n\n' + new Date().toLocaleString() }); })),]);
+        pages.push(['Printers', p => p.append(el('div', { class: 'row' }, icon('printer', 32), el('div', {}, el('b', { text: 'Browser Print Service' }), el('p', { text: 'Default printer' }))), el('p', { text: 'Use File → Print in Notepad or WordPad to choose a printer or save as PDF.' }), button('Print Test Page', () => { s.launch('notepad', { text: 'Windows 95 Printer Test Page\n\nBrowser Print Service\n\nThe quick brown fox jumps over the lazy dog.\n0123456789\n\n' + new Date().toLocaleString(uiLocale) }); })),]);
     }
     else if (id === 'fonts') {
         pages.push(['Fonts', p => {
