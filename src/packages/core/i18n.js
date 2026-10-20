@@ -428,8 +428,18 @@ function applyPatterns(core) {
     if ((m = /^(.+) - (Media Player|CD Player)$/.exec(core))) return `${translateText(m[1], 'zh')} - ${name(m[2])}`;
     if ((m = /^(.+) - Sound Recorder$/.exec(core))) return `${m[1]} - 录音机`;
     if ((m = /^Track (\d+) — (.+)$/.exec(core))) return `曲目 ${m[1]} — ${translateText(m[2], 'zh')}`;
+    // The mixer and the player name their state after the track: the state word is
+    // chrome, the track name is data that may itself need the dictionary.
+    if ((m = /^(.+) \((paused|playing)\)$/.exec(core))) return `${translateText(m[1], 'zh')}（${m[2] === 'paused' ? '已暂停' : '正在播放'}）`;
     if ((m = /^Number: (.+)$/.exec(core))) return `数字：${m[1]}`;
     if ((m = /^Date: (.+)$/.exec(core))) return `日期：${m[1]}`;
+    // Display properties and Device Manager print a caption and a host-provided
+    // value in one string; the caption is UI, the value must stay untouched.
+    if ((m = /^(\d+) by (\d+) pixels$/.exec(core))) return `${m[1]} × ${m[2]} 像素`;
+    if ((m = /^Scale: ([\d.]+)× device pixels$/.exec(core))) return `缩放：${m[1]}× 设备像素`;
+    if ((m = /^Current renderer: (.+)$/.exec(core))) return `当前渲染器：${m[1]}`;
+    if ((m = /^Display adapter — (.+)$/.exec(core))) return `显示适配器 — ${m[1]}`;
+    if ((m = /^Virtual C: drive — (.+)$/.exec(core))) return `虚拟 C: 盘 — ${m[1]}`;
     if ((m = /^Named: (.+)$/.exec(core))) return `名称：${m[1]}`;
     if ((m = /^Address: (.+)$/.exec(core))) return `地址：${m[1]}`;
     if ((m = /^Open: (.+)$/.exec(core))) return `打开：${m[1]}`;
