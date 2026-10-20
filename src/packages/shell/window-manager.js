@@ -3,13 +3,36 @@ import { icon } from '@win95/ui/icons.js';
 import { popup, closeMenus } from '@win95/ui/menu.js';
 import { closeCombos } from '@win95/ui/select.js';
 import { flyTitleBar, rectOf, titleBarRect } from './minimize-animation.js';
+/**
+ * A window's opening box, kept on the desktop.
+ *
+ * The width is capped to the viewport, so the offset has to be worked out from
+ * the capped width, not the requested one: a 555px Notepad on a 360px desktop
+ * used to be placed at x=96 from the unclamped width and hung 84px off the
+ * right edge, with its Close button among the parts that could not be reached.
+ * The familiar 96/25 insets are kept while there is room for them and give way
+ * to the desktop edge when there is not; an explicit x or y is honoured the
+ * same way.
+ */
+function placeOnDesktop(o, index = 0) {
+    const width = Math.min(o.width, innerWidth - 12);
+    const height = Math.min(o.height, innerHeight - 40);
+    const cascade = index * 18 % 80;
+    const keep = (value, room) => Math.max(0, Math.min(value, room));
+    return {
+        x: keep(o.x ?? Math.max(96, (innerWidth - width) / 2 + cascade), innerWidth - width),
+        y: keep(o.y ?? Math.max(25, (innerHeight - 32 - height) / 2 + cascade), innerHeight - 30 - height),
+        width,
+        height
+    };
+}
 export class WindowManager extends EventTarget {
     constructor() { super(); this.primary = null; this.windows = []; this.sequence = 0; this.z = 10; this.active = null; this.host = document.querySelector('#windows'); this.tasks = document.querySelector('#tasks'); window.addEventListener('resize', () => this.fit()); document.addEventListener('keydown', e => this.keydown(e)); }
     create(options = {}) {
         const o = { width: 500, height: 350, minWidth: 230, minHeight: 130, resizable: true, ...options };
         const id = o.id || 'window-' + (++this.sequence);
         const index = this.windows.length;
-        const w = { id, title: o.title || 'Untitled', icon: o.icon || 'task', options: o, minimized: false, maximized: false, closed: false, rect: { x: o.x ?? Math.max(96, (innerWidth - o.width) / 2 + index * 18 % 80), y: o.y ?? Math.max(25, (innerHeight - 32 - o.height) / 2 + index * 18 % 80), width: Math.min(o.width, innerWidth - 12), height: Math.min(o.height, innerHeight - 40) }, onClose: null, onClosed: [] };
+        const w = { id, title: o.title || 'Untitled', icon: o.icon || 'task', options: o, minimized: false, maximized: false, closed: false, rect: placeOnDesktop(o, index), onClose: null, onClosed: [] };
         const node = el('section', { class: 'window' + (o.modal ? ' dialog-window' : ''), role: o.modal ? 'dialog' : 'region', 'aria-label': w.title, tabIndex: -1, 'data-window': id });
         const title = el('div', { class: 'title-bar' });
         const sys = el('button', { class: 'system-icon', 'aria-label': 'Window menu' }, icon(w.icon, 16));
@@ -387,12 +410,15 @@ export class WindowManager extends EventTarget {
     tile(vertical = true) { const wins = this.windows.filter(w => !w.minimized && !w.options.modal); wins.forEach((w, i) => { w.motion?.cancel(); w.motion = null; w.maximized = false; w.rect = vertical ? { x: i * innerWidth / wins.length, y: 0, width: innerWidth / wins.length, height: innerHeight - 30 } : { x: 0, y: i * (innerHeight - 30) / wins.length, width: innerWidth, height: (innerHeight - 30) / wins.length }; this.layout(w); }); }
     fit() {
         for (const w of this.windows) {
-            w.rect.x = Math.max(0, Math.min(w.rect.x, innerWidth - 80));
-            w.rect.y = Math.max(0, Math.min(w.rect.y, innerHeight - 70));
             if (!w.options.allowOverflow) {
                 w.rect.width = Math.min(w.rect.width, innerWidth);
                 w.rect.height = Math.min(w.rect.height, innerHeight - 30);
             }
+            /* The edges are measured against the size the window has now, not
+               the 80px of strip the drag lets hang over: shrinking the browser
+               used to leave a window 235px past the right edge. */
+            w.rect.x = Math.max(0, Math.min(w.rect.x, innerWidth - w.rect.width));
+            w.rect.y = Math.max(0, Math.min(w.rect.y, innerHeight - 30 - w.rect.height));
             this.layout(w);
         }
     }
