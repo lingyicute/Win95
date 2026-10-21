@@ -373,9 +373,20 @@ export function settingsApplet(s, id) {
                    stored with the sheet's other fields, which may be older -
                    and a drag moves the mixer while it happens instead of
                    waiting for OK. `sync` below finishes the job in the other
-                   direction, so whichever window writes, the other follows. */
-                draft.volume = s.settings.get('volume', DEFAULT_VOLUME);
-                draft.muted = s.settings.get('muted', false);
+                   direction, so whichever window writes, the other follows.
+
+                   A sheet that writes before it is committed owes the user a
+                   way back, so `base` holds the level the sheet found (or the
+                   one its last OK/Apply committed) and closing without OK
+                   writes it straight back, which is what Windows does: the
+                   sheet's saved level wins over anything else that moved the
+                   fader while the sheet was open, Volume Control included. */
+                const base = {
+                    volume: s.settings.get('volume', DEFAULT_VOLUME),
+                    muted: s.settings.get('muted', false)
+                };
+                draft.volume = base.volume;
+                draft.muted = base.muted;
                 const volume = trackbar({
                     label: 'Volume:',
                     value: draft.volume,
@@ -384,7 +395,20 @@ export function settingsApplet(s, id) {
                 p.append(field('Volume:', volume));
                 const muted = check(p, 'Mute all sounds', 'muted', draft.muted, next => s.settings.set('muted', next));
                 p.append(el('div', { class: 'row' }, button('Test', () => s.beep('startup')), button('Volume Control…', () => s.launch('volume'))));
-                commits.push(() => { s.settings.set('volume', draft.volume ?? DEFAULT_VOLUME); s.settings.set('muted', draft.muted || draft.scheme === 'No Sounds'); });
+                commits.push(() => {
+                    const level = draft.volume ?? DEFAULT_VOLUME;
+                    const silenced = draft.muted || draft.scheme === 'No Sounds';
+                    s.settings.set('volume', level);
+                    s.settings.set('muted', silenced);
+                    /* OK and Apply make this the new starting point: a Cancel
+                       after an Apply comes back here, not to the old level. */
+                    base.volume = level;
+                    base.muted = silenced;
+                });
+                win.onClose = async () => {
+                    s.settings.set('volume', base.volume);
+                    s.settings.set('muted', base.muted);
+                };
                 const sync = event => {
                     if (event.detail?.name === 'volume') {
                         draft.volume = event.detail.value;

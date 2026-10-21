@@ -31,13 +31,22 @@ class Settings extends EventTarget {
     }
 }
 
+/* The window manager asks a window whether it may close before it goes; the
+   property sheet's Cancel and its title-bar close box both arrive here, which
+   is why a cancelled sheet can put its settings back on the way out. */
 const windowDouble = () => {
     const win = {
         body: document.createElement('div'),
         element: document.createElement('div'),
         onClosed: [],
         setMenu() { },
-        close() { this.closed = true; for (const fn of this.onClosed) fn(); }
+        async close(force = false) {
+            if (!force && win.onClose && (await win.onClose()) === false)
+                return false;
+            win.closed = true;
+            for (const fn of win.onClosed) fn();
+            return true;
+        }
     };
     return win;
 };
@@ -159,17 +168,101 @@ test('the sheet opens on the live volume, not on the draft it stored last time',
     assert.equal(s.settings.get('volume'), 70, 'and OK does not put the stale level back');
 });
 
-test('closing a window stops it listening to the shared keys', () => {
+test('closing a window stops it listening to the shared keys', async () => {
     const s = systemWith();
     const { w, master } = openVolumeControl(s);
     const sheet = settingsApplet(s, 'multimedia');
 
-    w.close();
+    await w.close();
     s.settings.set('volume', 10);
     assert.equal(valuenow(master), 80, 'a closed Volume Control no longer redraws');
     assert.equal(valuenow(sheetVolume(sheet)), 10, 'but the sheet that is still open does');
 
-    sheet.close();
+    await sheet.close();
+    /* Closing cancels, so the sheet writes its saved level back on the way out;
+       what matters here is that nothing after that reaches it. */
+    const frozen = valuenow(sheetVolume(sheet));
     s.settings.set('volume', 55);
-    assert.equal(valuenow(sheetVolume(sheet)), 10, 'and a closed sheet is quiet too');
+    assert.equal(valuenow(sheetVolume(sheet)), frozen, 'and a closed sheet is quiet too');
+});
+
+test('Cancel puts the volume back to what the sheet opened with', async () => {
+    /* Windows: a property sheet is a transaction. The fader has to move the
+       mixer while it is dragged so Volume Control keeps up, but Cancel has to
+       take that back - the desktop must end up exactly as it was before the
+       sheet opened. */
+    const s = systemWith({ volume: 80, muted: false });
+    const sheet = settingsApplet(s, 'multimedia');
+    const slider = sheetVolume(sheet);
+    keydown(slider, 'ArrowLeft');
+    keydown(slider, 'ArrowLeft');
+    assert.equal(s.settings.get('volume'), 78, 'the drag was heard while it happened');
+
+    await sheet.close();
+    assert.equal(s.settings.get('volume'), 80, 'Cancel restored the opening level');
+    assert.equal(valuenow(slider), 80, 'and the slider came back with it');
+});
+
+test('the title bar close box cancels exactly like the Cancel button', async () => {
+    /* Both end in wm.close() -> onClose, so there is one rollback path. */
+    const s = systemWith({ volume: 65 });
+    const sheet = settingsApplet(s, 'multimedia');
+    sheetMute(sheet).checked = true;
+    sheetMute(sheet).dispatchEvent({ type: 'change', target: sheetMute(sheet) });
+    keydown(sheetVolume(sheet), 'ArrowRight');
+    assert.equal(s.settings.get('muted'), true);
+    assert.equal(s.settings.get('volume'), 66);
+
+    await sheet.close();
+    assert.equal(s.settings.get('muted'), false, 'Mute all was a change and is taken back');
+    assert.equal(s.settings.get('volume'), 65);
+});
+
+test('Apply becomes the new starting point for a later Cancel', async () => {
+    const s = systemWith({ volume: 80 });
+    const sheet = settingsApplet(s, 'multimedia');
+    const slider = sheetVolume(sheet);
+
+    keydown(slider, 'ArrowLeft');
+    keydown(slider, 'ArrowLeft');
+    await sheet.apply();
+    assert.equal(s.settings.get('volume'), 78, 'Apply committed the level');
+
+    keydown(slider, 'ArrowRight');
+    assert.equal(s.settings.get('volume'), 79);
+    await sheet.close();
+    assert.equal(s.settings.get('volume'), 78, 'Cancel goes back to the applied value, not the opening one');
+});
+
+test('OK keeps the change and does not roll anything back', async () => {
+    const s = systemWith({ volume: 80 });
+    const sheet = settingsApplet(s, 'multimedia');
+    keydown(sheetVolume(sheet), 'ArrowLeft');
+    await sheet.apply();
+    await sheet.close();
+    assert.equal(s.settings.get('volume'), 79, 'the committed level survived the window closing');
+});
+
+test('Cancel overrides a level Volume Control changed while the sheet was open', async () => {
+    /* Windows: a property sheet restores its own saved level on Cancel, even
+       when something else moved the fader in the meantime. The saved level is
+       what the sheet opened with. */
+    const s = systemWith({ volume: 80 });
+    const sheet = settingsApplet(s, 'multimedia');
+    s.settings.set('volume', 30);
+    assert.equal(valuenow(sheetVolume(sheet)), 30, 'the sheet shows the live level while it is open');
+
+    await sheet.close();
+    assert.equal(s.settings.get('volume'), 80, 'Cancel put the opening level back over the outside change');
+    assert.equal(valuenow(sheetVolume(sheet)), 80);
+});
+
+test('and it still restores the applied level rather than the opening one', async () => {
+    const s = systemWith({ volume: 80 });
+    const sheet = settingsApplet(s, 'multimedia');
+    keydown(sheetVolume(sheet), 'ArrowLeft');
+    await sheet.apply();
+    s.settings.set('volume', 15);
+    await sheet.close();
+    assert.equal(s.settings.get('volume'), 79, 'the last Apply wins over everything that happened after it');
 });
