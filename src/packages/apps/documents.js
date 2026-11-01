@@ -436,6 +436,9 @@ export function calculator(s) {
         }
         else if (key === 'Back') {
             value = value.length > 1 ? value.slice(0, -1) : '0';
+            /* Rubbing out the digits of "-5" leaves a bare sign, which is not a number. */
+            if (!Number.isFinite(Number(value)))
+                value = '0';
         }
         else if (['+', '−', '×', '÷'].includes(key)) {
             if (op && !newEntry)
@@ -455,8 +458,14 @@ export function calculator(s) {
                 value = format(calculate(Number(value), lastArg, lastOp));
             newEntry = true;
         }
-        else if (key === '±')
-            value = format(-Number(value));
+        else if (key === '±') {
+            /* A number still being typed keeps what was typed - "5." stays "5." - so
+               only a finished number is re-formatted. */
+            if (!newEntry && value !== '0')
+                value = value.startsWith('-') ? value.slice(1) : '-' + value;
+            else
+                value = format(-Number(value));
+        }
         else if (key === '√') {
             value = format(Math.sqrt(Number(value)));
             newEntry = true;
@@ -482,7 +491,12 @@ export function calculator(s) {
         else if (key === 'M+')
             memory += Number(value);
         else {
-            let n = Number(value), fn = { sin: () => Math.sin(n * (degrees ? Math.PI / 180 : 1)), cos: () => Math.cos(n * (degrees ? Math.PI / 180 : 1)), tan: () => Math.tan(n * (degrees ? Math.PI / 180 : 1)), log: () => Math.log10(n), ln: () => Math.log(n), 'x²': () => n * n, 'x³': () => n * n * n, '10ˣ': () => 10 ** n, 'n!': () => {
+            let n = Number(value);
+            /* Degrees are reduced before they become radians, and a result that is only
+               rounding noise is zero: sin 180 is 0, not 1.2246e-16, and tan 90 has no value. */
+            const angle = () => degrees ? n % 360 * Math.PI / 180 : n;
+            const trig = fn => { const r = fn(angle()); return Math.abs(r) < 1e-15 ? 0 : r; };
+            const fn = { sin: () => trig(Math.sin), cos: () => trig(Math.cos), tan: () => degrees && (n - 90) % 180 === 0 ? NaN : trig(Math.tan), log: () => Math.log10(n), ln: () => Math.log(n), 'x²': () => n * n, 'x³': () => n * n * n, '10ˣ': () => 10 ** n, 'n!': () => {
                     if (n < 0 || n > 170 || n % 1)
                         return NaN;
                     let r = 1;
