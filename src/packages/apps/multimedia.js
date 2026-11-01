@@ -394,7 +394,7 @@ export function internet(s, args = {}) {
         page.style.padding = '';
         if (url === 'about:home' || !url) {
             page.innerHTML = '<h1>Welcome to the Internet</h1><hr><h2>Microsoft Internet Explorer</h2><p>The world is at your fingertips.</p><p>Enter an address above to explore the World Wide Web, or open an HTML document from your C: drive.</p><hr><h3>Your computer</h3>';
-            for (const n of s.fs.search('\\.htm')) {
+            for (const n of s.fs.search('*.htm').filter(n => n.type === 'file' && /\.html?$/i.test(n.path))) {
                 const a = el('a', { href: '#', text: baseName(n.path), onclick: e => { e.preventDefault(); navigate(n.path); } });
                 page.append(el('p', {}, a));
             }
