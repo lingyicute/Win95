@@ -264,7 +264,8 @@ export class VirtualFileSystem extends EventTarget {
         const recycleBin = 'c:\\recycled';
         return [...this.nodes.values()].filter(node => {
             const path = key(node.path);
-            const inFolder = path === root || path.startsWith(root.endsWith('\\') ? root : root + '\\');
+            /* The Look-in folder is where the search starts, not something it finds. */
+            const inFolder = path !== root && path.startsWith(root.endsWith('\\') ? root : root + '\\');
             const inRecycleBin = path === recycleBin || path.startsWith(recycleBin + '\\');
             return inFolder && !inRecycleBin && re.test(baseName(node.path));
         });
