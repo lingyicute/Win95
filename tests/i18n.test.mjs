@@ -179,3 +179,24 @@ test('labels shown by dialogs and sliders are all translatable', async () => {
     }
     assert.deepEqual(missing, [], 'a rendered label with no dictionary entry reads as English in Chinese:\n' + missing.join('\n'));
 });
+
+test('no English label is listed twice in the Chinese dictionary', async () => {
+    /* A repeated key silently lets the later line win, so two different widgets
+       sharing one label can never be told apart - and the earlier line is dead. */
+    const source = await readFile(path.join(root, 'src/packages/core/i18n.js'), 'utf8');
+    const start = source.indexOf('const ZH = ');
+    let depth = 0, end = -1;
+    for (let i = source.indexOf('{', start); i < source.length; i++) {
+        if (source[i] === '{')
+            depth++;
+        else if (source[i] === '}' && !--depth) { end = i + 1; break; }
+    }
+    const literal = source.slice(start, end);
+    const seen = new Set(), repeated = [];
+    for (const [, key] of literal.matchAll(/'((?:[^'\\]|\\.)*)'\s*:/g)) {
+        if (seen.has(key))
+            repeated.push(key);
+        seen.add(key);
+    }
+    assert.deepEqual(repeated, []);
+});
