@@ -74,3 +74,9 @@ test('tan of 90 degrees is an error, not a huge number', () => {
     assert.equal(press(sheet, '9', '0', 'tan').value, 'Error');
     assert.equal(press(sheet, 'C', '2', '7', '0', 'tan').value, 'Error');
 });
+
+test('Backspace does not leave a negative zero behind', () => {
+    const sheet = calculator(makeSystem());
+    assert.equal(press(sheet, '0', '.', '±').value, '-0.');
+    assert.equal(press(sheet, 'Backspace').value, '0', '-0. rubbed out is 0, not "-0"');
+});

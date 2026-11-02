@@ -436,8 +436,9 @@ export function calculator(s) {
         }
         else if (key === 'Back') {
             value = value.length > 1 ? value.slice(0, -1) : '0';
-            /* Rubbing out the digits of "-5" leaves a bare sign, which is not a number. */
-            if (!Number.isFinite(Number(value)))
+            /* Rubbing out the digits of "-5" leaves a bare sign, and "-0." leaves "-0";
+               neither is a number worth showing. */
+            if (!Number.isFinite(Number(value)) || value === '-0')
                 value = '0';
         }
         else if (['+', '−', '×', '÷'].includes(key)) {
@@ -493,10 +494,10 @@ export function calculator(s) {
         else {
             let n = Number(value);
             /* Degrees are reduced before they become radians, and a result that is only
-               rounding noise is zero: sin 180 is 0, not 1.2246e-16, and tan 90 has no value. */
+               rounding noise is zero: sin 180 is 0, not 1.2246e-16, and tan 90 (or pi/2 in radians) has no value. */
             const angle = () => degrees ? n % 360 * Math.PI / 180 : n;
             const trig = fn => { const r = fn(angle()); return Math.abs(r) < 1e-15 ? 0 : r; };
-            const fn = { sin: () => trig(Math.sin), cos: () => trig(Math.cos), tan: () => degrees && (n - 90) % 180 === 0 ? NaN : trig(Math.tan), log: () => Math.log10(n), ln: () => Math.log(n), 'x²': () => n * n, 'x³': () => n * n * n, '10ˣ': () => 10 ** n, 'n!': () => {
+            const fn = { sin: () => trig(Math.sin), cos: () => trig(Math.cos), tan: () => (degrees && (n - 90) % 180 === 0) || trig(Math.cos) === 0 ? NaN : trig(Math.tan), log: () => Math.log10(n), ln: () => Math.log(n), 'x²': () => n * n, 'x³': () => n * n * n, '10ˣ': () => 10 ** n, 'n!': () => {
                     if (n < 0 || n > 170 || n % 1)
                         return NaN;
                     let r = 1;
