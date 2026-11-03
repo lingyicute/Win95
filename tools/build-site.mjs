@@ -1,4 +1,5 @@
-import { copyFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -89,34 +90,95 @@ async function walk(directory) {
     return files;
 }
 
+/* Resolve symlinks even when the output (or one of its parents) does not exist. */
+async function realDestination(destination) {
+    const missing = [];
+    for (;;) {
+        try {
+            return path.resolve(await realpath(destination), ...missing);
+        }
+        catch (error) {
+            if (error.code !== 'ENOENT')
+                throw error;
+            const parent = path.dirname(destination);
+            if (parent === destination)
+                throw error;
+            missing.unshift(path.basename(destination));
+            destination = parent;
+        }
+    }
+}
+
+function containsPath(parent, candidate) {
+    const relative = path.relative(parent, candidate);
+    return relative === '' || (relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative));
+}
+
 export async function buildSite({ source = 'src', output = '_site', version = defaultVersion() } = {}) {
     assertVersion(version);
     const sourceDir = path.resolve(source);
     const outputDir = path.resolve(output);
-    if (sourceDir === outputDir || outputDir.startsWith(sourceDir + path.sep) || sourceDir.startsWith(outputDir + path.sep))
+    const separate = (a, b) => !containsPath(a, b) && !containsPath(b, a);
+    if (!separate(sourceDir, outputDir))
         throw new Error('Build output must be separate from the source directory');
-    await rm(outputDir, { recursive: true, force: true });
-    await mkdir(outputDir, { recursive: true });
-    let files = 0;
-    let versionedFiles = 0;
-    for (const file of await walk(sourceDir)) {
-        const relative = path.relative(sourceDir, file);
-        const destination = path.join(outputDir, relative);
-        await mkdir(path.dirname(destination), { recursive: true });
-        const extension = path.extname(file).toLowerCase();
-        if (TEXT_EXTENSIONS.has(extension)) {
-            const original = await readFile(file, 'utf8');
-            const transformed = versionText(original, extension, version);
-            await writeFile(destination, transformed);
-            if (transformed !== original)
-                versionedFiles++;
+    if (!(await stat(sourceDir)).isDirectory())
+        throw new Error('Build source must be a directory');
+    if (!separate(await realpath(sourceDir), await realDestination(outputDir)))
+        throw new Error('Build output must be separate from the source directory');
+
+    /* Build beside the destination, keeping the previous release until all reads
+       and transformations succeed. Rename within one directory also avoids a
+       cross-device move; a failed swap restores the previous release. */
+    const parent = path.dirname(outputDir), name = path.basename(outputDir);
+    await mkdir(parent, { recursive: true });
+    const staging = await mkdtemp(path.join(parent, `.${name}-build-`));
+    const previous = path.join(parent, `.${name}-previous-${randomUUID()}`);
+    let files = 0, versionedFiles = 0, committed = false, hadPrevious = false;
+    try {
+        for (const file of await walk(sourceDir)) {
+            const relative = path.relative(sourceDir, file);
+            const destination = path.join(staging, relative);
+            await mkdir(path.dirname(destination), { recursive: true });
+            const extension = path.extname(file).toLowerCase();
+            if (TEXT_EXTENSIONS.has(extension)) {
+                const original = await readFile(file, 'utf8');
+                const transformed = versionText(original, extension, version);
+                await writeFile(destination, transformed);
+                if (transformed !== original)
+                    versionedFiles++;
+            }
+            else {
+                await copyFile(file, destination);
+            }
+            files++;
         }
-        else {
-            await copyFile(file, destination);
+        try {
+            await rename(outputDir, previous);
+            hadPrevious = true;
         }
-        files++;
+        catch (error) {
+            if (error.code !== 'ENOENT')
+                throw error;
+        }
+        try {
+            await rename(staging, outputDir);
+        }
+        catch (error) {
+            if (hadPrevious) {
+                try { await rename(previous, outputDir); }
+                catch (restoreError) { throw new AggregateError([error, restoreError], `Build failed; previous output is at ${previous}`); }
+            }
+            throw error;
+        }
+        committed = true;
+        if (hadPrevious)
+            await rm(previous, { recursive: true, force: true });
+        return { files, versionedFiles, outputDir };
     }
-    return { files, versionedFiles, outputDir };
+    finally {
+        if (!committed)
+            await rm(staging, { recursive: true, force: true });
+    }
 }
 
 function parseArgs(argv) {
