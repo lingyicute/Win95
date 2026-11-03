@@ -29,9 +29,9 @@ export function findFiles(s) {
         if (!nodes.length)
             results.append(el('p', { style: { padding: '12px' }, text: 'No files matched your search.' }));
     };
-    w.body.append(el('div', { class: 'tab-strip' }, button('Name & Location', () => { }, { class: 'active' })), el('div', { class: 'row', style: { alignItems: 'flex-start' } }, el('div', { class: 'stack', style: { flex: 1 } }, field('Named:', name), field('Containing text:', containing), field('Look in:', folder)), el('div', { class: 'stack' }, button('Find Now', search, { class: 'default-button' }), button('New Search', () => { name.value = ''; containing.value = ''; results.replaceChildren(); w.status('Ready'); }))), results);
+    w.body.append(el('div', { class: 'tab-strip' }, button('Name & Location', () => { }, { class: 'active' })), el('div', { class: 'row', style: { alignItems: 'flex-start' } }, el('div', { class: 'stack', style: { flex: 1 } }, field('Named:', name), field('Containing text:', containing), field('Look in:', folder)), el('div', { class: 'stack' }, button('Find Now', search, { class: 'default-button' }), button('New Search', () => { name.value = ''; containing.value = ''; folder.value = 'C:\\'; results.replaceChildren(); w.status('Ready'); }))), results);
     w.status('Enter the name of a file or folder to find.');
-    name.onkeydown = e => {
+    name.onkeydown = containing.onkeydown = e => {
         if (e.key === 'Enter')
             search();
     };
@@ -172,14 +172,16 @@ export function registryEditor(s) {
                                 const n = await s.ui.prompt('Key name:', 'New Key', 'Registry Editor', { owner: w });
                                 if (n && !/[\\\r\n]/.test(n)) {
                                     const path = key + '\\' + n;
-                                    data[path] = {};
+                                    data[path] ??= {};
                                     key = path;
+                                    selected = null;
                                     persist();
                                 }
                             } }, { label: 'String Value', action: async () => {
                                 const n = await s.ui.prompt('Value name:', 'New Value', 'Registry Editor', { owner: w });
                                 if (n) {
                                     Object.defineProperty(data[key], n, { value: '', writable: true, enumerable: true, configurable: true });
+                                    selected = n;
                                     persist();
                                     await edit(n);
                                 }
@@ -294,8 +296,13 @@ export function backup(s) {
     w.body.style.padding = '12px';
     w.body.style.gap = '12px';
     const list = el('div', { class: 'inset', style: { flex: 1, overflow: 'auto', padding: '9px' } });
-    for (const n of s.fs.list('C:\\'))
-        list.append(el('div', { class: 'row', style: { padding: '5px' } }, icon(fileIcon(n), 16), n.path, el('span', { class: 'spacer' }), formatSize(s.fs.size(n.path))));
+    const renderList = () => {
+        list.replaceChildren();
+        for (const n of s.fs.list('C:\\'))
+            list.append(el('div', { class: 'row', style: { padding: '5px' } }, icon(fileIcon(n), 16), n.path, el('span', { class: 'spacer' }), formatSize(s.fs.size(n.path))));
+        w.status(`${s.fs.nodes.size} objects on the virtual volume`);
+    };
+    renderList();
     const restore = () => fileInput('.json', async (f) => {
         try {
             const data = JSON.parse(await f.text());
@@ -313,7 +320,7 @@ export function backup(s) {
                 const path = normalizePath(n.path);
                 if (path !== n.path)
                     throw new Error('Invalid backup path.');
-                nodes.set(path.toLowerCase(), { path, type: n.type, content: n.content, mime: n.mime, created: Number(n.created) || Date.now(), modified: Number(n.modified) || Date.now(), originalPath: n.originalPath });
+                nodes.set(path.toLowerCase(), { path, type: n.type, content: n.content, mime: n.mime, created: Number(n.created) || Date.now(), modified: Number(n.modified) || Date.now(), originalPath: n.originalPath, ...(n.readOnly ? { readOnly: true } : {}), ...(n.hidden ? { hidden: true } : {}), ...(n.system ? { system: true } : {}), ...(typeof n.attributes === 'string' ? { attributes: n.attributes } : {}) });
             }
             if (!nodes.has('c:\\'))
                 throw new Error('The C: drive is missing.');
@@ -325,6 +332,7 @@ export function backup(s) {
             s.fs.nodes = nodes;
             s.fs.changed();
             await s.fs.flush();
+            renderList();
             s.ui.message(`Restored ${nodes.size} files and folders.`, 'Microsoft Backup', ['OK'], { owner: w });
         }
         catch (e) {
@@ -341,7 +349,7 @@ export function backup(s) {
 export function briefcase(s) {
     const path = 'C:\\My Documents\\My Briefcase';
     if (!s.fs.exists(path))
-        s.fs.mkdir(path);
+        s.fs.ensureFolders(path);
     const w = s.launch('explorer', { path });
     s.ui.message('Keep copies of files in My Briefcase. Use File → Export File to take a copy with you, or import a newer version from your computer.', 'My Briefcase', ['OK'], { icon: 'briefcase' });
     return w;
