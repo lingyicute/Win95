@@ -25,8 +25,8 @@ export function findFiles(s) {
             nodes = nodes.filter(n => n.type === 'file' && (n.content || '').toLowerCase().includes(containing.value.toLowerCase()));
         for (const n of nodes)
             results.append(el('button', { class: 'find-result', ondblclick: () => s.open(n.path), onclick: e => { results.querySelectorAll('button').forEach(b => b.classList.remove('pressed')); e.currentTarget.classList.add('pressed'); }, oncontextmenu: e => { e.preventDefault(); popup(s.files.menu([n.path], parentPath(n.path)), e.clientX, e.clientY); } }, icon(fileIcon(n), 16), dataText(baseName(n.path)), dataText(parentPath(n.path))));
-        w.status(`${currentNodes.length} file(s) found`);
-        if (!currentNodes.length)
+        w.status(`${nodes.length} file(s) found`);
+        if (!nodes.length)
             results.append(el('p', { style: { padding: '12px' }, text: 'No files matched your search.' }));
     };
     w.body.append(el('div', { class: 'tab-strip' }, button('Name & Location', () => { }, { class: 'active' })), el('div', { class: 'row', style: { alignItems: 'flex-start' } }, el('div', { class: 'stack', style: { flex: 1 } }, field('Named:', name), field('Containing text:', containing), field('Look in:', folder)), el('div', { class: 'stack' }, button('Find Now', search, { class: 'default-button' }), button('New Search', () => { name.value = ''; containing.value = ''; folder.value = 'C:\\'; results.replaceChildren(); w.status('Ready'); }))), results);
