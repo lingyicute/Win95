@@ -108,6 +108,9 @@ export async function paint(s, args = {}) {
         path = newPath;
         undo = [];
         redo = [];
+        selection = null;
+        curveLine = null;
+        polygon = [];
         dirty = !newPath;
         render();
     };
@@ -118,6 +121,7 @@ export async function paint(s, args = {}) {
         if (p)
             try {
                 await loadImage(s.fs.read(p), p);
+                s.recent(p);
             }
             catch (e) {
                 s.ui.error(new Error('Paint cannot read this image. Try a PNG, BMP, JPEG, or GIF file.'), w);
@@ -133,6 +137,8 @@ export async function paint(s, args = {}) {
         path = null;
         dirty = false;
         selection = null;
+        curveLine = null;
+        polygon = [];
         render();
     };
     const choose = t => {
@@ -268,7 +274,11 @@ export async function paint(s, args = {}) {
         last = p;
         if (tool === 'picker') {
             const d = ctx.getImageData(p.x, p.y, 1, 1).data;
-            foreground = '#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+            const picked = '#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+            if (e.button === 2)
+                background = picked;
+            else
+                foreground = picked;
             render();
             choose('pencil');
             return;
@@ -466,6 +476,27 @@ export async function paint(s, args = {}) {
         dirty = true;
         render();
     };
+    const clearSelection = () => {
+        if (selection) {
+            checkpoint();
+            ctx.fillStyle = background;
+            ctx.fillRect(selection.x, selection.y, selection.width, selection.height);
+            dirty = true;
+            render();
+        }
+    };
+    const invertColors = async () => {
+        checkpoint();
+        try {
+            const image = await presenter.invert(ctx.getImageData(0, 0, source.width, source.height));
+            ctx.putImageData(image, 0, 0);
+            dirty = true;
+            render();
+        }
+        catch (e) {
+            s.ui.error(e, w);
+        }
+    };
     const selectAll = () => { selection = { x: 0, y: 0, width: source.width, height: source.height }; choose('select'); w.status('The entire picture is selected.'); };
     w.setMenu(menuBar([{ label: 'File', items: [{ label: 'New', shortcut: 'Ctrl+N', action: fresh }, { label: 'Open…', shortcut: 'Ctrl+O', action: open }, { label: 'Save', shortcut: 'Ctrl+S', action: () => save() }, { label: 'Save As…', action: () => save(true) }, null, { label: 'From File…', action: () => fileInput('image/*', async (f) => {
                         if (await confirm()) {
@@ -477,30 +508,15 @@ export async function paint(s, args = {}) {
                                 s.ui.error(e, w);
                             }
                         }
-                    }) }, { label: 'Export PNG…', action: () => download(path ? baseName(path) : 'untitled.png', source.toDataURL()) }, { label: 'Set As Wallpaper', action: () => s.settings.set('wallpaper', source.toDataURL()) }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [{ label: 'Undo', shortcut: 'Ctrl+Z', disabled: !undo.length, action: undoAction }, { label: 'Repeat', shortcut: 'Ctrl+Y', disabled: !redo.length, action: redoAction }, null, { label: 'Cut', shortcut: 'Ctrl+X', action: () => copySelection(true) }, { label: 'Copy', shortcut: 'Ctrl+C', action: () => copySelection(false) }, { label: 'Paste', shortcut: 'Ctrl+V', disabled: !s.imageClipboard, action: pasteSelection }, { label: 'Clear Selection', shortcut: 'Del', action: () => {
-                        if (selection) {
-                            checkpoint();
-                            ctx.fillStyle = background;
-                            ctx.fillRect(selection.x, selection.y, selection.width, selection.height);
-                            dirty = true;
-                            render();
-                        }
-                    } }, { label: 'Select All', shortcut: 'Ctrl+A', action: selectAll }] }, { label: 'View', items: () => [{ label: 'Tool Box', checked: !tools.hidden, action: () => tools.hidden = !tools.hidden }, { label: 'Color Box', checked: !palette.hidden, action: () => palette.hidden = !palette.hidden }, null, { label: 'Zoom', items: [1, 2, 4, 8].map(n => ({ label: n * 100 + '%', checked: zoom === n, action: () => { zoom = n; render(); } })) }] }, { label: 'Image', items: [{ label: 'Flip Horizontal', action: () => transform('horizontal') }, { label: 'Flip Vertical', action: () => transform('vertical') }, { label: 'Rotate 90°', action: () => transform('rotate') }, { label: 'Invert Colors', shortcut: 'Ctrl+I', action: async () => {
-                        checkpoint();
-                        try {
-                            const image = await presenter.invert(ctx.getImageData(0, 0, source.width, source.height));
-                            ctx.putImageData(image, 0, 0);
-                            dirty = true;
-                            render();
-                        }
-                        catch (e) {
-                            s.ui.error(e, w);
-                        }
-                    } }, { label: 'Attributes…', action: resize }, { label: 'Clear Image', action: () => { checkpoint(); ctx.fillStyle = background; ctx.fillRect(0, 0, source.width, source.height); dirty = true; render(); } }] }, { label: 'Colors', items: [{ label: 'Edit Colors…', action: () => palette.querySelector('input[type=color]').click() }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'paint' }) }, { label: 'About Paint', action: () => s.about('Paint', 'paint') }] }]));
+                    }) }, { label: 'Export PNG…', action: () => download(path ? baseName(path) : 'untitled.png', source.toDataURL()) }, { label: 'Set As Wallpaper', action: () => s.settings.set('wallpaper', source.toDataURL()) }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [{ label: 'Undo', shortcut: 'Ctrl+Z', disabled: !undo.length, action: undoAction }, { label: 'Repeat', shortcut: 'Ctrl+Y', disabled: !redo.length, action: redoAction }, null, { label: 'Cut', shortcut: 'Ctrl+X', action: () => copySelection(true) }, { label: 'Copy', shortcut: 'Ctrl+C', action: () => copySelection(false) }, { label: 'Paste', shortcut: 'Ctrl+V', disabled: !s.imageClipboard, action: pasteSelection }, { label: 'Clear Selection', shortcut: 'Del', action: clearSelection }, { label: 'Select All', shortcut: 'Ctrl+A', action: selectAll }] }, { label: 'View', items: () => [{ label: 'Tool Box', checked: !tools.hidden, action: () => tools.hidden = !tools.hidden }, { label: 'Color Box', checked: !palette.hidden, action: () => palette.hidden = !palette.hidden }, null, { label: 'Zoom', items: [1, 2, 4, 8].map(n => ({ label: n * 100 + '%', checked: zoom === n, action: () => { zoom = n; render(); } })) }] }, { label: 'Image', items: [{ label: 'Flip Horizontal', action: () => transform('horizontal') }, { label: 'Flip Vertical', action: () => transform('vertical') }, { label: 'Rotate 90°', action: () => transform('rotate') }, { label: 'Invert Colors', shortcut: 'Ctrl+I', action: invertColors }, { label: 'Attributes…', action: resize }, { label: 'Clear Image', action: () => { checkpoint(); ctx.fillStyle = background; ctx.fillRect(0, 0, source.width, source.height); dirty = true; render(); } }] }, { label: 'Colors', items: [{ label: 'Edit Colors…', action: () => palette.querySelector('input[type=color]').click() }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'paint' }) }, { label: 'About Paint', action: () => s.about('Paint', 'paint') }] }]));
     w.element.addEventListener('keydown', e => {
-        if ((e.ctrlKey || e.metaKey) && ['s', 'o', 'n', 'z', 'y', 'c', 'x', 'v', 'a'].includes(e.key.toLowerCase())) {
+        if ((e.ctrlKey || e.metaKey) && ['s', 'o', 'n', 'z', 'y', 'c', 'x', 'v', 'a', 'i'].includes(e.key.toLowerCase())) {
             e.preventDefault();
-            ({ s: () => save(e.shiftKey), o: open, n: fresh, z: undoAction, y: redoAction, c: () => copySelection(false), x: () => copySelection(true), v: pasteSelection, a: selectAll })[e.key.toLowerCase()]();
+            ({ s: () => save(e.shiftKey), o: open, n: fresh, z: undoAction, y: redoAction, c: () => copySelection(false), x: () => copySelection(true), v: pasteSelection, a: selectAll, i: invertColors })[e.key.toLowerCase()]();
+        }
+        else if (e.key === 'Delete' && selection) {
+            e.preventDefault();
+            clearSelection();
         }
     });
     w.onClose = confirm;

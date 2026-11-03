@@ -6,7 +6,7 @@ export function dosPrompt(s, args = {}) {
     w.body.classList.add('dos-body');
     const output = el('pre', { class: 'dos-output', text: 'Microsoft(R) Windows 95\n   (C)Copyright Microsoft Corp 1981-1995.\n\n' }), prompt = el('span'), input = el('input', { class: 'dos-input', spellcheck: false, autocomplete: 'off', 'aria-label': 'Command' }), line = el('form', { class: 'dos-line' }, prompt, input);
     w.body.append(output, line);
-    const engine = new DosEngine(s.fs, { launch: (alias, params, cwd) => s.run(alias + (params?.length ? ' "' + (['notepad', 'wordpad', 'write', 'mspaint', 'pbrush', 'explorer'].includes(alias.toLowerCase()) ? normalizePath(params.join(' '), cwd) : params.join(' ')) + '"' : '')), open: path => s.open(path) });
+    const engine = new DosEngine(s.fs, { launch: (alias, params, cwd) => s.run(alias + (params?.length ? ' "' + (['notepad', 'wordpad', 'write', 'mspaint', 'pbrush', 'paint', 'explorer', 'media', 'media-player', 'internet'].includes(alias.toLowerCase()) ? normalizePath(params.join(' '), cwd) : params.join(' ')) + '"' : '')), open: path => s.open(path) });
     let history = [], historyIndex = 0, running = false;
     const update = () => { prompt.textContent = engine.prompt || engine.cwd + '>'; w.setTitle('MS-DOS Prompt'); w.body.scrollTop = w.body.scrollHeight; };
     line.onsubmit = async (e) => {

@@ -129,7 +129,7 @@ export function minesweeper(s) {
         render();
     };
     const reset = (r = rows, c = cols, m = mines) => { touchFlags.cancel(); clearInterval(timer); rows = r; cols = c; mines = m; game = new Minesweeper(r, c, m); seconds = 0; startTime = 0; pressed = false; ended = false; w.rect.width = c * 20 + 46.5; w.rect.height = r * 20 + 138; s.wm.layout(w); render(); };
-    w.setMenu(menuBar([{ label: 'Game', items: () => [{ label: 'New', shortcut: 'F2', action: () => reset() }, null, { label: 'Beginner', checked: rows === 8, action: () => reset(8, 8, 10) }, { label: 'Intermediate', checked: rows === 16 && cols === 16, action: () => reset(16, 16, 40) }, { label: 'Expert', checked: cols === 30, action: () => reset(16, 30, 99) }, { label: 'Custom…', action: async () => {
+    w.setMenu(menuBar([{ label: 'Game', items: () => [{ label: 'New', shortcut: 'F2', action: () => reset() }, null, { label: 'Beginner', checked: rows === 8 && cols === 8 && mines === 10, action: () => reset(8, 8, 10) }, { label: 'Intermediate', checked: rows === 16 && cols === 16 && mines === 40, action: () => reset(16, 16, 40) }, { label: 'Expert', checked: rows === 16 && cols === 30 && mines === 99, action: () => reset(16, 30, 99) }, { label: 'Custom…', action: async () => {
                         const r = await s.ui.prompt('Rows, columns, mines:', `${rows}, ${cols}, ${mines}`, 'Custom Field', { owner: w });
                         if (r) {
                             const [a, b, c] = r.split(/\D+/).map(Number);
