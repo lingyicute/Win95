@@ -365,6 +365,7 @@ const ZH = {
     'A file or folder with that name already exists.': '同名文件或文件夹已存在。',
     'This system folder cannot be moved.': '此系统文件夹无法移动。', 'The source no longer exists.': '源项目已不存在。',
     'A folder cannot be placed inside itself.': '不能将文件夹放入其自身中。',
+    'Only a file can replace another file.': '只能用文件替换另一个文件。',
     'This item was already moved with its parent folder.': '此项目已随其父文件夹一起移动。',
     'This system folder cannot be deleted.': '此系统文件夹无法删除。', 'This file is not in the Recycle Bin.': '此文件不在回收站中。'
 };

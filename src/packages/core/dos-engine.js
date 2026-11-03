@@ -609,15 +609,19 @@ export class DosEngine {
             if (isFolder(source) && key(target).startsWith(key(source.path) + '\\'))
                 throw error('Cannot move a directory into itself.');
             await this._require(parentOf(target), 'folder');
-            if (await this._exists(target)) {
+            const overwriting = await this._exists(target);
+            if (overwriting) {
                 if (!switches.has('/Y'))
                     throw error('Destination already exists. Use ' + command + ' /Y to replace a file.');
                 const old = await this._require(target, 'file');
                 await this._writable(old.path);
-                await this.fs.remove(old.path, true);
             }
-            await this.fs[command === 'COPY' ? 'copy' : 'move'](source.path, target);
+            /* The filesystem must replace atomically; deleting first loses the old
+               file if the subsequent copy or move is refused or fails. */
+            await this.fs[command === 'COPY' ? 'copy' : 'move'](source.path, target, overwriting ? { overwrite: true } : undefined);
             const attributes = this.attributes.get(key(source.path));
+            if (overwriting)
+                this.attributes.delete(key(target));
             if (attributes) {
                 this.attributes.set(key(target), new Set(attributes));
                 if (command === 'MOVE')
