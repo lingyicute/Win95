@@ -1,4 +1,4 @@
-import { el, button, field, onDoubleActivate } from './dom.js';
+import { dataText, el, button, field, onDoubleActivate } from './dom.js';
 import { icon } from './icons.js';
 import { combo } from './select.js';
 import { baseName, parentPath, normalizePath, nameError } from '@win95/core/filesystem.js';
@@ -64,13 +64,17 @@ export function createDialogs(system) {
         const name = el('input', { value: options.name || '', 'aria-label': 'File name' });
         const type = combo({ ariaLabel: 'Files of type', options: [options.type || 'All Files (*.*)'] });
         const render = () => {
-            if (system.fs.get(path)?.type !== 'folder')
-                path = 'C:\\';
-            const folders = ['C:\\', 'C:\\My Documents', 'C:\\Windows\\Desktop', ...([...system.fs.nodes.values()].filter(n => n.type === 'folder' && !/^c:\\recycled(?:\\|$)/i.test(n.path)).map(n => n.path))].filter((v, i, a) => a.indexOf(v) === i);
+            const current = system.fs.get(path);
+            path = current?.type === 'folder' ? current.path : 'C:\\';
+            const seen = new Set();
+            const folders = ['C:\\', 'C:\\My Documents', 'C:\\Windows\\Desktop', ...([...system.fs.nodes.values()].filter(n => n.type === 'folder' && !/^c:\\recycled(?:\\|$)/i.test(n.path)).map(n => n.path))]
+                .map(p => system.fs.get(p))
+                .filter(n => n?.type === 'folder' && !seen.has(n.path.toLowerCase()) && seen.add(n.path.toLowerCase()))
+                .map(n => n.path);
             dir.setOptions(folders, path);
             list.replaceChildren();
             for (const n of system.fs.list(path)) {
-                const b = el('button', { class: 'file-dialog-item' }, icon(n.type === 'folder' ? 'folder' : 'document', 16), baseName(n.path));
+                const b = el('button', { class: 'file-dialog-item' }, icon(n.type === 'folder' ? 'folder' : 'document', 16), dataText(baseName(n.path)));
                 b.onclick = () => {
                     list.querySelectorAll('.selected').forEach(e => e.classList.remove('selected'));
                     b.classList.add('selected');
@@ -96,10 +100,16 @@ export function createDialogs(system) {
             let dest = normalizePath(name.value, path);
             if (system.fs.get(dest)?.type !== 'folder' && options.extension && !baseName(dest).includes('.'))
                 dest += options.extension;
-            if (system.fs.get(dest)?.type === 'folder') {
-                path = dest;
+            const existing = system.fs.get(dest);
+            if (existing?.type === 'folder') {
+                path = existing.path;
                 render();
                 name.value = '';
+                return;
+            }
+            const problem = nameError(baseName(dest));
+            if (problem) {
+                await message(problem, w.title, ['OK'], { owner: w });
                 return;
             }
             if (!save && !system.fs.exists(dest)) {
@@ -128,7 +138,7 @@ export function createDialogs(system) {
                     render();
                 }
                 catch (e) {
-                    message(e.message);
+                    await message(e.message, 'New Folder', ['OK'], { owner: w });
                 }
             }
         }, { title: 'Create new folder' }));

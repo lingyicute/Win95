@@ -201,6 +201,7 @@ export class WindowManager extends EventTarget {
     minimize(w) {
         if (w.options.modal || w.minimized)
             return;
+        closeCombos();
         /* A window whose bar is still on its way somewhere lands first, so
            this flight starts from the box the window really occupies. */
         w.motion?.cancel();
@@ -239,6 +240,7 @@ export class WindowManager extends EventTarget {
     maximize(w) {
         if (!w.options.resizable)
             return;
+        closeCombos();
         /* A bar that is still travelling lands first, so this click starts from
            the box the window is really in - and a second click during the
            flight means restore, not a second maximize. */
@@ -327,6 +329,7 @@ export class WindowManager extends EventTarget {
         e.preventDefault();
         this.focus(w);
         closeMenus();
+        closeCombos();
         const start = { ...w.rect, x0: e.clientX, y0: e.clientY };
         const target = e.currentTarget;
         try {
@@ -406,6 +409,7 @@ export class WindowManager extends EventTarget {
         button?.setAttribute('aria-label', 'Maximize');
     }
     cascade() {
+        closeCombos();
         let i = 0;
         for (const w of this.windows.filter(w => !w.options.modal)) {
             w.motion?.cancel();
@@ -419,7 +423,7 @@ export class WindowManager extends EventTarget {
             i++;
         }
     }
-    tile(vertical = true) { const wins = this.windows.filter(w => !w.minimized && !w.options.modal); wins.forEach((w, i) => { w.motion?.cancel(); w.motion = null; this.unmaximize(w); w.rect = vertical ? { x: i * innerWidth / wins.length, y: 0, width: innerWidth / wins.length, height: innerHeight - taskbarHeight() } : { x: 0, y: i * (innerHeight - taskbarHeight()) / wins.length, width: innerWidth, height: (innerHeight - taskbarHeight()) / wins.length }; this.layout(w); }); }
+    tile(vertical = true) { closeCombos(); const wins = this.windows.filter(w => !w.minimized && !w.options.modal); wins.forEach((w, i) => { w.motion?.cancel(); w.motion = null; this.unmaximize(w); w.rect = vertical ? { x: i * innerWidth / wins.length, y: 0, width: innerWidth / wins.length, height: innerHeight - taskbarHeight() } : { x: 0, y: i * (innerHeight - taskbarHeight()) / wins.length, width: innerWidth, height: (innerHeight - taskbarHeight()) / wins.length }; this.layout(w); }); }
     fit() {
         for (const w of this.windows) {
             if (!w.options.allowOverflow) {

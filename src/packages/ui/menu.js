@@ -1,4 +1,4 @@
-import { el, separator } from './dom.js';
+import { dataText, el, separator } from './dom.js';
 import { icon } from './icons.js';
 import { taskbarHeight } from '../shell/taskbar-settings.js';
 let openMenus = [], origin = null;
@@ -80,7 +80,7 @@ export function popup(items, x, y, options = {}) {
             row.append(icon(item.icon || 'document', 32));
         else
             row.append(el('span', { class: 'menu-check', text: item.checked ? '✓' : item.icon ? '' : '' }, item.icon ? icon(item.icon, 16) : null));
-        row.append(el('span', { class: 'menu-label', text: item.label }));
+        row.append(item.raw ? dataText(item.label, { class: 'menu-label' }) : el('span', { class: 'menu-label', text: item.label }));
         if (item.shortcut)
             row.append(el('span', { class: 'menu-shortcut', text: item.shortcut }));
         if (item.items)
@@ -155,7 +155,7 @@ export function menuBar(items) {
                 popup(typeof item.items === 'function' ? item.items() : item.items, r.left, r.bottom, { origin: b });
                 b.classList.add('menu-active');
             }, onpointerenter: () => {
-                if (document.querySelector('.menu-bar .menu-active') && !b.classList.contains('menu-active'))
+                if (bar.querySelector('.menu-active') && !b.classList.contains('menu-active'))
                     b.click();
             } });
         bar.append(b);
