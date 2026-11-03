@@ -206,7 +206,7 @@ export function explorer(s, args = {}) {
     };
     const upOneLevel = () => navigate(path === 'computer' ? 'desktop' : path === 'desktop' ? 'computer' : normalizePath(parentPath(realPath())));
     const paintSelection = () => { list.querySelectorAll('[data-path]').forEach(n => n.classList.toggle('selected', selection.has(n.dataset.path))); w.status(selection.size ? `${selection.size} object(s) selected     ${formatSize(selectedPaths().reduce((a, p) => a + s.fs.size(p), 0))}` : `${entries.length} object(s)${path === 'computer' ? '' : `     ${formatSize(s.fs.size(realPath()))}`}`); };
-    const addTree = (title, ic, p, depth = 0) => treeHost.append(el('button', { class: 'tree-item' + (p === path ? ' selected' : ''), style: { paddingLeft: (3 + depth * 13) + 'px' }, onclick: () => navigate(p) }, icon(ic, 16), title));
+    const addTree = (title, ic, p, depth = 0) => treeHost.append(el('button', { class: 'tree-item' + (p.toLowerCase() === path.toLowerCase() ? ' selected' : ''), style: { paddingLeft: (3 + depth * 13) + 'px' }, onclick: () => navigate(p) }, icon(ic, 16), title));
     const render = () => {
         if (w.closed)
             return;

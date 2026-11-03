@@ -132,7 +132,7 @@ export function registryEditor(s) {
         }
         for (const [n, v] of Object.entries(data[key] || {})) {
             const row = el('div', { class: 'registry-row' + (selected === n ? ' selected' : ''), onclick: () => { selected = n; render(); }, ondblclick: () => edit(n) }, el('span', { text: n || '(Default)' }), el('span', { text: String(v) }));
-            row.oncontextmenu = e => { e.preventDefault(); popup([{ label: 'Modify', action: () => edit(n) }, { label: 'Delete', action: () => { delete data[key][n]; persist(); } }], e.clientX, e.clientY); };
+            row.oncontextmenu = e => { e.preventDefault(); popup([{ label: 'Modify', action: () => edit(n) }, { label: 'Delete', action: () => { delete data[key][n]; if (selected === n) selected = null; persist(); } }], e.clientX, e.clientY); };
             values.append(row);
         }
         w.status('My Computer\\' + key);
