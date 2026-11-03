@@ -16,3 +16,9 @@ test('Find Now reports the matches it found, not a name from another function', 
     assert.match(find, /w\.status\(`\$\{nodes\.length\} file\(s\) found`\)/);
     assert.match(find, /if \(!nodes\.length\)/);
 });
+
+test('restoring a backup checks the size of the backup it just read', () => {
+    const backup = section('backup');
+    assert.doesNotMatch(backup, /data\.currentNodes/, 'a backup file only has data.nodes');
+    assert.match(backup, /data\.nodes\.length > 50000/);
+});
