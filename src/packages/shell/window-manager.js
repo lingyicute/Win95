@@ -448,8 +448,10 @@ export class WindowManager extends EventTarget {
         else if (e.altKey && e.key === 'Tab') {
             e.preventDefault();
             const a = this.windows.filter(x => !x.options.modal);
-            if (a.length)
-                this.focus(a[(a.indexOf(w) + (e.shiftKey ? a.length - 1 : 1)) % a.length]);
+            if (a.length) {
+                const idx = a.indexOf(w);
+                this.focus(a[idx < 0 ? (e.shiftKey ? a.length - 1 : 0) : (idx + (e.shiftKey ? a.length - 1 : 1)) % a.length]);
+            }
         }
         else if (w && (w.moveKeys || w.sizeKeys)) {
             if (e.key.startsWith('Arrow')) {

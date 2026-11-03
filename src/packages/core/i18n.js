@@ -437,6 +437,7 @@ function applyPatterns(core) {
     if ((m = /^(.+) is thinking…$/.exec(core))) return `${name(m[1])} 正在思考…`;
     if ((m = /^Hint: move the selected card to column (\d+)\.$/.exec(core))) return `提示：将所选牌移到第 ${m[1]} 列。`;
     if ((m = /^Draw with the (.+) tool\.$/.exec(core))) return `使用${name(m[1])}工具绘图。`;
+    if ((m = /^(.+?)\s{2,}(\d+, \d+) px\s{2,}(\d+ × \d+) px$/.exec(core))) return `${name(m[1])}    ${m[2]} 像素    ${m[3]} 像素`;
     if ((m = /^ScanDisk found no errors in (\d+) files and folders\.$/.exec(core))) return `磁盘扫描在 ${m[1]} 个文件和文件夹中未发现错误。`;
     if ((m = /^Restored (\d+) files and folders\.$/.exec(core))) return `已还原 ${m[1]} 个文件和文件夹。`;
     if ((m = /^Selected area: (.+) pixels\. Use Edit to copy or cut\.$/.exec(core))) return `选定区域：${m[1]} 像素。使用“编辑”进行复制或剪切。`;

@@ -1,6 +1,6 @@
 import { el, button, download, fileInput, onDoubleActivate } from '@win95/ui/dom.js';
 import { menuBar } from '@win95/ui/menu.js';
-import { baseName } from '@win95/core/filesystem.js';
+import { baseName, parentPath } from '@win95/core/filesystem.js';
 import { RasterPresenter } from '@win95/graphics/renderer.js';
 export async function paint(s, args = {}) {
     const w = s.wm.create({ title: 'untitled - Paint', icon: 'paint', width: 720, height: 510, x: args.x, y: args.y });
@@ -47,7 +47,7 @@ export async function paint(s, args = {}) {
             undo.shift();
         redo = [];
     };
-    const restore = x => { source.width = x.width; source.height = x.height; ctx = source.getContext('2d', { willReadFrequently: true }); ctx.putImageData(x.data, 0, 0); selection = null; render(); };
+    const restore = x => { source.width = x.width; source.height = x.height; ctx = source.getContext('2d', { willReadFrequently: true }); ctx.putImageData(x.data, 0, 0); selection = null; curveLine = null; polygon = []; render(); };
     const undoAction = () => {
         if (!undo.length)
             return;
@@ -65,7 +65,7 @@ export async function paint(s, args = {}) {
     const save = async (as = false) => {
         let next = path;
         if (as || !next)
-            next = await s.ui.file({ save: true, name: path ? baseName(path) : 'untitled.png', extension: '.png', type: 'PNG Image (*.png)', owner: w });
+            next = await s.ui.file({ save: true, name: path ? baseName(path) : 'untitled.png', directory: path ? parentPath(path) : 'C:\\My Documents', extension: '.png', type: 'PNG Image (*.png)', owner: w });
         if (!next)
             return false;
         try {
@@ -117,7 +117,7 @@ export async function paint(s, args = {}) {
     const open = async () => {
         if (!await confirm())
             return;
-        const p = await s.ui.file({ owner: w, type: 'Image Files (*.png, *.bmp, *.jpg)' });
+        const p = await s.ui.file({ directory: path ? parentPath(path) : 'C:\\My Documents', owner: w, type: 'Image Files (*.png, *.bmp, *.jpg)' });
         if (p)
             try {
                 await loadImage(s.fs.read(p), p);
@@ -346,7 +346,7 @@ export async function paint(s, args = {}) {
     });
     surface.addEventListener('pointermove', e => {
         const p = pos(e);
-        w.status(`${tool[0].toUpperCase() + tool.slice(1)}     ${p.x}, ${p.y} px     ${source.width} × ${source.height} px`);
+        w.status(`${definitions.find(([id]) => id === tool)?.[2] ?? tool}     ${p.x}, ${p.y} px     ${source.width} × ${source.height} px`);
         if (!drawing)
             return;
         if (!(e.buttons & 3)) {
