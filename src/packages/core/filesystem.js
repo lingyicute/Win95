@@ -53,6 +53,42 @@ const validName = name => {
         throw new Error(problem);
     return name;
 };
+
+/** Validate an exported volume completely before allowing it to replace the live one. */
+export function parseVolumeBackup(data) {
+    if (!data || data.format !== 'win95-volume' || data.version !== 1 || !Array.isArray(data.nodes))
+        throw new Error('This is not a Windows 95 desktop backup.');
+    if (data.nodes.length > 50000)
+        throw new Error('This backup has too many entries.');
+    const nodes = new Map();
+    for (const pair of data.nodes) {
+        if (!Array.isArray(pair) || pair.length !== 2 || typeof pair[0] !== 'string')
+            throw new Error('Invalid backup entry.');
+        const n = pair[1];
+        if (!n || !['file', 'folder'].includes(n.type) || typeof n.path !== 'string' || !/^[CAD]:\\/.test(n.path) || n.type === 'file' && typeof n.content !== 'string')
+            throw new Error('Invalid backup entry.');
+        const path = normalizePath(n.path), id = key(path);
+        if (path !== n.path || pair[0] !== id)
+            throw new Error('Invalid backup path.');
+        if (nodes.has(id))
+            throw new Error('Duplicate path in backup.');
+        if (path.length === 3 && n.type !== 'folder')
+            throw new Error('A drive root must be a folder.');
+        if (n.mime != null && typeof n.mime !== 'string')
+            throw new Error('Invalid backup entry.');
+        if (n.originalPath != null && n.originalPath !== '' && (typeof n.originalPath !== 'string' || !/^[CAD]:\\/.test(n.originalPath) || normalizePath(n.originalPath) !== n.originalPath || n.originalPath.length <= 3))
+            throw new Error('Invalid original path in backup.');
+        const timestamp = value => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : Date.now();
+        nodes.set(id, { path, type: n.type, content: n.content, mime: n.mime, created: timestamp(n.created), modified: timestamp(n.modified), originalPath: n.originalPath || undefined, ...(n.readOnly ? { readOnly: true } : {}), ...(n.hidden ? { hidden: true } : {}), ...(n.system ? { system: true } : {}), ...(typeof n.attributes === 'string' ? { attributes: n.attributes } : {}) });
+    }
+    if (!nodes.has('c:\\'))
+        throw new Error('The C: drive is missing.');
+    for (const n of nodes.values())
+        if (n.path.length > 3 && nodes.get(key(parentPath(n.path)))?.type !== 'folder')
+            throw new Error('A parent directory is missing.');
+    return nodes;
+}
+
 export class VirtualFileSystem extends EventTarget {
     constructor() { super(); this.nodes = new Map(); this.db = null; this.revision = 0; this.lastSaved = 0; this.persistence = 'memory'; }
     async init() {

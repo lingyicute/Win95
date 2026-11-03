@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { parseVolumeBackup } from '../src/packages/core/filesystem.js';
 
 const source = await readFile(new URL('../src/packages/apps/utilities.js', import.meta.url), 'utf8');
 const section = name => {
@@ -19,6 +20,6 @@ test('Find Now reports the matches it found, not a name from another function', 
 
 test('restoring a backup checks the size of the backup it just read', () => {
     const backup = section('backup');
-    assert.doesNotMatch(backup, /data\.currentNodes/, 'a backup file only has data.nodes');
-    assert.match(backup, /data\.nodes\.length > 50000/);
+    assert.match(backup, /parseVolumeBackup\(JSON\.parse\(await f\.text\(\)\)\)/);
+    assert.throws(() => parseVolumeBackup({ format: 'win95-volume', version: 1, nodes: Array(50001).fill(null) }), /too many entries/i);
 });
