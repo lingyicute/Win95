@@ -417,8 +417,20 @@ export function calculator(s) {
     const update = () => { display.value = value; mem.textContent = memory ? 'M' : ''; };
     const calculate = (a, b, o) => o === '+' ? a + b : o === '−' ? a - b : o === '×' ? a * b : o === '÷' ? a / b : b;
     const apply = key => {
-        if (value === 'Error')
+        if (value === 'Error') {
+            /* Keys that start a number afresh clear the error. Keys that would read
+               the displayed value - memory store/add, sign, roots, functions, the
+               operators - have no number to work on, so they leave the error and
+               the memory alone instead of treating "Error" as 0. */
+            if (key === 'MC') {
+                memory = 0;
+                update();
+                return;
+            }
+            if (!/^\d$/.test(key) && !['.', 'C', 'CE', 'Back', 'MR', 'π'].includes(key))
+                return;
             value = '0';
+        }
         if (/^\d$/.test(key)) {
             value = newEntry ? key : value === '0' ? key : value.length < 17 ? value + key : value;
             newEntry = false;
