@@ -321,12 +321,20 @@ export function soundRecorder(s) {
         if (recording?.state === 'recording')
             frame = requestAnimationFrame(draw);
     };
+    /* Stopping closes the context twice over - once from Stop, once from the
+       recorder's own stop event - and closing a closed context rejects. Each
+       context is closed once, and the one a late event closes is its own, never
+       the context of a recording started since. */
+    const closeContext = context => {
+        if (context && context.state !== 'closed')
+            Promise.resolve(context.close()).catch(() => { });
+    };
     const stop = () => {
         if (recording?.state === 'recording') {
             recording.stop();
             stream?.getTracks().forEach(t => t.stop());
             analyser = null;
-            audioContext?.close();
+            closeContext(audioContext);
             cancelAnimationFrame(frame);
             draw();
         }
@@ -337,7 +345,7 @@ export function soundRecorder(s) {
             return;
         try {
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            audioContext = new AudioContext();
+            const context = audioContext = new AudioContext();
             analyser = audioContext.createAnalyser();
             analyser.fftSize = 512;
             audioContext.createMediaStreamSource(stream).connect(analyser);
@@ -347,7 +355,7 @@ export function soundRecorder(s) {
             recording.onstop = () => {
                 stream?.getTracks().forEach(t => t.stop());
                 analyser = null;
-                audioContext?.close();
+                closeContext(context);
                 cancelAnimationFrame(frame);
                 draw();
                 blob = new Blob(chunks, { type: recording.mimeType || 'audio/webm' });
