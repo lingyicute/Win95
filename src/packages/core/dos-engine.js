@@ -642,15 +642,17 @@ export class DosEngine {
             const target = join(parentOf(node.path), targetName);
             if (key(target) !== key(node.path) && await this._exists(target))
                 throw error('Destination already exists - ' + targetName);
-            if (key(target) !== key(node.path))
+            if (target !== node.path)
                 await this.fs.move(node.path, target);
             const attributes = this.attributes.get(key(node.path));
             if (attributes) {
                 this.attributes.delete(key(node.path));
                 this.attributes.set(key(target), attributes);
             }
-            if (key(this.cwd) === key(node.path) || key(this.cwd).startsWith(key(node.path) + '\\'))
+            if (key(this.cwd) === key(node.path) || key(this.cwd).startsWith(key(node.path) + '\\')) {
                 this.cwd = target + this.cwd.slice(node.path.length);
+                this.driveDirectories.set(key(this.cwd.slice(0, 2)), this.cwd);
+            }
         }
         return '';
     }
