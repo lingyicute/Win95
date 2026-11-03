@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { installDom } from './dom-shim.mjs';
 
-const { menus } = installDom();
+const { menus, Element } = installDom();
+Element.prototype.focus = function () { document.activeElement = this; };
 const { popup, closeMenus } = await import('../src/packages/ui/menu.js');
 
 const rowsOf = menu => [...menu.children[0].children].filter(n => n.tagName === 'BUTTON');
@@ -46,5 +47,29 @@ test('opening one submenu replaces its sibling submenu, not the whole stack', ()
     enter(rowsOf(programs)[1]);
     assert.ok(!menus.children.includes(first), 'the previous submenu is replaced');
     assert.ok(menus.children.includes(programs) && menus.children.includes(root), 'the parent chain survives the switch');
+    closeMenus();
+});
+
+test('ArrowUp skips disabled rows upward and ArrowLeft focuses the parent item', () => {
+    closeMenus();
+    const menu = popup([
+        { label: 'Cut', action: () => { } },
+        { label: 'Undo', disabled: true },
+        { label: 'Paste', action: () => { } }
+    ], 0, 0);
+    const rows = rowsOf(menu);
+    rows[2].focus();
+    rows[2].dispatchEvent({ type: 'keydown', key: 'ArrowUp', preventDefault() { } });
+    assert.equal(document.activeElement, rows[0], 'ArrowUp steps past disabled rows upward');
+    closeMenus();
+
+    const root = layered();
+    enter(rowsOf(root)[0]);
+    const programs = menus.children[1];
+    const accessoriesRow = rowsOf(programs)[0];
+    enter(accessoriesRow);
+    const accessories = menus.children[2];
+    arrowLeft(rowsOf(accessories)[0]);
+    assert.equal(document.activeElement, accessoriesRow, 'ArrowLeft returns focus to the parent menu item');
     closeMenus();
 });

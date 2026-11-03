@@ -51,6 +51,7 @@ export function popup(items, x, y, options = {}) {
         closeMenus();
         origin = options.origin;
     }
+    const parentOrigin = options.origin ?? origin;
     const menu = el('div', { class: 'popup-menu ' + (options.class || ''), role: 'menu', tabIndex: -1 });
     if (options.brand)
         menu.append(el('div', { class: 'start-brand' }, el('div', {}, el('strong', { text: 'Windows' }), el('span', { text: '95' }))));
@@ -88,7 +89,7 @@ export function popup(items, x, y, options = {}) {
             closeChild();
             if (item.items) {
                 const r = row.getBoundingClientRect();
-                currentChild = popup(typeof item.items === 'function' ? item.items() : item.items, r.right - 2, r.top - 3, { child: true });
+                currentChild = popup(typeof item.items === 'function' ? item.items() : item.items, r.right - 2, r.top - 3, { child: true, origin: row });
             }
         };
         row.addEventListener('pointerenter', () => { rows.forEach(n => n.classList.remove('selected')); row.classList.add('selected'); showChild(); });
@@ -107,10 +108,12 @@ export function popup(items, x, y, options = {}) {
             const active = rows.indexOf(row);
             if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                 e.preventDefault();
-                let i = (active + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length;
+                const step = e.key === 'ArrowDown' ? 1 : -1;
+                let i = (active + step + rows.length) % rows.length;
                 for (let n = 0; n < rows.length && rows[i].disabled; n++)
-                    i = (i + 1) % rows.length;
-                rows[i]?.focus();
+                    i = (i + step + rows.length) % rows.length;
+                if (!rows[i]?.disabled)
+                    rows[i]?.focus();
             }
             if (e.key === 'ArrowRight' && item.items) {
                 e.preventDefault();
@@ -121,7 +124,7 @@ export function popup(items, x, y, options = {}) {
                 closeChild();
                 menu.remove();
                 openMenus = openMenus.filter(m => m !== menu);
-                origin?.focus();
+                parentOrigin?.focus();
             }
             if (e.key === 'Escape') {
                 closeMenus();
