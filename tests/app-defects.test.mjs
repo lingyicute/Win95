@@ -157,3 +157,23 @@ test('cascading or tiling windows clears maximized state and restores the Maximi
     assert.match(wm, /w\.element\.classList\.remove\('maximized'\)/);
     assert.match(wm, /button\?\.classList\.remove\('restore'\)/);
 });
+
+test('Paint Delete and Ctrl+I shortcuts run Clear Selection and Invert Colors', () => {
+    assert.match(paint, /action: clearSelection/);
+    assert.match(paint, /action: invertColors/);
+    assert.match(paint, /i: invertColors/);
+    assert.match(paint, /e\.key === 'Delete' && selection/);
+});
+
+test('Minesweeper difficulty checkmarks require exact rows, columns and mines', () => {
+    assert.match(apps, /checked: rows === 8 && cols === 8 && mines === 10/);
+    assert.match(apps, /checked: rows === 16 && cols === 16 && mines === 40/);
+    assert.match(apps, /checked: rows === 16 && cols === 30 && mines === 99/);
+});
+
+test('Recycle Bin items use the permanent delete confirmation and DOS aliases resolve', () => {
+    assert.match(explorer, /startsWith\('c:\\\\recycled\\\\'\)/);
+    assert.match(main, /'control-panel': 'control'/);
+    assert.match(main, /'media-player': 'media'/);
+    assert.match(main, /'sound-recorder': 'recorder'/);
+});

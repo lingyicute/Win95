@@ -76,11 +76,12 @@ export function createFileActions(s) {
         paths = withoutContained(paths);
         if (!paths.length)
             return;
+        const isPermanent = permanent || paths.every(p => normalizePath(p).toLowerCase().startsWith('c:\\recycled\\'));
         const text = paths.length === 1 ? `'${baseName(paths[0])}'` : `these ${paths.length} items`;
-        if (await s.ui.message(`Are you sure you want to ${permanent ? 'permanently delete' : 'send to the Recycle Bin'} ${text}?`, 'Confirm File Delete', ['Yes', 'No'], { icon: 'recycle' }) === 'Yes')
+        if (await s.ui.message(`Are you sure you want to ${isPermanent ? 'permanently delete' : 'send to the Recycle Bin'} ${text}?`, 'Confirm File Delete', ['Yes', 'No'], { icon: 'recycle' }) === 'Yes')
             for (const p of paths)
                 try {
-                    s.fs.remove(p, permanent);
+                    s.fs.remove(p, isPermanent);
                 }
                 catch (e) {
                     s.ui.error(e);

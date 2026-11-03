@@ -262,7 +262,7 @@ register('volume', 'Volume Control', 'volume', volumeControl, 'multimedia');
 register('recorder', 'Sound Recorder', 'sound', soundRecorder, 'multimedia');
 register('internet', 'Internet Explorer', 'internet', internet, 'communication');
 register('inbox', 'Microsoft Exchange', 'mail', inbox, 'communication');
-const aliases = { 'explorer.exe': 'explorer', explorer: 'explorer', notepad: 'notepad', wordpad: 'wordpad', write: 'wordpad', mspaint: 'paint', pbrush: 'paint', paint: 'paint', calc: 'calculator', calculator: 'calculator', sol: 'solitaire', winmine: 'minesweeper', mshearts: 'hearts', freecell: 'freecell', pinball: 'pinball', '3dpinball': 'pinball', 'spacecadet': 'pinball', control: 'control', cmd: 'dos', command: 'dos', 'command.com': 'dos', regedit: 'regedit', sysmon: 'monitor', scandisk: 'scandisk', defrag: 'defrag', mplayer: 'media', sndrec32: 'recorder', sndvol32: 'volume', cdplayer: 'cdplayer', charmap: 'charmap', clipbrd: 'clipbrd', iexplore: 'internet', inbox: 'inbox', winhelp: 'help', help: 'help', winver: 'about', taskman: 'taskman', msbackup: 'backup', welcome: 'welcome', shutdown: 'shutdown' };
+const aliases = { 'explorer.exe': 'explorer', explorer: 'explorer', notepad: 'notepad', wordpad: 'wordpad', write: 'wordpad', mspaint: 'paint', pbrush: 'paint', paint: 'paint', calc: 'calculator', calculator: 'calculator', sol: 'solitaire', winmine: 'minesweeper', mshearts: 'hearts', freecell: 'freecell', pinball: 'pinball', '3dpinball': 'pinball', 'spacecadet': 'pinball', control: 'control', 'control-panel': 'control', cmd: 'dos', command: 'dos', 'command.com': 'dos', regedit: 'regedit', sysmon: 'monitor', scandisk: 'scandisk', defrag: 'defrag', mplayer: 'media', 'media-player': 'media', sndrec32: 'recorder', 'sound-recorder': 'recorder', sndvol32: 'volume', cdplayer: 'cdplayer', charmap: 'charmap', clipbrd: 'clipbrd', iexplore: 'internet', inbox: 'inbox', winhelp: 'help', help: 'help', winver: 'about', taskman: 'taskman', msbackup: 'backup', welcome: 'welcome', shutdown: 'shutdown' };
 s.run = command => {
     const text = String(command || '').trim();
     if (!text)
@@ -610,9 +610,9 @@ desktop.ondrop = async (e) => {
         const data = e.dataTransfer.getData('application/x-win95-files');
         if (data) {
             for (const p of JSON.parse(data)) {
-                if (parentPath(p).toLowerCase() === 'c:\\windows\\desktop')
+                if (parentPath(p).toLowerCase() === 'c:\\windows\\desktop' && !e.ctrlKey)
                     continue;
-                const dest = s.fs.unique('C:\\Windows\\Desktop\\' + baseName(p));
+                const dest = s.fs.unique('C:\\Windows\\Desktop\\' + baseName(p), s.fs.get(p)?.type === 'folder');
                 e.ctrlKey ? s.fs.copy(p, dest) : s.fs.move(p, dest);
             }
         }
