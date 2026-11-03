@@ -80,9 +80,10 @@ export const infoGrid = rows => el('div', { class: 'info-grid' }, ...rows.flatMa
 export const separator = () => el('div', { class: 'separator', role: 'separator' });
 export const field = (label, input) => el('label', { class: 'field' }, el('span', { text: label }), input);
 export function download(name, content, type = 'text/plain') {
-    const a = el('a', { download: name, href: (content.startsWith?.('data:') || content.startsWith?.('blob:')) ? content : URL.createObjectURL(new Blob([content], { type })) });
+    const created = !(content.startsWith?.('data:') || content.startsWith?.('blob:'));
+    const a = el('a', { download: name, href: created ? URL.createObjectURL(new Blob([content], { type })) : content });
     a.click();
-    if (a.href.startsWith('blob:'))
+    if (created)
         setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 export const fileInput = (accept, callback) => { const i = el('input', { type: 'file', accept, onchange: () => i.files?.[0] && callback(i.files[0]) }); i.click(); };
