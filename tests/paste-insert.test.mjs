@@ -94,4 +94,8 @@ test('Calculator paste ignores a failed paste and non-numeric text', async () =>
     s.pasteText = async () => 'abc';
     await clickEditAction(w, 'Paste');
     assert.equal(display.value, '42', 'non-numeric text is refused');
+
+    s.pasteText = async () => '   ';
+    await clickEditAction(w, 'Paste');
+    assert.equal(display.value, '42', 'blank whitespace is refused instead of coercing to 0');
 });

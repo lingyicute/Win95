@@ -179,6 +179,7 @@ export function notepad(s, args = {}) {
                             editor.value = content;
                             path = null;
                             dirty = true;
+                            undo = [];
                             title();
                         }
                     }) }, { label: 'Export…', action: () => download(path ? baseName(path) : 'Untitled.txt', editor.value) }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [...editCommands(true), { label: 'Time/Date', shortcut: 'F5', action: () => insert(new Date().toLocaleTimeString(uiLocale, { hour: 'numeric', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString(uiLocale)) }, null, { label: 'Word Wrap', checked: wrap, action: () => { wrap = !wrap; editor.classList.toggle('wrap', wrap); s.settings.set('notepadWrap', wrap); } }] }, { label: 'Search', items: [{ label: 'Find…', action: () => find() }, { label: 'Find Next', shortcut: 'F3', action: () => find(true) }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'notepad' }) }, { label: 'About Notepad', action: () => s.about('Notepad', 'notepad') }] }]));
@@ -447,6 +448,8 @@ export function calculator(s) {
             if (value === 'Error') {
                 acc = null;
                 op = null;
+                lastOp = null;
+                lastArg = null;
             }
             else {
                 acc = Number(value);
@@ -463,6 +466,11 @@ export function calculator(s) {
             }
             else if (lastOp)
                 value = format(calculate(Number(value), lastArg, lastOp));
+            if (value === 'Error') {
+                acc = null;
+                lastOp = null;
+                lastArg = null;
+            }
             newEntry = true;
         }
         else if (key === '±') {
@@ -530,7 +538,7 @@ export function calculator(s) {
     const setMode = mode => { scientific = mode; scientificKeys.hidden = !mode; w.rect.height = mode ? CALCULATOR_SCIENTIFIC_HEIGHT : CALCULATOR_HEIGHT; w.rect.width = mode ? CALCULATOR_SCIENTIFIC_WIDTH : CALCULATOR_WIDTH; s.wm.layout(w); };
     w.setMenu(menuBar([{ label: 'Edit', items: [{ label: 'Copy', shortcut: 'Ctrl+C', action: () => s.copyText(value) }, { label: 'Paste', shortcut: 'Ctrl+V', action: async () => {
                         const v = await s.pasteText();
-                        if (v !== null && Number.isFinite(Number(v))) {
+                        if (v !== null && v.trim() !== '' && Number.isFinite(Number(v))) {
                             value = format(Number(v));
                             newEntry = true;
                             update();

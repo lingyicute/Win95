@@ -85,6 +85,8 @@ test('a division by zero mid-expression clears the pending operator and M+ ends 
     const sheet = calculator(makeSystem());
     assert.equal(press(sheet, '1', '÷', '0', '+').value, 'Error');
     assert.equal(press(sheet, '5', '=').value, '5', 'Error clears the pending sum instead of poisoning acc with NaN');
+    assert.equal(press(sheet, '1', '÷', '0', '=').value, 'Error');
+    assert.equal(press(sheet, '5', '=').value, '5', 'Error on equals clears lastOp and lastArg too');
     assert.equal(press(sheet, 'C', '4', 'M+', '7').value, '7', 'typing after M+ starts a new entry');
     assert.equal(press(sheet, 'MR').value, '4');
 });
