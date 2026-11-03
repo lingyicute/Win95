@@ -182,7 +182,7 @@ test('Alt+Shift+Tab handles missing or modal active window and Paint Undo clears
     assert.match(wm, /idx < 0 \? \(e\.shiftKey \? a\.length - 1 : 0\)/);
     assert.match(paint, /const restore = x => \{[^\n]*curveLine = null; polygon = \[\];/);
     assert.match(paint, /directory: path \? parentPath\(path\) : 'C:\\\\My Documents'/);
-    assert.match(docs, /z: undoAction/);
+    assert.match(docs, /k === 'z' && !e\.shiftKey && undo\.length[\s\S]{0,80}undoAction\(\)/);
     assert.match(docs, /lastRange = range\.cloneRange\(\)/);
     assert.match(mm, /const stop = \(\) => \{ media\.pause\(\); media\.currentTime = 0; media\.ontimeupdate\(\); \}/);
     assert.match(utils, /delete data\[key\]\[n\]; if \(selected === n\) selected = null;/);
