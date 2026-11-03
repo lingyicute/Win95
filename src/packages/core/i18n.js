@@ -116,12 +116,13 @@ const ZH = {
     'Untitled - Notepad': '无标题 - 记事本', 'Notepad document': '记事本文档',
     'Text Documents (*.txt)': '文本文档 (*.txt)', 'Find what:': '查找内容：', 'Replace with:': '替换为：',
     'Paper: A4 Margins: 20 mm  Choose a printer and adjust paper options in the print dialog.': '纸张：A4 页边距：20 毫米  在打印对话框中选择打印机并调整纸张选项。',
+    'Paper: A4': '纸张：A4', 'Margins: 20 mm': '页边距：20 毫米', 'Choose a printer and adjust paper options in the print dialog.': '在打印对话框中选择打印机并调整纸张选项。',
     'Import from computer…': '从计算机导入…', 'Export…': '导出…', 'For Help, press F1': '按 F1 获得帮助',
     'WordPad has finished searching the document.': '写字板已完成对文档的搜索。',
     'Document - WordPad': '文档 - 写字板', 'WordPad document': '写字板文档',
     'Rich Text Format (*.rtf)': 'RTF 格式 (*.rtf)', 'Rich Text Documents (*.rtf)': 'RTF 文档 (*.rtf)',
     'Font family': '字体', 'Font size': '字号', 'Bold': '粗体', 'Italic': '斜体', 'Underline': '下划线',
-    'Align left': '左对齐', 'Center': '居中', 'Align right': '右对齐', 'Bullet list': '项目符号列表',
+    'Align left': '左对齐', 'Align right': '右对齐', 'Bullet list': '项目符号列表',
     'Text color': '文本颜色', 'Export as RTF…': '导出为 RTF…', 'Export as HTML…': '导出为 HTML…',
     'Date and Time…': '日期和时间…', 'Picture…': '图片…',
     'Use Paint to work with pictures. Rich documents currently contain formatted text.': '使用“画图”处理图片。富文本文档目前包含带格式的文本。',
@@ -352,7 +353,18 @@ const ZH = {
     'Shutdown sound': '关闭声音',
     'Chime': '叮咚声',
     'Error beep': '错误提示音',
-    'Click': '咔哒声'
+    'Click': '咔哒声',
+    'Marquee Settings': '滚动字幕设置', 'Recorded Audio (*.webm)': '录制音频 (*.webm)', 'Center': '居中',
+    'Left flipper: Z': '左挡板：Z', 'Right flipper: /': '右挡板：/', 'Plunger: Space': '发射杆：空格键',
+    'Table bump: X, . and the up arrow': '撞击球台：X、. 和向上键', 'New game: F2': '新游戏：F2', 'Pause: F3': '暂停：F3',
+    'Help Topics has the full guide to the table.': '“帮助主题”中有球台的完整指南。',
+    'The folder does not exist.': '文件夹不存在。', 'The destination folder does not exist.': '目标文件夹不存在。',
+    'A folder has that name.': '已有同名文件夹。', 'Access denied: the file is read-only.': '拒绝访问：文件为只读。',
+    'A file or folder with that name already exists.': '同名文件或文件夹已存在。',
+    'This system folder cannot be moved.': '此系统文件夹无法移动。', 'The source no longer exists.': '源项目已不存在。',
+    'A folder cannot be placed inside itself.': '不能将文件夹放入其自身中。',
+    'This item was already moved with its parent folder.': '此项目已随其父文件夹一起移动。',
+    'This system folder cannot be deleted.': '此系统文件夹无法删除。', 'This file is not in the Recycle Bin.': '此文件不在回收站中。'
 };
 
 const SUITS = { Spades: '黑桃', Hearts: '红桃', Diamonds: '方块', Clubs: '梅花' };
@@ -431,7 +443,11 @@ function applyPatterns(core) {
     if ((m = /^Line size (\d+)px$/.exec(core))) return `线宽 ${m[1]} 像素`;
     if ((m = /^(.+) Properties$/.exec(core))) return `${name(m[1])} 属性`;
     if ((m = /^(.+) - (Media Player|CD Player)$/.exec(core))) return `${translateText(m[1], 'zh')} - ${name(m[2])}`;
-    if ((m = /^(.+) - Sound Recorder$/.exec(core))) return `${m[1]} - 录音机`;
+    if ((m = /^(.+) - (Notepad|WordPad|Paint|Sound Recorder)$/.exec(core))) return `${m[1]} - ${name(m[2])}`;
+    if ((m = /^(.+) already exists\. Do you want to replace it\?$/.exec(core))) return `“${m[1]}”已存在。要替换它吗？`;
+    if ((m = /^(\d+) percent$/.exec(core))) return `${m[1]}%`;
+    if ((m = /^(\d+) invalid directory references found\.$/.exec(core))) return `发现 ${m[1]} 个无效目录引用。`;
+    if ((m = /^(.+) won\.$/.exec(core))) return `${m[1].split(' & ').map(n => name(n)).join(' 和 ')} 获胜。`;
     if ((m = /^Track (\d+) — (.+)$/.exec(core))) return `曲目 ${m[1]} — ${translateText(m[2], 'zh')}`;
     // The mixer and the player name their state after the track: the state word is
     // chrome, the track name is data that may itself need the dictionary.
