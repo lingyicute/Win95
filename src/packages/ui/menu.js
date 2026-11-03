@@ -87,7 +87,7 @@ export function popup(items, x, y, options = {}) {
             row.append(el('span', { class: 'submenu-arrow', text: '▶' }));
         const showChild = () => {
             closeChild();
-            if (item.items) {
+            if (item.items && !item.disabled) {
                 const r = row.getBoundingClientRect();
                 currentChild = popup(typeof item.items === 'function' ? item.items() : item.items, r.right - 2, r.top - 3, { child: true, origin: row });
             }
