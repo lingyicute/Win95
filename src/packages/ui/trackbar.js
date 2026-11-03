@@ -194,6 +194,8 @@ export function trackbar({ label, orientation = 'horizontal', min = 0, max = 100
     Object.defineProperty(root, 'disabled', {
         get: () => root.classList.contains('win95-trackbar-disabled'),
         set: on => {
+            if (on)
+                stopDrag();
             root.classList.toggle('win95-trackbar-disabled', !!on);
             root.tabIndex = on ? -1 : 0;
             root.setAttribute('aria-disabled', on ? 'true' : 'false');
