@@ -1,3 +1,4 @@
+import { taskbarHeight } from '../shell/taskbar-settings.js';
 /** Event-driven raster presentation. WebGPU -> WebGL2 -> Canvas2D. No idle render loop. */
 export class RasterPresenter {
     constructor(canvas, { backend = 'auto' } = {}) { this.canvas = canvas; this.preferred = backend; this.backend = 'initializing'; this.device = null; this.destroyed = false; this.pending = null; this.errors = []; }
@@ -203,7 +204,7 @@ export class DesktopGraphics {
     render() {
         const s = this.system;
         this.source.width = Math.max(1, innerWidth);
-        this.source.height = Math.max(1, innerHeight - 30);
+        this.source.height = Math.max(1, innerHeight - taskbarHeight());
         const ctx = this.source.getContext('2d');
         const bg = s.settings.get('desktopColor', '#008080'), pattern = s.settings.get('wallpaper', 'None');
         ctx.fillStyle = bg;
