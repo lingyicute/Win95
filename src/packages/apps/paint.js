@@ -454,6 +454,9 @@ export async function paint(s, args = {}) {
         }
         ctx.drawImage(tmp, 0, 0);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
+        selection = null;
+        curveLine = null;
+        polygon = [];
         dirty = true;
         render();
     };
@@ -473,6 +476,9 @@ export async function paint(s, args = {}) {
         ctx.fillStyle = background;
         ctx.fillRect(0, 0, width, height);
         ctx.putImageData(old.data, 0, 0);
+        selection = null;
+        curveLine = null;
+        polygon = [];
         dirty = true;
         render();
     };
@@ -508,7 +514,7 @@ export async function paint(s, args = {}) {
                                 s.ui.error(e, w);
                             }
                         }
-                    }) }, { label: 'Export PNG…', action: () => download(path ? baseName(path) : 'untitled.png', source.toDataURL()) }, { label: 'Set As Wallpaper', action: () => s.settings.set('wallpaper', source.toDataURL()) }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [{ label: 'Undo', shortcut: 'Ctrl+Z', disabled: !undo.length, action: undoAction }, { label: 'Repeat', shortcut: 'Ctrl+Y', disabled: !redo.length, action: redoAction }, null, { label: 'Cut', shortcut: 'Ctrl+X', action: () => copySelection(true) }, { label: 'Copy', shortcut: 'Ctrl+C', action: () => copySelection(false) }, { label: 'Paste', shortcut: 'Ctrl+V', disabled: !s.imageClipboard, action: pasteSelection }, { label: 'Clear Selection', shortcut: 'Del', action: clearSelection }, { label: 'Select All', shortcut: 'Ctrl+A', action: selectAll }] }, { label: 'View', items: () => [{ label: 'Tool Box', checked: !tools.hidden, action: () => tools.hidden = !tools.hidden }, { label: 'Color Box', checked: !palette.hidden, action: () => palette.hidden = !palette.hidden }, null, { label: 'Zoom', items: [1, 2, 4, 8].map(n => ({ label: n * 100 + '%', checked: zoom === n, action: () => { zoom = n; render(); } })) }] }, { label: 'Image', items: [{ label: 'Flip Horizontal', action: () => transform('horizontal') }, { label: 'Flip Vertical', action: () => transform('vertical') }, { label: 'Rotate 90°', action: () => transform('rotate') }, { label: 'Invert Colors', shortcut: 'Ctrl+I', action: invertColors }, { label: 'Attributes…', action: resize }, { label: 'Clear Image', action: () => { checkpoint(); ctx.fillStyle = background; ctx.fillRect(0, 0, source.width, source.height); dirty = true; render(); } }] }, { label: 'Colors', items: [{ label: 'Edit Colors…', action: () => palette.querySelector('input[type=color]').click() }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'paint' }) }, { label: 'About Paint', action: () => s.about('Paint', 'paint') }] }]));
+                    }) }, { label: 'Export PNG…', action: () => download(path ? baseName(path) : 'untitled.png', source.toDataURL()) }, { label: 'Set As Wallpaper', action: () => s.settings.set('wallpaper', source.toDataURL()) }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [{ label: 'Undo', shortcut: 'Ctrl+Z', disabled: !undo.length, action: undoAction }, { label: 'Repeat', shortcut: 'Ctrl+Y', disabled: !redo.length, action: redoAction }, null, { label: 'Cut', shortcut: 'Ctrl+X', action: () => copySelection(true) }, { label: 'Copy', shortcut: 'Ctrl+C', action: () => copySelection(false) }, { label: 'Paste', shortcut: 'Ctrl+V', disabled: !s.imageClipboard, action: pasteSelection }, { label: 'Clear Selection', shortcut: 'Del', disabled: !selection, action: clearSelection }, { label: 'Select All', shortcut: 'Ctrl+A', action: selectAll }] }, { label: 'View', items: () => [{ label: 'Tool Box', checked: !tools.hidden, action: () => tools.hidden = !tools.hidden }, { label: 'Color Box', checked: !palette.hidden, action: () => palette.hidden = !palette.hidden }, null, { label: 'Zoom', items: [1, 2, 4, 8].map(n => ({ label: n * 100 + '%', checked: zoom === n, action: () => { zoom = n; render(); } })) }] }, { label: 'Image', items: [{ label: 'Flip Horizontal', action: () => transform('horizontal') }, { label: 'Flip Vertical', action: () => transform('vertical') }, { label: 'Rotate 90°', action: () => transform('rotate') }, { label: 'Invert Colors', shortcut: 'Ctrl+I', action: invertColors }, { label: 'Attributes…', action: resize }, { label: 'Clear Image', action: () => { checkpoint(); ctx.fillStyle = background; ctx.fillRect(0, 0, source.width, source.height); dirty = true; render(); } }] }, { label: 'Colors', items: [{ label: 'Edit Colors…', action: () => palette.querySelector('input[type=color]').click() }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'paint' }) }, { label: 'About Paint', action: () => s.about('Paint', 'paint') }] }]));
     w.element.addEventListener('keydown', e => {
         if ((e.ctrlKey || e.metaKey) && ['s', 'o', 'n', 'z', 'y', 'c', 'x', 'v', 'a', 'i'].includes(e.key.toLowerCase())) {
             e.preventDefault();
