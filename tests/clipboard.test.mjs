@@ -22,3 +22,12 @@ test('a failed or empty paste is a no-op, never a wipe', async () => {
     stubSystemClipboard(async () => 'sys');
     assert.equal(await s.pasteText(), 'sys', 'a real system read still comes through');
 });
+
+test('copyText with an empty selection leaves the existing clipboard intact', () => {
+    const s = {};
+    stubSystemClipboard(async () => '');
+    installClipboard(s);
+    s.copyText('kept');
+    s.copyText('');
+    assert.deepEqual(s.clipboard, { type: 'text', text: 'kept' });
+});
