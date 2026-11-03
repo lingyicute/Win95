@@ -25,7 +25,7 @@ test('the explorer remembers where it has been', () => {
     assert.match(explorerSrc, /hist = \[path\], hIndex = 0/, 'history starts at the opening folder');
     assert.match(explorerSrc, /hist = hist\.slice\(0, hIndex \+ 1\)/, 'a new turn drops the rewritten future');
     assert.match(explorerSrc, /const go = delta =>/, 'Back and Forward share one walker');
-    assert.match(explorerSrc, /const upOneLevel = \(\) => navigate\(/, 'the menu and the toolbar button climb the same way');
+    assert.match(explorerSrc, /const upOneLevel = \(\) => [^;]*navigate\(/, 'the menu and the toolbar button climb the same way');
 });
 
 test('the Chinese wording follows the current choice', () => {

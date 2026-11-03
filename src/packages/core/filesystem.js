@@ -190,16 +190,19 @@ export class VirtualFileSystem extends EventTarget {
             if (copy)
                 return to;
             const actualFrom = this.get(from).path;
-            if (actualFrom !== to) {
+            /* Only the last name changes case; the folders above it keep the case
+               they are stored with, whatever case the caller spelled them in. */
+            const target = actualFrom.slice(0, actualFrom.lastIndexOf('\\') + 1) + to.slice(to.lastIndexOf('\\') + 1);
+            if (actualFrom !== target) {
                 const list = [...this.nodes.values()].filter(n => key(n.path) === key(from) || key(n.path).startsWith(key(from) + '\\'));
                 for (const n of list) {
                     this.nodes.delete(key(n.path));
-                    const path = to + n.path.slice(actualFrom.length);
+                    const path = target + n.path.slice(actualFrom.length);
                     this.nodes.set(key(path), { ...n, path });
                 }
                 this.changed();
             }
-            return to;
+            return target;
         }
         validName(baseName(to));
         if (key(to).startsWith(key(from) + '\\'))
