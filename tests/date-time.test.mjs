@@ -90,3 +90,33 @@ test('changing the year or month pins the clock to that year and month', async (
     assert.equal(shown.getFullYear(), 2001);
     teardown(sheet);
 });
+
+test('a half-typed year does not rewrite the date', async () => {
+    const s = makeSystem();
+    const sheet = settingsApplet(s, 'datetime');
+    const yearInput = sheet.body.children[1].querySelector('input');
+    for (const partial of ['2', '20', '200', '1900', '2101']) {
+        yearInput.value = partial;
+        yearInput.dispatchEvent({ type: 'input' });
+    }
+    await sheet.apply();
+    assert.equal(s.settings.get('clockOffset'), undefined, 'no valid year was ever entered');
+    teardown(sheet);
+});
+
+test('a day picked after a half-typed year keeps the last whole year', async () => {
+    const s = makeSystem();
+    const sheet = settingsApplet(s, 'datetime');
+    const yearInput = sheet.body.children[1].querySelector('input');
+    yearInput.value = '2001';
+    yearInput.dispatchEvent({ type: 'input' });
+    yearInput.value = '20';
+    yearInput.dispatchEvent({ type: 'input' });
+    const grid = sheet.body.children[1].querySelector('.calendar-grid');
+    [...grid.children].find(n => n.tagName === 'BUTTON' && n.textContent === '15').dispatchEvent({ type: 'click' });
+    await sheet.apply();
+    const shown = new Date(Date.now() + s.settings.get('clockOffset'));
+    assert.equal(shown.getFullYear(), 2001);
+    assert.equal(shown.getDate(), 15);
+    teardown(sheet);
+});

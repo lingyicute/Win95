@@ -161,22 +161,37 @@ export function dateTime(s) {
                    the column order below has to keep. */
                     grid.replaceChildren(...Array.from({ length: 7 }, (_, i) => new Date(2000, 0, 2 + i).toLocaleDateString(uiLocale, { weekday: 'narrow' }))
                         .map(v => el('span', { class: 'weekday', text: v })));
-                    const first = new Date(+year.value, +month.value, 1).getDay(), days = new Date(+year.value, +month.value + 1, 0).getDate();
+                    const first = new Date(shownYear, +month.value, 1).getDay(), days = new Date(shownYear, +month.value + 1, 0).getDate();
                     for (let i = 0; i < first; i++)
                         grid.append(el('span'));
                     for (let i = 1; i <= days; i++)
-                        grid.append(button(String(i), () => { date = new Date(+year.value, +month.value, i); chosen = `${year.value}-${String(+month.value + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`; dateTimeEdited = true; draw(); }, { class: i === date.getDate() ? 'today' : '' }));
+                        grid.append(button(String(i), () => { date = new Date(shownYear, +month.value, i); chosen = `${shownYear}-${String(+month.value + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`; dateTimeEdited = true; draw(); }, { class: i === date.getDate() ? 'today' : '' }));
                 };
+                /* A year typed one digit at a time passes through "2" and "20", which
+                   are not years: only a whole four-digit year inside the input's
+                   range is applied, so a half-typed one never rewrites the date. */
+                const typedYear = () => {
+                    const text = year.value.trim(), n = Number(text);
+                    return /^\d{4}$/.test(text) && n >= 1970 && n <= 2100 ? n : null;
+                };
+                let shownYear = date.getFullYear();
                 const changeMonthYear = () => {
-                    const days = new Date(+year.value, +month.value + 1, 0).getDate();
+                    const typed = typedYear();
+                    if (typed === null)
+                        return;
+                    shownYear = typed;
+                    const days = new Date(shownYear, +month.value + 1, 0).getDate();
                     const day = Math.min(date.getDate(), days);
-                    date = new Date(+year.value, +month.value, day);
-                    chosen = `${year.value}-${pad(+month.value + 1)}-${pad(day)}`;
+                    date = new Date(shownYear, +month.value, day);
+                    chosen = `${shownYear}-${pad(+month.value + 1)}-${pad(day)}`;
                     dateTimeEdited = true;
                     draw();
                 };
                 year.oninput = changeMonthYear;
-                month.onchange = changeMonthYear;
+                month.onchange = () => { if (typedYear() === null)
+                    year.value = String(shownYear); changeMonthYear(); };
+                year.onchange = () => { if (typedYear() === null)
+                    year.value = String(shownYear); };
                 calendar.append(el('div', { class: 'calendar-head' }, month, year), grid, el('p', { class: 'muted', style: { marginTop: '10px' }, text: 'Calendar' }));
                 for (let i = 1; i <= 12; i++) {
                     const a = i * Math.PI / 6;
