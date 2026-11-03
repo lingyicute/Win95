@@ -56,6 +56,7 @@ export function mediaPlayer(s, args = {}) {
         srcUrl = url;
         media.src = url;
         trackName = name;
+        selStart = selEnd = null;
         retitle();
         refresh();
     };
@@ -190,7 +191,13 @@ export function mediaPlayer(s, args = {}) {
         scale = next;
         slider.ruler = rulerLabel;
     };
-    w.setMenu(menuBar([{ label: 'File', items: [{ label: 'Open…', shortcut: 'Ctrl+O', action: open }, { label: 'Import from Computer…', action: () => fileInput('audio/*,video/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'Play sample', action: () => { load(waveTone(), 'Windows Chimes'); play(); } }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [{ label: 'Select All', disabled: !Number.isFinite(media.duration), action: () => { selStart = 0; selEnd = media.duration; } }, { label: 'Clear Selection', disabled: selStart == null && selEnd == null, action: () => { selStart = selEnd = null; } }] }, { label: 'Device', items: [{ label: 'Wave Audio', action: () => fileInput('audio/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'Video', action: () => fileInput('video/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'CD Audio', action: () => { load(waveTone(), 'Track 01 — Windows Chimes'); } }, null, { label: 'Volume Control…', action: () => s.launch('volume') }] }, { label: 'Scale', items: () => [{ label: 'Seconds', checked: scale === 'time', action: () => setScale('time') }, { label: 'Frames', checked: scale === 'frames', action: () => setScale('frames') }] }, { label: 'Help', items: [{ label: 'About Media Player', action: () => s.about(cd ? 'CD Player' : 'Media Player', 'media') }] }]));
+    w.setMenu(menuBar([{ label: 'File', items: [{ label: 'Open…', shortcut: 'Ctrl+O', action: open }, { label: 'Import from Computer…', action: () => fileInput('audio/*,video/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'Play sample', action: () => { load(waveTone(), 'Windows Chimes'); play(); } }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [{ label: 'Select All', disabled: !Number.isFinite(media.duration), action: () => { selStart = 0; selEnd = media.duration; } }, { label: 'Clear Selection', disabled: selStart == null && selEnd == null, action: () => { selStart = selEnd = null; } }] }, { label: 'Device', items: [{ label: 'Wave Audio', action: () => fileInput('audio/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'Video', action: () => fileInput('video/*', f => load(URL.createObjectURL(f), f.name)) }, { label: 'CD Audio', action: () => { load(waveTone(), 'Track 01 — Windows Chimes'); } }, null, { label: 'Volume Control…', action: () => s.launch('volume') }] }, { label: 'Scale', items: () => [{ label: 'Seconds', checked: scale === 'time', action: () => setScale('time') }, { label: 'Frames', checked: scale === 'frames', action: () => setScale('frames') }] }, { label: 'Help', items: [{ label: cd ? 'About CD Player' : 'About Media Player', action: () => s.about(cd ? 'CD Player' : 'Media Player', cd ? 'cd' : 'media') }] }]));
+    w.element.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+            e.preventDefault();
+            open();
+        }
+    });
     refresh();
     w.onClosed.push(() => {
         media.pause();
@@ -367,7 +374,7 @@ export function soundRecorder(s) {
         if (url)
             audio.play().catch(() => { });
     }, { 'aria-label': 'Play' }), button('■', stop, { 'aria-label': 'Stop' }), button('●', record, { 'aria-label': 'Record', style: { color: '#f00' } })));
-    w.setMenu(menuBar([{ label: 'File', items: [{ label: 'New', action: () => { stop(); blob = null; if (url) { URL.revokeObjectURL(url); url = null; } audio.src = ''; w.setTitle('Sound - Sound Recorder'); info.lastChild.textContent = 'Length: 0.00 sec.'; } }, { label: 'Save As…', action: save }, { label: 'Export…', action: () => {
+    w.setMenu(menuBar([{ label: 'File', items: [{ label: 'New', action: () => { stop(); blob = null; if (url) { URL.revokeObjectURL(url); url = null; } audio.src = ''; w.setTitle('Sound - Sound Recorder'); info.firstChild.textContent = 'Position: 0.00 sec.'; info.lastChild.textContent = 'Length: 0.00 sec.'; } }, { label: 'Save As…', action: save }, { label: 'Export…', action: () => {
                         if (url && blob)
                             download('Sound.webm', url, blob.type);
                     } }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Options', items: [{ label: 'Audio Properties', action: () => s.launch('multimedia') }] }, { label: 'Help', items: [{ label: 'About Sound Recorder', action: () => s.about('Sound Recorder', 'sound') }] }]));
@@ -384,32 +391,8 @@ export function internet(s, args = {}) {
     const toolbar = el('div', { class: 'internet-toolbar' }), address = el('input', { 'aria-label': 'Address', value: 'about:home' }), page = el('div', { class: 'internet-page' });
     let history = [], index = -1;
     const navigate = (url, push = true) => {
-        if (push) {
-            history = history.slice(0, index + 1);
-            history.push(url);
-            index++;
-        }
-        address.value = url;
-        page.replaceChildren();
-        page.style.padding = '';
-        if (url === 'about:home' || !url) {
-            page.innerHTML = '<h1>Welcome to the Internet</h1><hr><h2>Microsoft Internet Explorer</h2><p>The world is at your fingertips.</p><p>Enter an address above to explore the World Wide Web, or open an HTML document from your C: drive.</p><hr><h3>Your computer</h3>';
-            for (const n of s.fs.search('*.htm').filter(n => n.type === 'file' && /\.html?$/i.test(n.path))) {
-                const a = el('a', { href: '#', text: baseName(n.path), onclick: e => { e.preventDefault(); navigate(n.path); } });
-                page.append(el('p', {}, a));
-            }
-            page.append(el('p', {}, el('a', { href: '#', text: 'Browse your documents', onclick: e => { e.preventDefault(); s.launch('explorer', { path: 'C:\\My Documents' }); } })));
-        }
-        else if (s.fs.exists(url)) {
-            /* The frame keeps its scripts switched off, but stays readable from
-               here - that is the only way to keep the browser's own menu out of
-               a document that is shown inside the desktop. */
-            const frame = el('iframe', { title: baseName(url), sandbox: 'allow-same-origin', srcdoc: s.fs.read(url), style: { width: '100%', height: '100%', border: 0 } });
-            swallowNativeMenuInFrame(frame);
-            page.append(frame);
-        }
-        else {
-            let parsed;
+        let parsed = null;
+        if (url !== 'about:home' && url && !s.fs.exists(url)) {
             try {
                 parsed = new URL(url.includes('://') ? url : 'https://' + url);
                 if (!['https:', 'http:'].includes(parsed.protocol))
@@ -419,7 +402,33 @@ export function internet(s, args = {}) {
                 s.ui.message('The Internet address is not valid.', 'Internet Explorer', ['OK'], { owner: w });
                 return;
             }
-            address.value = parsed.href;
+        }
+        const finalUrl = parsed ? parsed.href : (url || 'about:home');
+        if (push) {
+            history = history.slice(0, index + 1);
+            history.push(finalUrl);
+            index++;
+        }
+        address.value = finalUrl;
+        page.replaceChildren();
+        page.style.padding = '';
+        if (finalUrl === 'about:home') {
+            page.innerHTML = '<h1>Welcome to the Internet</h1><hr><h2>Microsoft Internet Explorer</h2><p>The world is at your fingertips.</p><p>Enter an address above to explore the World Wide Web, or open an HTML document from your C: drive.</p><hr><h3>Your computer</h3>';
+            for (const n of s.fs.search('*.htm').filter(n => n.type === 'file' && /\.html?$/i.test(n.path))) {
+                const a = el('a', { href: '#', text: baseName(n.path), onclick: e => { e.preventDefault(); navigate(n.path); } });
+                page.append(el('p', {}, a));
+            }
+            page.append(el('p', {}, el('a', { href: '#', text: 'Browse your documents', onclick: e => { e.preventDefault(); s.launch('explorer', { path: 'C:\\My Documents' }); } })));
+        }
+        else if (s.fs.exists(finalUrl)) {
+            /* The frame keeps its scripts switched off, but stays readable from
+               here - that is the only way to keep the browser's own menu out of
+               a document that is shown inside the desktop. */
+            const frame = el('iframe', { title: baseName(finalUrl), sandbox: 'allow-same-origin', srcdoc: s.fs.read(finalUrl), style: { width: '100%', height: '100%', border: 0 } });
+            swallowNativeMenuInFrame(frame);
+            page.append(frame);
+        }
+        else {
             page.style.padding = '0';
             /* A site from the internet is another origin, and the browser will
                not let this page look inside its frame to keep the browser's
@@ -492,11 +501,11 @@ export function inbox(s) {
         w.status(`${items.length} item(s)`);
     };
     const save = () => { s.settings.set('mailMessages', messages); render(); };
-    const compose = () => {
+    const compose = (replyTo = null) => {
         const c = s.wm.create({ title: 'Untitled - Message', icon: 'mail', width: 550, height: 355 });
         c.body.style.padding = '8px';
         c.body.style.gap = '6px';
-        const to = el('input', { 'aria-label': 'To' }), subject = el('input', { 'aria-label': 'Subject' }), body = el('textarea', { class: 'notepad-editor', 'aria-label': 'Message body' });
+        const to = el('input', { 'aria-label': 'To', value: replyTo?.from || '' }), subject = el('input', { 'aria-label': 'Subject', value: replyTo?.subject ? (/^re:/i.test(replyTo.subject) ? replyTo.subject : 'Re: ' + replyTo.subject) : '' }), body = el('textarea', { class: 'notepad-editor', 'aria-label': 'Message body' });
         let saved = false;
         const store = target => {
             messages.push({ id: uniqueId(), from: s.settings.get('owner', 'Windows User'), to: to.value, subject: subject.value || '(No subject)', body: body.value, folder: target });
@@ -519,13 +528,19 @@ export function inbox(s) {
             return r === 'No';
         };
     };
-    toolbar.append(button('New Message', compose), button('Delete', () => {
+    toolbar.append(button('New Message', () => compose()), button('Delete', () => {
         if (selected) {
-            selected.folder = 'Deleted Items';
+            if (selected.folder === 'Deleted Items') {
+                const idx = messages.indexOf(selected);
+                if (idx >= 0)
+                    messages.splice(idx, 1);
+            }
+            else
+                selected.folder = 'Deleted Items';
             selected = null;
             save();
         }
-    }), button('Reply', () => compose()), button('Address Book', () => s.launch('addressbook')));
+    }), button('Reply', () => compose(selected)), button('Address Book', () => s.launch('addressbook')));
     content.append(list, preview);
     layout.append(folders, content);
     w.body.append(toolbar, layout);
