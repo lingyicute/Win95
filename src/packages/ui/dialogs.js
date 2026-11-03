@@ -66,7 +66,7 @@ export function createDialogs(system) {
         const render = () => {
             if (system.fs.get(path)?.type !== 'folder')
                 path = 'C:\\';
-            const folders = ['C:\\', 'C:\\My Documents', 'C:\\Windows\\Desktop', ...([...system.fs.nodes.values()].filter(n => n.type === 'folder' && n.path !== 'C:\\Recycled').map(n => n.path))].filter((v, i, a) => a.indexOf(v) === i);
+            const folders = ['C:\\', 'C:\\My Documents', 'C:\\Windows\\Desktop', ...([...system.fs.nodes.values()].filter(n => n.type === 'folder' && !/^c:\\recycled(?:\\|$)/i.test(n.path)).map(n => n.path))].filter((v, i, a) => a.indexOf(v) === i);
             dir.setOptions(folders, path);
             list.replaceChildren();
             for (const n of system.fs.list(path)) {
@@ -94,7 +94,7 @@ export function createDialogs(system) {
             if (!name.value.trim())
                 return;
             let dest = normalizePath(name.value, path);
-            if (options.extension && !baseName(dest).includes('.'))
+            if (system.fs.get(dest)?.type !== 'folder' && options.extension && !baseName(dest).includes('.'))
                 dest += options.extension;
             if (system.fs.get(dest)?.type === 'folder') {
                 path = dest;
