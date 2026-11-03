@@ -2,8 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { installDom } from './dom-shim.mjs';
 
-const { menus, Element } = installDom();
-Element.prototype.focus = function () { document.activeElement = this; };
+const { menus } = installDom();
 const { popup, closeMenus } = await import('../src/packages/ui/menu.js');
 
 const rowsOf = menu => [...menu.children[0].children].filter(n => n.tagName === 'BUTTON');
