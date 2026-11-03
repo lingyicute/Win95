@@ -257,22 +257,31 @@ export function settingsApplet(s, id) {
     const commits = [];
     let uiLanguageChangedByUser = false;
     let w;
-    const select = (p, label, key, values, value, onChange = null) => { draft[key] ??= value; const input = combo({ ariaLabel: label, options: values.map(x => typeof x === 'string' ? ({ value: x, label: x }) : x), value: draft[key], onchange: next => { draft[key] = next; onChange?.(next); } }); p.append(field(label, input)); return input; };
+    /* The value a box starts from. A saved draft keeps the box as the user left
+       it, but when the box mirrors a setting other places can change - the colour
+       scheme, the locale - that setting is the truth and wins over the draft, or a
+       stale saved copy would be written back over the newer one on Apply. */
+    class Live {
+        constructor(value) { this.value = value; }
+    }
+    const live = value => new Live(value);
+    const seed = (key, value) => { if (value instanceof Live) draft[key] = value.value; else draft[key] ??= value; };
+    const select = (p, label, key, values, value, onChange = null) => { seed(key, value); const input = combo({ ariaLabel: label, options: values.map(x => typeof x === 'string' ? ({ value: x, label: x }) : x), value: draft[key], onchange: next => { draft[key] = next; onChange?.(next); } }); p.append(field(label, input)); return input; };
     /* `onCommit` lets a box that is not only this sheet's business - the
        mixer's Mute all - reach the shared setting while it is clicked. The
        input comes back so a page that mirrors the setting can redraw it. */
     const check = (p, label, key, value = false, onCommit = null) => {
-        draft[key] ??= value;
+        seed(key, value);
         const input = el('input', { type: 'checkbox', checked: draft[key], onchange: e => { draft[key] = e.target.checked; onCommit?.(e.target.checked); } });
         p.append(el('label', { class: 'checkbox-label' }, input, label));
         return input;
     };
-    const range = (p, label, key, value = 50) => { draft[key] ??= value; p.append(field(label, trackbar({ label, value: draft[key], onChange: next => draft[key] = next }))); };
+    const range = (p, label, key, value = 50) => { seed(key, value); p.append(field(label, trackbar({ label, value: draft[key], onChange: next => draft[key] = next }))); };
     const pages = [];
     if (id === 'mouse') {
         pages.push(['Buttons', p => {
             p.append(el('div', { class: 'row' }, icon('mouse', 32), el('p', { text: 'Customize your pointing device.' })));
-            check(p, 'Left-handed button configuration', 'leftHanded', s.settings.get('leftHanded', false));
+            check(p, 'Left-handed button configuration', 'leftHanded', live(s.settings.get('leftHanded', false)));
             range(p, 'Double-click speed:', 'doubleClick', 50);
             /* The folder is the test area: two clicks inside the interval set
                on the slider above open it or close it, and a slower pair leaves
@@ -294,8 +303,8 @@ export function settingsApplet(s, id) {
             commits.push(() => s.settings.set('leftHanded', !!draft.leftHanded));
             commits.push(() => s.settings.set('doubleClickMs', doubleClickInterval(draft.doubleClick)));
         }], ['Motion', p => {
-            const trailsOn = draft.pointerTrails ??= s.settings.get('pointerTrails', false);
-            const trail = trackbar({ label: 'Pointer trail length', min: 0, max: 100, value: draft.trailLength ?? s.settings.get('trailLength', 50), ticks: 7, onChange: next => draft.trailLength = next });
+            const trailsOn = draft.pointerTrails = s.settings.get('pointerTrails', false);
+            const trail = trackbar({ label: 'Pointer trail length', min: 0, max: 100, value: draft.trailLength = s.settings.get('trailLength', 50), ticks: 7, onChange: next => draft.trailLength = next });
             trail.disabled = !trailsOn;
             const box = el('input', { type: 'checkbox', checked: trailsOn, onchange: e => { draft.pointerTrails = e.target.checked; trail.disabled = !e.target.checked; } });
             const emblem = el('span', { class: 'trail-emblem', 'aria-hidden': 'true' });
@@ -386,7 +395,7 @@ export function settingsApplet(s, id) {
         pages.push(['Speed', p => { range(p, 'Repeat delay:', 'delay'); range(p, 'Repeat rate:', 'repeat'); p.append(field('Click here to test:', el('input', { 'aria-label': 'Keyboard test', placeholder: '' })), el('p', { class: 'muted', text: 'Key repeat for browser text fields follows your computer’s keyboard settings.' })); }], ['Language', p => select(p, 'Language:', 'language', ['English (United States)', 'Polski', 'Deutsch', 'Français'], 'English (United States)')]);
     }
     else if (id === 'regional') {
-        pages.push(['Regional Settings', p => { const numSample = el('p'), dateSample = el('p'), updateSamples = loc => { numSample.textContent = 'Number: ' + new Intl.NumberFormat(loc).format(1234567.89); dateSample.textContent = 'Date: ' + new Date().toLocaleDateString(loc); }; select(p, 'Locale:', 'locale', ['en-US', 'en-GB', 'pl-PL', 'de-DE', 'fr-FR', 'ja-JP', 'zh-CN'], s.settings.get('locale', 'en-US'), updateSamples); updateSamples(draft.locale || s.settings.get('locale', 'en-US')); p.append(el('fieldset', {}, el('legend', { text: 'Samples' }), numSample, dateSample)); commits.push(() => { s.settings.set('locale', draft.locale || 'en-US'); s.updateClock(); }); }], ['Language', p => { const currentLanguage = s.settings.get('ui-language', (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en'); draft.uiLanguage = currentLanguage; const language = combo({ ariaLabel: 'Display language:', options: [{ value: 'en', label: 'English' }, { value: 'zh', label: 'Chinese (Simplified)' }], value: currentLanguage, onchange: next => { draft.uiLanguage = next; uiLanguageChangedByUser = next !== currentLanguage; } }); p.append(field('Display language:', language)); }], ['Time', p => { check(p, 'Use 24-hour time', 'hour24', s.settings.get('hour24', false)); commits.push(() => { s.settings.set('hour24', !!draft.hour24); s.updateClock(); }); }]);
+        pages.push(['Regional Settings', p => { const numSample = el('p'), dateSample = el('p'), updateSamples = loc => { numSample.textContent = 'Number: ' + new Intl.NumberFormat(loc).format(1234567.89); dateSample.textContent = 'Date: ' + new Date().toLocaleDateString(loc); }; select(p, 'Locale:', 'locale', ['en-US', 'en-GB', 'pl-PL', 'de-DE', 'fr-FR', 'ja-JP', 'zh-CN'], live(s.settings.get('locale', 'en-US')), updateSamples); updateSamples(draft.locale || s.settings.get('locale', 'en-US')); p.append(el('fieldset', {}, el('legend', { text: 'Samples' }), numSample, dateSample)); commits.push(() => { s.settings.set('locale', draft.locale || 'en-US'); s.updateClock(); }); }], ['Language', p => { const currentLanguage = s.settings.get('ui-language', (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en'); draft.uiLanguage = currentLanguage; const language = combo({ ariaLabel: 'Display language:', options: [{ value: 'en', label: 'English' }, { value: 'zh', label: 'Chinese (Simplified)' }], value: currentLanguage, onchange: next => { draft.uiLanguage = next; uiLanguageChangedByUser = next !== currentLanguage; } }); p.append(field('Display language:', language)); }], ['Time', p => { check(p, 'Use 24-hour time', 'hour24', live(s.settings.get('hour24', false))); commits.push(() => { s.settings.set('hour24', !!draft.hour24); s.updateClock(); }); }]);
     }
     else if (id === 'sounds' || id === 'multimedia') {
         pages.push(['Audio', (p, win) => {
@@ -448,7 +457,7 @@ export function settingsApplet(s, id) {
             }], ['Recording', p => p.append(el('p', { text: 'Record sound through the microphone selected by your browser.' }), button('Sound Recorder…', () => s.launch('recorder')))]);
     }
     else if (id === 'accessibility') {
-        pages.push(['Keyboard', p => { check(p, 'Use StickyKeys', 'sticky'); check(p, 'Use ToggleKeys', 'toggle', s.settings.get('toggleKeys', false)); p.append(el('p', { text: 'ToggleKeys plays a tone when Caps Lock changes.' })); commits.push(() => s.settings.set('toggleKeys', !!draft.toggle)); }], ['Display', p => { check(p, 'Use High Contrast', 'highContrast', String(s.settings.get('scheme', '')).startsWith('High Contrast')); select(p, 'Scheme:', 'contrast', ['High Contrast Black', 'High Contrast White'], String(s.settings.get('scheme', '')).startsWith('High Contrast') ? s.settings.get('scheme') : 'High Contrast Black'); commits.push(() => { if (draft.highContrast) { s.settings.set('scheme', draft.contrast || 'High Contrast Black'); s.applyAppearance(); } else if (String(s.settings.get('scheme', '')).startsWith('High Contrast')) { s.settings.set('scheme', 'Windows Standard'); s.applyAppearance(); } }); }], ['Sound', p => { check(p, 'Show captions for system sounds', 'captions', s.settings.get('soundCaptions', false)); commits.push(() => s.settings.set('soundCaptions', !!draft.captions)); }]);
+        pages.push(['Keyboard', p => { check(p, 'Use StickyKeys', 'sticky'); check(p, 'Use ToggleKeys', 'toggle', live(s.settings.get('toggleKeys', false))); p.append(el('p', { text: 'ToggleKeys plays a tone when Caps Lock changes.' })); commits.push(() => s.settings.set('toggleKeys', !!draft.toggle)); }], ['Display', p => { check(p, 'Use High Contrast', 'highContrast', live(String(s.settings.get('scheme', '')).startsWith('High Contrast'))); select(p, 'Scheme:', 'contrast', ['High Contrast Black', 'High Contrast White'], live(String(s.settings.get('scheme', '')).startsWith('High Contrast') ? s.settings.get('scheme') : 'High Contrast Black')); commits.push(() => { if (draft.highContrast) { s.settings.set('scheme', draft.contrast || 'High Contrast Black'); s.applyAppearance(); } else if (String(s.settings.get('scheme', '')).startsWith('High Contrast')) { s.settings.set('scheme', 'Windows Standard'); s.applyAppearance(); } }); }], ['Sound', p => { check(p, 'Show captions for system sounds', 'captions', live(s.settings.get('soundCaptions', false))); commits.push(() => s.settings.set('soundCaptions', !!draft.captions)); }]);
     }
     else if (id === 'addremove') {
         pages.push(['Install/Uninstall', p => {
@@ -505,7 +514,7 @@ export function settingsApplet(s, id) {
                 el('div', { class: 'row', style: { alignItems: 'flex-start', gap: '14px' } }, icon('login', 32),
                     el('div', { class: 'stack', style: { flex: '1' } }, el('p', { text: 'Click this button to change your Windows password.' }),
                         button('Change Windows Password…', openChangePassword)))));
-        }], ['User Profiles', p => { draft.owner ??= s.settings.get('owner', 'Windows User'); p.append(field('User name:', el('input', { value: draft.owner, oninput: e => draft.owner = e.target.value })), el('p', { text: 'Documents and preferences belong to this browser profile.' })); commits.push(() => s.settings.set('owner', draft.owner || 'Windows User')); }], ['Privacy', p => p.append(el('p', { text: 'Your virtual drive is stored in this browser. Export a backup before clearing browser storage.' }), button('Back Up Files…', () => s.launch('backup')))]);
+        }], ['User Profiles', p => { draft.owner = s.settings.get('owner', 'Windows User'); p.append(field('User name:', el('input', { value: draft.owner, oninput: e => draft.owner = e.target.value })), el('p', { text: 'Documents and preferences belong to this browser profile.' })); commits.push(() => s.settings.set('owner', draft.owner || 'Windows User')); }], ['Privacy', p => p.append(el('p', { text: 'Your virtual drive is stored in this browser. Export a backup before clearing browser storage.' }), button('Back Up Files…', () => s.launch('backup')))]);
     }
     else if (id === 'printers') {
         pages.push(['Printers', p => p.append(el('div', { class: 'row' }, icon('printer', 32), el('div', {}, el('b', { text: 'Browser Print Service' }), el('p', { text: 'Default printer' }))), el('p', { text: 'Use File → Print in Notepad or WordPad to choose a printer or save as PDF.' }), button('Print Test Page', () => { s.launch('notepad', { text: 'Windows 95 Printer Test Page\n\nBrowser Print Service\n\nThe quick brown fox jumps over the lazy dog.\n0123456789\n\n' + new Date().toLocaleString(uiLocale) }); })),]);
