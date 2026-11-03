@@ -191,9 +191,9 @@ export function notepad(s, args = {}) {
     };
     w.element.addEventListener('keydown', e => {
         const k = e.key.toLowerCase();
-        if ((e.ctrlKey || e.metaKey) && ['s', 'o', 'n', 'p', 'f'].includes(k)) {
+        if ((e.ctrlKey || e.metaKey) && ['s', 'o', 'n', 'p', 'f', 'z'].includes(k)) {
             e.preventDefault();
-            ({ s: () => save(e.shiftKey), o: () => load(), n: fresh, p: () => printDocument(editor.value), f: () => find() })[k]();
+            ({ s: () => save(e.shiftKey), o: () => load(), n: fresh, p: () => printDocument(editor.value), f: () => find(), z: undoAction })[k]();
         }
         if (e.key === 'F3') {
             e.preventDefault();
@@ -349,6 +349,7 @@ export function wordpad(s, args = {}) {
             return false;
         sel.removeAllRanges();
         sel.addRange(range);
+        lastRange = range.cloneRange();
         start.node.parentElement?.scrollIntoView?.({ block: 'nearest' });
         return true;
     };
