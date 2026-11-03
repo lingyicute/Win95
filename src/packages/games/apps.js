@@ -360,7 +360,7 @@ export function solitaire(s, args = {}) {
             e.preventDefault();
             selectGame();
         }
-        else if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
             e.preventDefault();
             game.undo();
             selected = null;
