@@ -204,7 +204,9 @@ export function explorer(s, args = {}) {
         selection.clear();
         render();
     };
-    const upOneLevel = () => navigate(path === 'computer' ? 'desktop' : path === 'desktop' ? 'computer' : normalizePath(parentPath(realPath())));
+    /* Like Backspace: the Recycle Bin and Network Neighborhood have no parent
+       folder on the volume, so Up must not drop the user into C:\. */
+    const upOneLevel = () => path === 'recycle' || path === 'network' ? undefined : navigate(path === 'computer' ? 'desktop' : path === 'desktop' ? 'computer' : normalizePath(parentPath(realPath())));
     const paintSelection = () => { list.querySelectorAll('[data-path]').forEach(n => n.classList.toggle('selected', selection.has(n.dataset.path))); w.status(selection.size ? `${selection.size} object(s) selected     ${formatSize(selectedPaths().reduce((a, p) => a + s.fs.size(p), 0))}` : `${entries.length} object(s)${path === 'computer' || path === 'network' ? '' : `     ${formatSize(s.fs.size(realPath()))}`}`); };
     const addTree = (title, ic, p, depth = 0) => treeHost.append(el('button', { class: 'tree-item' + (p.toLowerCase() === path.toLowerCase() ? ' selected' : ''), style: { paddingLeft: (3 + depth * 13) + 'px' }, onclick: () => navigate(p) }, icon(ic, 16), title));
     const render = () => {
@@ -229,7 +231,7 @@ export function explorer(s, args = {}) {
         for (const drive of ['A:\\', 'C:\\', 'D:\\']) {
             addTree(`(${drive[0]}:)`, drive[0] === 'A' ? 'floppy' : drive[0] === 'D' ? 'cd' : 'disk', drive, 2);
             if (drive === 'C:\\')
-                for (const n of s.fs.list(drive).filter(n => n.type === 'folder' && !n.path.toLowerCase().includes('recycled'))) {
+                for (const n of s.fs.list(drive).filter(n => n.type === 'folder' && n.path.toLowerCase() !== 'c:\\recycled')) {
                     addTree(dataText(baseName(n.path)), 'folder', n.path, 3);
                     if (path.toLowerCase() === n.path.toLowerCase() || path.toLowerCase().startsWith(n.path.toLowerCase() + '\\'))
                         for (const c of s.fs.list(n.path).filter(n => n.type === 'folder'))
