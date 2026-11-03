@@ -205,7 +205,7 @@ export function explorer(s, args = {}) {
         render();
     };
     const upOneLevel = () => navigate(path === 'computer' ? 'desktop' : path === 'desktop' ? 'computer' : normalizePath(parentPath(realPath())));
-    const paintSelection = () => { list.querySelectorAll('[data-path]').forEach(n => n.classList.toggle('selected', selection.has(n.dataset.path))); w.status(selection.size ? `${selection.size} object(s) selected     ${formatSize(selectedPaths().reduce((a, p) => a + s.fs.size(p), 0))}` : `${entries.length} object(s)${path === 'computer' ? '' : `     ${formatSize(s.fs.size(realPath()))}`}`); };
+    const paintSelection = () => { list.querySelectorAll('[data-path]').forEach(n => n.classList.toggle('selected', selection.has(n.dataset.path))); w.status(selection.size ? `${selection.size} object(s) selected     ${formatSize(selectedPaths().reduce((a, p) => a + s.fs.size(p), 0))}` : `${entries.length} object(s)${path === 'computer' || path === 'network' ? '' : `     ${formatSize(s.fs.size(realPath()))}`}`); };
     const addTree = (title, ic, p, depth = 0) => treeHost.append(el('button', { class: 'tree-item' + (p.toLowerCase() === path.toLowerCase() ? ' selected' : ''), style: { paddingLeft: (3 + depth * 13) + 'px' }, onclick: () => navigate(p) }, icon(ic, 16), title));
     const render = () => {
         if (w.closed)
@@ -240,8 +240,10 @@ export function explorer(s, args = {}) {
         toolbar.hidden = !showToolbar;
         toolbar.replaceChildren(button('↰', upOneLevel, { title: 'Up One Level' }), el('div', { class: 'toolbar-divider' }), button('Cut', () => s.files.copy(selectedPaths(), true)), button('Copy', () => s.files.copy(selectedPaths())), button('Paste', () => s.files.paste(realPath())), el('div', { class: 'toolbar-divider' }), button('Large Icons', () => { view = 'large'; render(); }), button('Details', () => { view = 'details'; render(); }));
         entries = path === 'computer' ? computer : path === 'network' ? [{ name: 'Entire Network', icon: 'network', app: 'network' }, { name: 'My Computer', icon: 'computer', path: 'C:\\' }] : (folderOptions.allFiles === false ? listFolder().filter(n => !n.hidden) : listFolder()).map(n => ({ name: displayName(n, folderOptions.extensions === false), icon: fileIcon(n), path: n.path, node: n, nameIsData: true }));
-        if (sort === 'type')
-            entries.sort((a, b) => ((a.node?.type === 'folder' ? 0 : 1) - (b.node?.type === 'folder' ? 0 : 1)) || (a.path?.includes('.') ? a.path.split('.').pop().toLowerCase() : '').localeCompare(b.path?.includes('.') ? b.path.split('.').pop().toLowerCase() : ''));
+        if (sort === 'type') {
+            const ext = e => e.node?.type !== 'folder' && baseName(e.path || '').includes('.') ? baseName(e.path).split('.').pop().toLowerCase() : '';
+            entries.sort((a, b) => ((a.node?.type === 'folder' ? 0 : 1) - (b.node?.type === 'folder' ? 0 : 1)) || ext(a).localeCompare(ext(b)) || a.name.localeCompare(b.name));
+        }
         else if (sort === 'size')
             entries.sort((a, b) => s.fs.size(b.path || 'C:\\') - s.fs.size(a.path || 'C:\\'));
         list.className = 'file-list inset ' + view;
@@ -384,7 +386,7 @@ export function explorer(s, args = {}) {
             e.preventDefault();
             /* The virtual folders have no parent on the volume: stepping up from
                My Computer or the Recycle Bin would land in C:\ and read as a bug. */
-            if (path !== 'computer' && path !== 'recycle')
+            if (path !== 'computer' && path !== 'recycle' && path !== 'network')
                 navigate(normalizePath(parentPath(realPath())));
         }
         else if (e.altKey && e.key === 'Enter') {
