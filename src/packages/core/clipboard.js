@@ -10,8 +10,11 @@
  */
 export function installClipboard(s) {
     s.copyText = text => {
-        s.clipboard = { type: 'text', text: String(text) };
-        navigator.clipboard?.writeText(String(text)).catch(() => { });
+        const value = String(text ?? '');
+        if (!value)
+            return;
+        s.clipboard = { type: 'text', text: value };
+        navigator.clipboard?.writeText(value).catch(() => { });
     };
     s.pasteText = async () => {
         /* An empty result must come back as null: insert('') deletes the

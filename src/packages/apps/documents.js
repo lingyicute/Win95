@@ -305,12 +305,20 @@ export function wordpad(s, args = {}) {
         }
     };
     const copy = () => { remember(); s.copyText(window.getSelection()?.toString() || ''); };
+    const cut = () => {
+        remember();
+        const t = window.getSelection()?.toString() || '';
+        if (t) {
+            s.copyText(t);
+            cmd('delete');
+        }
+    };
     const paste = async () => {
         const text = await s.pasteText();
         if (text !== null)
             cmd('insertText', text);
     };
-    toolbar.append(button('New', fresh), button('Open', open), button('Save', () => save()), el('div', { class: 'toolbar-divider' }), button('Print', () => printDocument(editor.innerHTML, true)), el('div', { class: 'toolbar-divider' }), button('Cut', () => { copy(); cmd('delete'); }), button('Copy', copy), button('Paste', paste), button('Undo', () => cmd('undo')));
+    toolbar.append(button('New', fresh), button('Open', open), button('Save', () => save()), el('div', { class: 'toolbar-divider' }), button('Print', () => printDocument(editor.innerHTML, true)), el('div', { class: 'toolbar-divider' }), button('Cut', cut), button('Copy', copy), button('Paste', paste), button('Undo', () => cmd('undo')));
     const fonts = combo({ ariaLabel: 'Font family', options: ['Arial', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia'], value: 'Times New Roman', onchange: value => cmd('fontName', value) });
     const sizes = combo({ class: 'font-size', ariaLabel: 'Font size', options: [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36, 48, 72].map(String), value: '12', onchange: value => { cmd('fontSize', '7'); editor.querySelectorAll('font[size="7"]').forEach(n => { n.removeAttribute('size'); n.style.fontSize = value + 'pt'; }); } });
     format.append(fonts, sizes, button('B', () => cmd('bold'), { title: 'Bold', style: { fontWeight: 'bold' } }), button('I', () => cmd('italic'), { title: 'Italic', style: { fontStyle: 'italic' } }), button('U', () => cmd('underline'), { title: 'Underline', style: { textDecoration: 'underline' } }), el('div', { class: 'toolbar-divider' }), button('≡', () => cmd('justifyLeft'), { title: 'Align left' }), button('≡', () => cmd('justifyCenter'), { title: 'Center', style: { textAlign: 'center' } }), button('≡', () => cmd('justifyRight'), { title: 'Align right', style: { textAlign: 'right' } }), button('•', () => cmd('insertUnorderedList'), { title: 'Bullet list' }), el('input', { type: 'color', value: '#000000', 'aria-label': 'Text color', oninput: e => cmd('foreColor', e.target.value) }));
@@ -371,7 +379,7 @@ export function wordpad(s, args = {}) {
                 s.ui.message('WordPad has finished searching the document.', 'WordPad', ['OK'], { owner: w });
         }
     };
-    w.setMenu(menuBar([{ label: 'File', items: [{ label: 'New', shortcut: 'Ctrl+N', action: fresh }, { label: 'Open…', shortcut: 'Ctrl+O', action: open }, { label: 'Save', shortcut: 'Ctrl+S', action: () => save() }, { label: 'Save As…', action: () => save(true) }, null, { label: 'Print…', shortcut: 'Ctrl+P', action: () => printDocument(editor.innerHTML, true) }, { label: 'Export as RTF…', action: () => download((path ? baseName(path) : 'Document').replace(/\.[^.]+$/, '') + '.rtf', htmlToRtf(sanitizeRichHTML(editor.innerHTML)), 'application/rtf') }, { label: 'Export as HTML…', action: () => download((path ? baseName(path) : 'Document').replace(/\.[^.]+$/, '') + '.html', '<!doctype html><meta charset="utf-8">' + sanitizeRichHTML(editor.innerHTML), 'text/html') }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: [{ label: 'Undo', shortcut: 'Ctrl+Z', action: () => cmd('undo') }, { label: 'Redo', shortcut: 'Ctrl+Y', action: () => cmd('redo') }, null, { label: 'Cut', shortcut: 'Ctrl+X', action: () => { copy(); cmd('delete'); } }, { label: 'Copy', shortcut: 'Ctrl+C', action: copy }, { label: 'Paste', shortcut: 'Ctrl+V', action: paste }, { label: 'Select All', shortcut: 'Ctrl+A', action: () => cmd('selectAll') }, null, { label: 'Find…', shortcut: 'Ctrl+F', action: find }, { label: 'Replace…', action: async () => {
+    w.setMenu(menuBar([{ label: 'File', items: [{ label: 'New', shortcut: 'Ctrl+N', action: fresh }, { label: 'Open…', shortcut: 'Ctrl+O', action: open }, { label: 'Save', shortcut: 'Ctrl+S', action: () => save() }, { label: 'Save As…', action: () => save(true) }, null, { label: 'Print…', shortcut: 'Ctrl+P', action: () => printDocument(editor.innerHTML, true) }, { label: 'Export as RTF…', action: () => download((path ? baseName(path) : 'Document').replace(/\.[^.]+$/, '') + '.rtf', htmlToRtf(sanitizeRichHTML(editor.innerHTML)), 'application/rtf') }, { label: 'Export as HTML…', action: () => download((path ? baseName(path) : 'Document').replace(/\.[^.]+$/, '') + '.html', '<!doctype html><meta charset="utf-8">' + sanitizeRichHTML(editor.innerHTML), 'text/html') }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: [{ label: 'Undo', shortcut: 'Ctrl+Z', action: () => cmd('undo') }, { label: 'Redo', shortcut: 'Ctrl+Y', action: () => cmd('redo') }, null, { label: 'Cut', shortcut: 'Ctrl+X', action: cut }, { label: 'Copy', shortcut: 'Ctrl+C', action: copy }, { label: 'Paste', shortcut: 'Ctrl+V', action: paste }, { label: 'Select All', shortcut: 'Ctrl+A', action: () => cmd('selectAll') }, null, { label: 'Find…', shortcut: 'Ctrl+F', action: find }, { label: 'Replace…', action: async () => {
                         const a = await s.ui.prompt('Find what:', '', 'Replace', { owner: w });
                         if (!a)
                             return;
