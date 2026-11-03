@@ -743,8 +743,11 @@ export class DosEngine {
             else
                 lines.push(['A', 'S', 'H', 'R'].map(flag => flags.has(flag) ? flag : ' ').join(' ') + '     ' + node.path);
         }
-        if (changes.length && typeof this.fs.flush === 'function')
-            await this.fs.flush();
+        if (changes.length) {
+            this.fs.changed?.();
+            if (typeof this.fs.flush === 'function')
+                await this.fs.flush();
+        }
         return lines.join('\n');
     }
     async _storage(command, path) {
