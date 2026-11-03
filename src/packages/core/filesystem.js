@@ -279,7 +279,13 @@ export class VirtualFileSystem extends EventTarget {
         return to;
     }
     search(pattern, folder = 'C:\\') {
-        const p = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replaceAll('*', '.*').replaceAll('?', '.');
+        const text = String(pattern ?? '');
+        let p = text.replace(/[.+^${}()|[\]\\]/g, '\\$&').replaceAll('*', '.*').replaceAll('?', '.');
+        /* A plain name is found anywhere in a name, but a wildcard pattern must
+           match all of it: a* starts with "a" and *.txt skips notes.txt.bak.
+           A closing .* also takes names without an extension, as *.* does. */
+        if (/[*?]/.test(text))
+            p = '^' + p.replace(/\\\.\.\*$/, '(?:\\..*)?') + '$';
         const re = new RegExp(p || '.*', 'i');
         const root = key(folder);
         const recycleBin = 'c:\\recycled';
