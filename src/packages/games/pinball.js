@@ -87,7 +87,10 @@ export function pinball(s) {
     window.addEventListener('message', shellKeys);
     w.onClosed.push(() => window.removeEventListener('message', shellKeys));
     /* Clicking the window puts the keyboard back in the table. */
-    w.element.addEventListener('pointerdown', () => setTimeout(() => table()?.focus(), 0));
+    w.element.addEventListener('pointerdown', () => setTimeout(() => {
+        if (!w.closed && !w.minimized && !document.querySelector('#menus .popup-menu'))
+            table()?.focus();
+    }, 0));
 
     const state = { players: 1, sound: true, music: true, audio: true };
     const choose = (top, item, sub) => {

@@ -187,3 +187,10 @@ test('Alt+Shift+Tab handles missing or modal active window and Paint Undo clears
     assert.match(mm, /const stop = \(\) => \{ media\.pause\(\); media\.currentTime = 0; media\.ontimeupdate\(\); \}/);
     assert.match(utils, /delete data\[key\]\[n\]; if \(selected === n\) selected = null;/);
 });
+
+test('Explorer and Desktop sort files by basename extension and validate file dialog names', () => {
+    assert.match(explorer, /baseName\(e\.path \|\| ''\)\.includes\('\.'\)/);
+    assert.match(main, /baseName\(e\.path\)\.includes\('\.'\)/);
+    assert.match(dialogs, /const problem = nameError\(baseName\(dest\)\)/);
+    assert.match(mm, /const localFile = localNode\?\.type === 'file'/);
+});

@@ -198,7 +198,10 @@ export class DesktopGraphics {
                 this.frame = requestAnimationFrame(() => { this.frame = 0; this.render(); });
         };
         window.addEventListener('resize', this.resize);
-        this.system.settings.addEventListener('change', () => this.render());
+        this.system.settings.addEventListener('change', e => {
+            if (!e.detail?.name || ['desktopColor', 'wallpaper', 'taskbarAutoHide', 'taskbarOnTop'].includes(e.detail.name))
+                this.render();
+        });
         return this;
     }
     render() {
