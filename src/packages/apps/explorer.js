@@ -151,7 +151,9 @@ export function createFileActions(s) {
                 /* Host file names can carry characters the volume rejects, so
                    they are mangled into a legal name instead of failing the
                    whole import. */
-                const name = clampName(f.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[. ]+$/, '') || 'Document');
+                let name = clampName(f.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/[. ]+$/, '') || 'Document');
+                if (nameError(name))
+                    name = clampName('_' + name.replace(/^\.+$/, 'Document'));
                 const text = f.type.startsWith('text/') || /\.(txt|ini|bat|sys|csv|json|rtf|md)$/i.test(f.name) ? await f.text() : await new Promise((r, j) => { const reader = new FileReader(); reader.onload = () => r(reader.result); reader.onerror = j; reader.readAsDataURL(f); });
                 s.fs.write(s.fs.unique(path + '\\' + name), text, f.type || 'application/octet-stream');
             }
@@ -162,7 +164,7 @@ export function createFileActions(s) {
     };
     const menu = (paths, path) => [{ label: 'Open', disabled: paths.length !== 1, action: () => s.open(paths[0]) }, { label: 'Explore', disabled: paths.length !== 1 || s.fs.get(paths[0])?.type !== 'folder', action: () => s.launch('explorer', { path: paths[0], tree: true }) }, null, { label: 'Cut', shortcut: 'Ctrl+X', disabled: !paths.length, action: () => copy(paths, true) }, { label: 'Copy', shortcut: 'Ctrl+C', disabled: !paths.length, action: () => copy(paths) }, { label: 'Paste', shortcut: 'Ctrl+V', disabled: s.clipboard?.type !== 'files', action: () => paste(path) }, null, { label: 'Create Shortcut', disabled: !paths.length, action: () => {
                 for (const p of paths)
-                    s.fs.write(s.fs.unique(path + '\\Shortcut to ' + baseName(p) + '.lnk'), JSON.stringify({ target: p }), 'application/x-win95-shortcut');
+                    s.fs.write(s.fs.unique(path + '\\' + clampName('Shortcut to ' + baseName(p) + '.lnk')), JSON.stringify({ target: p }), 'application/x-win95-shortcut');
             } }, { label: 'Delete', shortcut: 'Del', disabled: !paths.length, action: () => remove(paths) }, { label: 'Rename', shortcut: 'F2', disabled: paths.length !== 1, action: () => rename(paths[0]) }, null, { label: 'Properties', shortcut: 'Alt+Enter', disabled: !paths.length, action: () => properties(paths) }];
     return { properties, rename, remove, copy, paste, newFolder, newText, importFiles, menu };
 }
@@ -239,7 +241,7 @@ export function explorer(s, args = {}) {
         toolbar.replaceChildren(button('↰', upOneLevel, { title: 'Up One Level' }), el('div', { class: 'toolbar-divider' }), button('Cut', () => s.files.copy(selectedPaths(), true)), button('Copy', () => s.files.copy(selectedPaths())), button('Paste', () => s.files.paste(realPath())), el('div', { class: 'toolbar-divider' }), button('Large Icons', () => { view = 'large'; render(); }), button('Details', () => { view = 'details'; render(); }));
         entries = path === 'computer' ? computer : path === 'network' ? [{ name: 'Entire Network', icon: 'network', app: 'network' }, { name: 'My Computer', icon: 'computer', path: 'C:\\' }] : (folderOptions.allFiles === false ? listFolder().filter(n => !n.hidden) : listFolder()).map(n => ({ name: displayName(n, folderOptions.extensions === false), icon: fileIcon(n), path: n.path, node: n, nameIsData: true }));
         if (sort === 'type')
-            entries.sort((a, b) => (a.node?.type || '').localeCompare(b.node?.type || ''));
+            entries.sort((a, b) => ((a.node?.type === 'folder' ? 0 : 1) - (b.node?.type === 'folder' ? 0 : 1)) || (a.path?.includes('.') ? a.path.split('.').pop().toLowerCase() : '').localeCompare(b.path?.includes('.') ? b.path.split('.').pop().toLowerCase() : ''));
         else if (sort === 'size')
             entries.sort((a, b) => s.fs.size(b.path || 'C:\\') - s.fs.size(a.path || 'C:\\'));
         list.className = 'file-list inset ' + view;
@@ -335,7 +337,7 @@ export function explorer(s, args = {}) {
         if (e.target.closest('.file-item'))
             return;
         e.preventDefault();
-        popup([{ label: 'View', items: ['large', 'small', 'list', 'details'].map(v => ({ label: ({ large: 'Large Icons', small: 'Small Icons', list: 'List', details: 'Details' })[v], checked: view === v, action: () => { view = v; render(); } })) }, { label: 'Arrange Icons', items: [{ label: 'by Name', action: () => { sort = 'name'; render(); } }, { label: 'by Type', action: () => { sort = 'type'; render(); } }, { label: 'by Size', action: () => { sort = 'size'; render(); } }] }, null, { label: 'Refresh', action: render }, { label: 'Paste', disabled: s.clipboard?.type !== 'files', action: () => s.files.paste(realPath()) }, null, { label: 'New', items: [{ label: 'Folder', icon: 'folder', action: () => s.files.newFolder(realPath()) }, { label: 'Text Document', icon: 'notepad', action: () => s.files.newText(realPath()) }] }, { label: 'Properties', action: () => s.files.properties([realPath()]) }], e.clientX, e.clientY);
+        popup([{ label: 'View', items: ['large', 'small', 'list', 'details'].map(v => ({ label: ({ large: 'Large Icons', small: 'Small Icons', list: 'List', details: 'Details' })[v], checked: view === v, action: () => { view = v; render(); } })) }, { label: 'Arrange Icons', items: [{ label: 'by Name', checked: sort === 'name', action: () => { sort = 'name'; render(); } }, { label: 'by Type', checked: sort === 'type', action: () => { sort = 'type'; render(); } }, { label: 'by Size', checked: sort === 'size', action: () => { sort = 'size'; render(); } }] }, null, { label: 'Refresh', action: render }, { label: 'Paste', disabled: s.clipboard?.type !== 'files', action: () => s.files.paste(realPath()) }, null, { label: 'New', items: [{ label: 'Folder', icon: 'folder', action: () => s.files.newFolder(realPath()) }, { label: 'Text Document', icon: 'notepad', action: () => s.files.newText(realPath()) }] }, { label: 'Properties', action: () => s.files.properties([realPath()]) }], e.clientX, e.clientY);
     };
     w.setMenu(menuBar([{ label: 'File', items: () => [{ label: 'Open', disabled: !selection.size, action: () => {
                         const e = entries.find(e => (e.path || e.app) === [...selection][0]);
