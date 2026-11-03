@@ -128,6 +128,7 @@ export class Element extends Node {
         this.offsetHeight = 0;
         /* As in the DOM, a fresh element is not hidden. */
         this.hidden = false;
+        this.disabled = false;
     }
 
     set className(value) { this._className = String(value ?? ''); }
@@ -218,7 +219,12 @@ export class Text extends Node {
 const camel = name => name.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
 const matches = (node, selector) => selector.split(',').some(part => {
-    const test = part.trim();
+    let test = part.trim();
+    if (test.endsWith(':not(:disabled)')) {
+        if (node.disabled)
+            return false;
+        test = test.slice(0, -':not(:disabled)'.length);
+    }
     if (test.startsWith('#'))
         return node.id === test.slice(1);
     if (test.startsWith('.'))
