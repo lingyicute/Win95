@@ -186,8 +186,8 @@ export function mediaPlayer(s, args = {}) {
         selGroup.hidden = width < 310;
     };
     applyWidth();
-    if (typeof ResizeObserver !== 'undefined')
-        new ResizeObserver(applyWidth).observe(w.body);
+    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(applyWidth) : null;
+    resizeObserver?.observe(w.body);
     w.body.append(display, el('div', { class: 'row media-seek' }, slider, scrollBtn(-1), scrollBtn(1)), el('div', { class: 'media-transport' }, el('div', { class: 'tgroup' }, playB, stopB, ejectB), navGroup, selGroup, el('span', { class: 'etch-v', 'aria-hidden': 'true' }), time));
     const setScale = next => {
         scale = next;
@@ -202,6 +202,7 @@ export function mediaPlayer(s, args = {}) {
     });
     refresh();
     w.onClosed.push(() => {
+        resizeObserver?.disconnect();
         media.pause();
         media.src = '';
         if (srcUrl?.startsWith('blob:'))
@@ -292,7 +293,7 @@ export function soundRecorder(s) {
     w.body.style.padding = '10px';
     w.body.style.gap = '10px';
     const canvas = el('canvas', { class: 'sound-wave', width: 380, height: 75 }), ctx = canvas.getContext('2d'), info = el('div', { class: 'row' }, el('span', { text: 'Position: 0.00 sec.' }), el('span', { class: 'spacer' }), el('span', { text: 'Length: 0.00 sec.' }));
-    let recording = null, stream = null, chunks = [], url = null, blob = null, started = 0, frame = 0, analyser = null, audioContext = null;
+    let recording = null, stream = null, chunks = [], url = null, blob = null, started = 0, frame = 0, analyser = null, audioContext = null, openingMic = false;
     const audio = el('audio');
     audio.ontimeupdate = () => {
         if (Number.isFinite(audio.currentTime))
@@ -330,6 +331,7 @@ export function soundRecorder(s) {
             Promise.resolve(context.close()).catch(() => { });
     };
     const stop = () => {
+        openingMic = false;
         if (recording?.state === 'recording') {
             recording.stop();
             stream?.getTracks().forEach(t => t.stop());
@@ -341,10 +343,19 @@ export function soundRecorder(s) {
         audio.pause();
     };
     const record = async () => {
-        if (recording?.state === 'recording')
+        if (openingMic || recording?.state === 'recording')
             return;
+        openingMic = true;
+        audio.pause();
         try {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const nextStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            if (w.closed || !openingMic) {
+                nextStream?.getTracks().forEach(t => t.stop());
+                openingMic = false;
+                return;
+            }
+            stream = nextStream;
+            openingMic = false;
             const context = audioContext = new AudioContext();
             analyser = audioContext.createAnalyser();
             analyser.fftSize = 512;
@@ -370,6 +381,7 @@ export function soundRecorder(s) {
             draw();
         }
         catch (e) {
+            openingMic = false;
             stream?.getTracks().forEach(t => t.stop());
             s.ui.message('The microphone could not be opened. Allow microphone access in your browser and try again.', 'Sound Recorder', ['OK'], { owner: w, height: 185 });
         }

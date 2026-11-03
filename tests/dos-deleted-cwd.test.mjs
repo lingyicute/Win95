@@ -81,3 +81,10 @@ test('the prompt still runs commands after its folder is deleted', async () => {
     await type(element, input, 'dir');
     assert.match(element.querySelector('.dos-output').textContent, /Directory of C:\\/, 'and the prompt can still walk back to the drive');
 });
+
+test('Tab completes a quoted name containing spaces', async () => {
+    const { input } = await mount();
+    input.value = 'cd "My Doc';
+    tab(input);
+    assert.equal(input.value, 'cd "My Documents"');
+});

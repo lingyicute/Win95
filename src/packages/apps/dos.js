@@ -61,7 +61,9 @@ export function dosPrompt(s, args = {}) {
         }
         if (e.key === 'Tab') {
             e.preventDefault();
-            const tokens = input.value.split(' '), prefix = tokens.at(-1);
+            const unclosedQuote = (input.value.match(/"/g)?.length || 0) % 2 === 1;
+            const cut = unclosedQuote ? input.value.lastIndexOf('"') : input.value.lastIndexOf(' ') + 1;
+            const head = input.value.slice(0, cut), prefix = input.value.slice(cut).replace(/^"|"$/g, '');
             /* The folder the prompt stands in can be deleted in another window:
                asking the volume for it then threw out of this handler and the
                key stopped working. Nothing to complete is a valid answer. */
@@ -73,8 +75,7 @@ export function dosPrompt(s, args = {}) {
             const matches = here.filter(n => n.path.split('\\').at(-1).toLowerCase().startsWith(prefix.toLowerCase()));
             if (matches.length === 1) {
                 const completed = matches[0].path.split('\\').at(-1);
-                tokens[tokens.length - 1] = completed.includes(' ') ? `"${completed}"` : completed;
-                input.value = tokens.join(' ');
+                input.value = head + (completed.includes(' ') || unclosedQuote ? `"${completed}"` : completed);
             }
         }
     };

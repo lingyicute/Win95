@@ -106,20 +106,19 @@ export function registryEditor(s) {
     const layout = el('div', { class: 'registry-layout' }), tree = el('div', { class: 'registry-tree inset' }), values = el('div', { class: 'registry-values inset' });
     layout.append(tree, values);
     w.body.append(layout);
+    const desktopKey = 'HKEY_CURRENT_USER\\Control Panel\\Desktop';
     const persist = () => {
         s.settings.set('registry', data);
-        if (key === 'HKEY_CURRENT_USER\\Control Panel\\Desktop') {
-            if (data[key].Color)
-                s.settings.set('desktopColor', data[key].Color);
-            if (data[key].Wallpaper)
-                s.settings.set('wallpaper', data[key].Wallpaper);
-        }
+        if (data[desktopKey]?.Color)
+            s.settings.set('desktopColor', data[desktopKey].Color);
+        if (data[desktopKey]?.Wallpaper)
+            s.settings.set('wallpaper', data[desktopKey].Wallpaper);
         render();
     };
     const edit = async (name) => {
         const v = await s.ui.prompt('Value data:', String(data[key][name] ?? ''), 'Edit String', { owner: w });
         if (v !== null) {
-            data[key][name] = v;
+            Object.defineProperty(data[key], name, { value: v, writable: true, enumerable: true, configurable: true });
             persist();
         }
     };
@@ -304,7 +303,7 @@ export function backup(s) {
     const renderList = () => {
         list.replaceChildren();
         for (const n of s.fs.list('C:\\'))
-            list.append(el('div', { class: 'row', style: { padding: '5px' } }, icon(fileIcon(n), 16), n.path, el('span', { class: 'spacer' }), formatSize(s.fs.size(n.path))));
+            list.append(el('div', { class: 'row', style: { padding: '5px' } }, icon(fileIcon(n), 16), dataText(n.path), el('span', { class: 'spacer' }), formatSize(s.fs.size(n.path))));
         w.status(`${s.fs.nodes.size} objects on the virtual volume`);
     };
     renderList();
