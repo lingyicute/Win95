@@ -112,16 +112,21 @@ export function createDialogs(system) {
                 await message(problem, w.title, ['OK'], { owner: w });
                 return;
             }
-            if (!save && !system.fs.exists(dest)) {
+            if (!save && !existing) {
                 await message('This file could not be found. Check the file name and try again.', w.title, ['OK'], { owner: w });
                 return;
             }
-            if (save && system.fs.exists(dest)) {
-                const r = await message(`${baseName(dest)} already exists. Do you want to replace it?`, 'Save As', ['Yes', 'No'], { owner: w });
+            const parent = system.fs.get(parentPath(dest));
+            if (parent?.type !== 'folder') {
+                await message('The destination folder does not exist.', w.title, ['OK'], { owner: w });
+                return;
+            }
+            if (save && existing) {
+                const r = await message(`${baseName(existing.path)} already exists. Do you want to replace it?`, 'Save As', ['Yes', 'No'], { owner: w });
                 if (r !== 'Yes')
                     return;
             }
-            w.result = dest;
+            w.result = existing ? existing.path : parent.path.replace(/\\?$/, '\\') + baseName(dest);
             w.close();
         };
         dir.onchange = () => { path = dir.value; render(); };

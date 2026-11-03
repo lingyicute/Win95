@@ -25,3 +25,13 @@ test('a case-only folder move renames the folder and its children under the stor
     assert.equal(fs.get('C:\\Outer\\Inner\\a.txt').path, 'C:\\Outer\\INNER\\a.txt');
     assert.equal(fs.get('C:\\Outer').path, 'C:\\Outer');
 });
+
+test('write, mkdir, unique and cross-folder transfer keep stored parent and file case', async () => {
+    storage();
+    const fs = await new VirtualFileSystem().init();
+    assert.equal(fs.mkdir('c:\\my documents\\SubFolder'), 'C:\\My Documents\\SubFolder');
+    assert.equal(fs.write('c:\\my documents\\subfolder\\Note.txt', 'v1'), 'C:\\My Documents\\SubFolder\\Note.txt');
+    assert.equal(fs.write('c:\\my documents\\subfolder\\note.txt', 'v2'), 'C:\\My Documents\\SubFolder\\Note.txt');
+    assert.equal(fs.unique('c:\\my documents\\subfolder\\note.txt'), 'C:\\My Documents\\SubFolder\\note (2).txt');
+    assert.equal(fs.copy('c:\\my documents\\subfolder\\note.txt', 'c:\\my documents\\Copied.txt'), 'C:\\My Documents\\Copied.txt');
+});

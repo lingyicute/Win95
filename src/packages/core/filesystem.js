@@ -130,13 +130,15 @@ export class VirtualFileSystem extends EventTarget {
     write(path, content, mime = 'text/plain') {
         path = normalizePath(path);
         validName(baseName(path));
-        if (this.get(parentPath(path))?.type !== 'folder')
+        const parent = this.get(parentPath(path));
+        if (parent?.type !== 'folder')
             throw new Error('The destination folder does not exist.');
         if (this.get(path)?.type === 'folder')
             throw new Error('A folder has that name.');
         const old = this.get(path);
         if (old?.readOnly || old?.attributes?.includes?.('R'))
             throw new Error('Access denied: the file is read-only.');
+        path = old ? old.path : parent.path.replace(/\\?$/, '\\') + baseName(path);
         this.nodes.set(key(path), { ...old, path, type: 'file', content: String(content), mime, created: old?.created || Date.now(), modified: Date.now() });
         this.changed();
         return path;
@@ -146,8 +148,10 @@ export class VirtualFileSystem extends EventTarget {
         validName(baseName(path));
         if (this.exists(path))
             throw new Error('A file or folder with that name already exists.');
-        if (this.get(parentPath(path))?.type !== 'folder')
+        const parent = this.get(parentPath(path));
+        if (parent?.type !== 'folder')
             throw new Error('The destination folder does not exist.');
+        path = parent.path.replace(/\\?$/, '\\') + baseName(path);
         this.nodes.set(key(path), { path, type: 'folder', created: Date.now(), modified: Date.now() });
         this.changed();
         return path;
@@ -159,6 +163,9 @@ export class VirtualFileSystem extends EventTarget {
      *  bolted on, since 'Report (2).txt' longer than the limit is refused on the spot. */
     unique(path, folder = this.get(path)?.type === 'folder') {
         path = normalizePath(path);
+        const parent = this.get(parentPath(path));
+        if (parent?.type === 'folder' && path.length > 3)
+            path = parent.path.replace(/\\?$/, '\\') + baseName(path);
         if (!this.exists(path))
             return path;
         const dot = path.lastIndexOf('.'), cut = path.lastIndexOf('\\') + 1, hasExt = !folder && dot > cut;
@@ -209,9 +216,12 @@ export class VirtualFileSystem extends EventTarget {
             throw new Error('A folder cannot be placed inside itself.');
         if (this.exists(to))
             throw new Error('A file or folder with that name already exists.');
-        if (this.get(parentPath(to))?.type !== 'folder')
+        const parent = this.get(parentPath(to));
+        if (parent?.type !== 'folder')
             throw new Error('The destination folder does not exist.');
-        const changes = [...this.nodes.values()].filter(n => key(n.path) === key(from) || key(n.path).startsWith(key(from) + '\\')).map(n => [n, to + n.path.slice(from.length)]);
+        const actualFrom = this.get(from).path;
+        to = parent.path.replace(/\\?$/, '\\') + baseName(to);
+        const changes = [...this.nodes.values()].filter(n => key(n.path) === key(from) || key(n.path).startsWith(key(from) + '\\')).map(n => [n, to + n.path.slice(actualFrom.length)]);
         for (const [n, path] of changes) {
             if (!copy)
                 this.nodes.delete(key(n.path));
