@@ -112,7 +112,11 @@ export class WindowManager extends EventTarget {
         if (o.resizable)
             for (const direction of ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']) {
                 const handle = el('div', { class: 'resize-handle resize-' + direction });
-                handle.addEventListener('pointerdown', e => this.drag(w, e, direction));
+                handle.addEventListener('pointerdown', e => {
+                    if (!(this.primary ? this.primary(e) : (e.button === undefined || e.button === 0)) || w.maximized)
+                        return;
+                    this.drag(w, e, direction);
+                });
                 node.append(handle);
             }
         if (!o.modal) {
@@ -393,7 +397,7 @@ export class WindowManager extends EventTarget {
         target.addEventListener('pointercancel', up);
         target.addEventListener('lostpointercapture', up);
     }
-    systemMenu(w, x = w.rect.x + 3, y = w.rect.y + 21) { popup([{ label: 'Restore', disabled: !w.maximized && !w.minimized, action: () => w.restore() }, { label: 'Move', disabled: w.maximized, action: () => { w.element.focus(); w.moveKeys = true; } }, { label: 'Size', disabled: w.maximized || !w.options.resizable, action: () => { w.element.focus(); w.sizeKeys = true; } }, { label: 'Minimize', disabled: !!w.options.modal, action: () => w.minimize() }, { label: 'Maximize', disabled: w.maximized || !w.options.resizable, action: () => w.maximize() }, null, { label: 'Close', shortcut: 'Alt+F4', disabled: w.options.closable === false, action: () => w.close() }], x, y); }
+    systemMenu(w, x = this.frameOf(w).x + 3, y = this.frameOf(w).y + 21) { popup([{ label: 'Restore', disabled: !w.maximized && !w.minimized, action: () => w.restore() }, { label: 'Move', disabled: w.maximized || w.minimized, action: () => { w.element.focus(); w.moveKeys = true; w.sizeKeys = false; } }, { label: 'Size', disabled: w.maximized || w.minimized || !w.options.resizable, action: () => { w.element.focus(); w.sizeKeys = true; w.moveKeys = false; } }, { label: 'Minimize', disabled: !!w.options.modal || w.minimized, action: () => w.minimize() }, { label: 'Maximize', disabled: w.maximized || !w.options.resizable, action: () => w.maximize() }, null, { label: 'Close', shortcut: 'Alt+F4', disabled: w.options.closable === false, action: () => w.close() }], x, y); }
     unmaximize(w) {
         w.maximized = false;
         w.element.classList.remove('maximized');
