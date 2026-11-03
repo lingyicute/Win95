@@ -242,11 +242,13 @@ export class DosEngine {
         return bytes(node.content ?? await this._read(node.path));
     }
     _flags(node) {
-        const existing = this.attributes.get(key(node.path));
+        const raw = node.attributes;
+        /* Attributes stored on the node win over this session's notes, which
+           go stale once Explorer's Read-only box changes the file. */
+        const existing = typeof raw === 'string' ? null : this.attributes.get(key(node.path));
         if (existing)
             return new Set(existing);
         let flags = new Set(isFolder(node) ? [] : ['A']);
-        const raw = node.attributes;
         if (typeof raw === 'string')
             flags = new Set(raw.toUpperCase().replace(/[^ARSH]/g, ''));
         if (node.readOnly || raw?.readOnly)
