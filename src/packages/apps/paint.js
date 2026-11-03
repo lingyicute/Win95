@@ -4,7 +4,7 @@ import { baseName, parentPath } from '@win95/core/filesystem.js';
 import { RasterPresenter } from '@win95/graphics/renderer.js';
 export async function paint(s, args = {}) {
     const w = s.wm.create({ title: 'untitled - Paint', icon: 'paint', width: 720, height: 510, x: args.x, y: args.y });
-    let path = args.path || null, dirty = false, generation = 0, tool = 'pencil', foreground = '#000000', background = '#ffffff', lineWidth = 1, shapeStyle = 'outline', zoom = 1, selection = null, clip = null, undo = [], redo = [], drawing = false, start = null, snapshot = null, last = null, polygon = [], curveLine = null;
+    let path = null, dirty = false, generation = 0, tool = 'pencil', foreground = '#000000', background = '#ffffff', lineWidth = 1, shapeStyle = 'outline', zoom = 1, selection = null, clip = null, undo = [], redo = [], drawing = false, start = null, snapshot = null, last = null, polygon = [], curveLine = null;
     const source = document.createElement('canvas');
     source.width = 640;
     source.height = 360;
@@ -487,19 +487,26 @@ export async function paint(s, args = {}) {
             checkpoint();
             ctx.fillStyle = background;
             ctx.fillRect(selection.x, selection.y, selection.width, selection.height);
+            selection = null;
             dirty = true;
             render();
         }
     };
     const invertColors = async () => {
         checkpoint();
+        const savedGeneration = generation;
         try {
             const image = await presenter.invert(ctx.getImageData(0, 0, source.width, source.height));
+            if (generation !== savedGeneration || w.closed)
+                return;
             ctx.putImageData(image, 0, 0);
+            curveLine = null;
+            polygon = [];
             dirty = true;
             render();
         }
         catch (e) {
+            undo.pop();
             s.ui.error(e, w);
         }
     };
@@ -514,7 +521,7 @@ export async function paint(s, args = {}) {
                                 s.ui.error(e, w);
                             }
                         }
-                    }) }, { label: 'Export PNG…', action: () => download(path ? baseName(path) : 'untitled.png', source.toDataURL()) }, { label: 'Set As Wallpaper', action: () => s.settings.set('wallpaper', source.toDataURL()) }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [{ label: 'Undo', shortcut: 'Ctrl+Z', disabled: !undo.length, action: undoAction }, { label: 'Repeat', shortcut: 'Ctrl+Y', disabled: !redo.length, action: redoAction }, null, { label: 'Cut', shortcut: 'Ctrl+X', action: () => copySelection(true) }, { label: 'Copy', shortcut: 'Ctrl+C', action: () => copySelection(false) }, { label: 'Paste', shortcut: 'Ctrl+V', disabled: !s.imageClipboard, action: pasteSelection }, { label: 'Clear Selection', shortcut: 'Del', disabled: !selection, action: clearSelection }, { label: 'Select All', shortcut: 'Ctrl+A', action: selectAll }] }, { label: 'View', items: () => [{ label: 'Tool Box', checked: !tools.hidden, action: () => tools.hidden = !tools.hidden }, { label: 'Color Box', checked: !palette.hidden, action: () => palette.hidden = !palette.hidden }, null, { label: 'Zoom', items: [1, 2, 4, 8].map(n => ({ label: n * 100 + '%', checked: zoom === n, action: () => { zoom = n; render(); } })) }] }, { label: 'Image', items: [{ label: 'Flip Horizontal', action: () => transform('horizontal') }, { label: 'Flip Vertical', action: () => transform('vertical') }, { label: 'Rotate 90°', action: () => transform('rotate') }, { label: 'Invert Colors', shortcut: 'Ctrl+I', action: invertColors }, { label: 'Attributes…', action: resize }, { label: 'Clear Image', action: () => { checkpoint(); ctx.fillStyle = background; ctx.fillRect(0, 0, source.width, source.height); dirty = true; render(); } }] }, { label: 'Colors', items: [{ label: 'Edit Colors…', action: () => palette.querySelector('input[type=color]').click() }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'paint' }) }, { label: 'About Paint', action: () => s.about('Paint', 'paint') }] }]));
+                    }) }, { label: 'Export PNG…', action: () => download(path ? baseName(path) : 'untitled.png', source.toDataURL()) }, { label: 'Set As Wallpaper', action: () => s.settings.set('wallpaper', source.toDataURL()) }, null, { label: 'Exit', action: () => w.close() }] }, { label: 'Edit', items: () => [{ label: 'Undo', shortcut: 'Ctrl+Z', disabled: !undo.length, action: undoAction }, { label: 'Repeat', shortcut: 'Ctrl+Y', disabled: !redo.length, action: redoAction }, null, { label: 'Cut', shortcut: 'Ctrl+X', action: () => copySelection(true) }, { label: 'Copy', shortcut: 'Ctrl+C', action: () => copySelection(false) }, { label: 'Paste', shortcut: 'Ctrl+V', disabled: !s.imageClipboard, action: pasteSelection }, { label: 'Clear Selection', shortcut: 'Del', disabled: !selection, action: clearSelection }, { label: 'Select All', shortcut: 'Ctrl+A', action: selectAll }] }, { label: 'View', items: () => [{ label: 'Tool Box', checked: !tools.hidden, action: () => tools.hidden = !tools.hidden }, { label: 'Color Box', checked: !palette.hidden, action: () => palette.hidden = !palette.hidden }, null, { label: 'Zoom', items: [1, 2, 4, 8].map(n => ({ label: n * 100 + '%', checked: zoom === n, action: () => { zoom = n; render(); } })) }] }, { label: 'Image', items: [{ label: 'Flip Horizontal', action: () => transform('horizontal') }, { label: 'Flip Vertical', action: () => transform('vertical') }, { label: 'Rotate 90°', action: () => transform('rotate') }, { label: 'Invert Colors', shortcut: 'Ctrl+I', action: invertColors }, { label: 'Attributes…', action: resize }, { label: 'Clear Image', action: () => { checkpoint(); ctx.fillStyle = background; ctx.fillRect(0, 0, source.width, source.height); selection = null; curveLine = null; polygon = []; dirty = true; render(); } }] }, { label: 'Colors', items: [{ label: 'Edit Colors…', action: () => palette.querySelector('input[type=color]').click() }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'paint' }) }, { label: 'About Paint', action: () => s.about('Paint', 'paint') }] }]));
     w.element.addEventListener('keydown', e => {
         if ((e.ctrlKey || e.metaKey) && ['s', 'o', 'n', 'z', 'y', 'c', 'x', 'v', 'a', 'i'].includes(e.key.toLowerCase())) {
             e.preventDefault();
@@ -527,9 +534,9 @@ export async function paint(s, args = {}) {
     });
     w.onClose = confirm;
     presenter.onBackendChange = () => { canvas = presenter.canvas; drawing = false; render(); };
-    if (path)
+    if (args.path)
         try {
-            await loadImage(s.fs.read(path), path);
+            await loadImage(s.fs.read(args.path), args.path);
         }
         catch (e) {
             s.ui.error(new Error('Paint could not open this image.'), w);
