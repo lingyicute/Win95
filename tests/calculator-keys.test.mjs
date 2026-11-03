@@ -80,3 +80,11 @@ test('Backspace does not leave a negative zero behind', () => {
     assert.equal(press(sheet, '0', '.', '±').value, '-0.');
     assert.equal(press(sheet, 'Backspace').value, '0', '-0. rubbed out is 0, not "-0"');
 });
+
+test('a division by zero mid-expression clears the pending operator and M+ ends the entry', () => {
+    const sheet = calculator(makeSystem());
+    assert.equal(press(sheet, '1', '÷', '0', '+').value, 'Error');
+    assert.equal(press(sheet, '5', '=').value, '5', 'Error clears the pending sum instead of poisoning acc with NaN');
+    assert.equal(press(sheet, 'C', '4', 'M+', '7').value, '7', 'typing after M+ starts a new entry');
+    assert.equal(press(sheet, 'MR').value, '4');
+});

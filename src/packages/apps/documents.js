@@ -444,8 +444,14 @@ export function calculator(s) {
         else if (['+', '−', '×', '÷'].includes(key)) {
             if (op && !newEntry)
                 value = format(calculate(acc, Number(value), op));
-            acc = Number(value);
-            op = key;
+            if (value === 'Error') {
+                acc = null;
+                op = null;
+            }
+            else {
+                acc = Number(value);
+                op = key;
+            }
             newEntry = true;
         }
         else if (key === '=') {
@@ -489,8 +495,10 @@ export function calculator(s) {
             memory = Number(value);
             newEntry = true;
         }
-        else if (key === 'M+')
+        else if (key === 'M+') {
             memory += Number(value);
+            newEntry = true;
+        }
         else {
             let n = Number(value);
             /* Degrees are reduced before they become radians, and a result that is only
