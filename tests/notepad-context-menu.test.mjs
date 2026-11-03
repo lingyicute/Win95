@@ -144,3 +144,34 @@ test('the Edit menu still shows the shortcuts the right-click menu leaves out', 
     assert.deepEqual(hints.slice(0, 5), ['Ctrl+Z', 'Ctrl+X', 'Ctrl+C', 'Ctrl+V', 'Del']);
     assert.deepEqual(labels().slice(0, 8), ['Undo', '—', 'Cut', 'Copy', 'Paste', 'Delete', '—', 'Select All'], 'the same commands in the same order');
 });
+
+const ctrlZ = (w, shiftKey = false) => {
+    const event = { type: 'keydown', key: shiftKey ? 'Z' : 'z', ctrlKey: true, shiftKey, preventDefault() { this.defaultPrevented = true; } };
+    w.element.dispatchEvent(event);
+    return event;
+};
+
+test('Ctrl+Z undoes our own history and stops the browser from undoing twice', () => {
+    const { w, editor } = mount('Hello');
+    editor.dispatchEvent({ type: 'beforeinput' });
+    editor.value = 'Hello there';
+    const event = ctrlZ(w);
+    assert.equal(editor.value, 'Hello');
+    assert.equal(event.defaultPrevented, true);
+});
+
+test('Ctrl+Z with nothing of ours to undo is left to the textarea', () => {
+    const { w, editor } = mount('Hello');
+    const event = ctrlZ(w);
+    assert.equal(event.defaultPrevented, undefined, 'the native undo still runs');
+    assert.equal(editor.value, 'Hello');
+});
+
+test('Ctrl+Shift+Z is redo, not our undo', () => {
+    const { w, editor } = mount('Hello');
+    editor.dispatchEvent({ type: 'beforeinput' });
+    editor.value = 'Hello there';
+    const event = ctrlZ(w, true);
+    assert.equal(event.defaultPrevented, undefined);
+    assert.equal(editor.value, 'Hello there');
+});

@@ -191,9 +191,16 @@ export function notepad(s, args = {}) {
     };
     w.element.addEventListener('keydown', e => {
         const k = e.key.toLowerCase();
-        if ((e.ctrlKey || e.metaKey) && ['s', 'o', 'n', 'p', 'f', 'z'].includes(k)) {
+        if ((e.ctrlKey || e.metaKey) && ['s', 'o', 'n', 'p', 'f'].includes(k)) {
             e.preventDefault();
-            ({ s: () => save(e.shiftKey), o: () => load(), n: fresh, p: () => printDocument(editor.value), f: () => find(), z: undoAction })[k]();
+            ({ s: () => save(e.shiftKey), o: () => load(), n: fresh, p: () => printDocument(editor.value), f: () => find() })[k]();
+        }
+        /* Ctrl+Z is ours only while there is something of ours to undo; with an
+           empty stack, or as Ctrl+Shift+Z (redo), the browser's own history in
+           the textarea keeps working. */
+        if ((e.ctrlKey || e.metaKey) && k === 'z' && !e.shiftKey && undo.length) {
+            e.preventDefault();
+            undoAction();
         }
         if (e.key === 'F3') {
             e.preventDefault();
