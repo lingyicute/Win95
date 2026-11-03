@@ -186,6 +186,8 @@ export class VirtualFileSystem extends EventTarget {
             /* Only a move may differ in letter case; a copy named like its source is a clash. */
             if (copy && from !== to)
                 throw new Error('A file or folder with that name already exists.');
+            if (copy)
+                return to;
             const actualFrom = this.get(from).path;
             if (actualFrom !== to) {
                 const list = [...this.nodes.values()].filter(n => key(n.path) === key(from) || key(n.path).startsWith(key(from) + '\\'));
