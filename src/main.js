@@ -153,7 +153,7 @@ const startBoot = () => {
 bootEl?.addEventListener('click', startBoot);
 installClipboard(s);
 setDoubleClickDelay(() => s.settings.get('doubleClickMs', 500));
-s.recent = path => { const r = s.settings.get('recentDocuments', []).filter(x => x !== path); r.unshift(path); s.settings.set('recentDocuments', r.slice(0, 12)); };
+s.recent = path => { const k = path.toLowerCase(), r = s.settings.get('recentDocuments', []).filter(x => x.toLowerCase() !== k); r.unshift(path); s.settings.set('recentDocuments', r.slice(0, 12)); };
 s.beep = (kind = 'click') => {
     if (kind === 'startup' || kind === 'shutdown') {
         s.playSound(kind);
@@ -197,6 +197,7 @@ s.open = (path, depth = 0) => {
         s.ui.message('The file could not be found: ' + path, 'Windows', ['OK']);
         return;
     }
+    path = n.path;
     if (n.type === 'folder')
         return s.launch('explorer', { path });
     const ext = path.split('.').pop().toLowerCase();
@@ -491,7 +492,7 @@ function startMenu() {
     }
     const accessories = [...appMenu('accessory'), null, { label: 'Multimedia', icon: 'media', items: () => appMenu('multimedia') }, { label: 'System Tools', icon: 'computer', items: () => appMenu('system').filter(x => x.label !== 'Windows Explorer' && x.label !== 'MS-DOS Prompt') }];
     const programs = [{ label: 'Accessories', icon: 'folder', items: accessories }, { label: 'Games', icon: 'folder', items: () => appMenu('game') }, { label: 'Communications', icon: 'folder', items: () => appMenu('communication') }, null, { label: 'MS-DOS Prompt', icon: 'dos', action: () => s.launch('dos') }, { label: 'Windows Explorer', icon: 'folder', action: () => s.launch('explorer', { path: 'C:\\', tree: true }) }];
-    const items = [{ label: 'Programs', icon: 'programs', items: programs }, { label: 'Documents', icon: 'documents', items: () => { const docs = s.settings.get('recentDocuments', []).filter(p => s.fs.exists(p)).map(path => ({ label: baseName(path), icon: fileIcon(s.fs.get(path)), action: () => s.open(path) })); return docs.length ? docs : [{ label: '(Empty)', disabled: true }]; } }, { label: 'Settings', icon: 'settings', items: [{ label: 'Control Panel', icon: 'control', action: () => s.launch('control') }, { label: 'Printers', icon: 'printer', action: () => s.launch('printers') }, { label: 'Taskbar…', icon: 'windows', action: () => s.launch('taskbar-properties') }] }, { label: 'Find', icon: 'find', items: [{ label: 'Files or Folders…', icon: 'find', action: () => s.launch('find') }, { label: 'Computer…', icon: 'network', action: () => s.launch('network') }] }, { label: 'Help', icon: 'help', action: () => s.launch('help') }, { label: 'Run…', icon: 'run', action: runDialog }, null, { label: 'Log Off…', icon: 'logoff', action: s.logoff }, { label: 'Suspend', icon: 'suspend', action: s.suspend }, { label: 'Shut Down…', icon: 'shutdown', action: s.shutdown }];
+    const items = [{ label: 'Programs', icon: 'programs', items: programs }, { label: 'Documents', icon: 'documents', items: () => { const docs = s.settings.get('recentDocuments', []).filter(p => s.fs.exists(p)).map(path => ({ label: baseName(path), raw: true, icon: fileIcon(s.fs.get(path)), action: () => s.open(path) })); return docs.length ? docs : [{ label: '(Empty)', disabled: true }]; } }, { label: 'Settings', icon: 'settings', items: [{ label: 'Control Panel', icon: 'control', action: () => s.launch('control') }, { label: 'Printers', icon: 'printer', action: () => s.launch('printers') }, { label: 'Taskbar…', icon: 'windows', action: () => s.launch('taskbar-properties') }] }, { label: 'Find', icon: 'find', items: [{ label: 'Files or Folders…', icon: 'find', action: () => s.launch('find') }, { label: 'Computer…', icon: 'network', action: () => s.launch('network') }] }, { label: 'Help', icon: 'help', action: () => s.launch('help') }, { label: 'Run…', icon: 'run', action: runDialog }, null, { label: 'Log Off…', icon: 'logoff', action: s.logoff }, { label: 'Suspend', icon: 'suspend', action: s.suspend }, { label: 'Shut Down…', icon: 'shutdown', action: s.shutdown }];
     /* "Show small icons in Start menu" drops the Windows 95 banner and the 32px
        icons for a narrow menu of 16px ones, the way Windows 95 did. */
     const small = s.settings.get('showSmallIcons', false);
@@ -510,7 +511,8 @@ const arrangeIcons = order => { s.settings.set('desktop-arrange', order); render
 const arrangeEntry = (a, b, order) => {
     if (order === 'type') {
         const kind = e => e.app ? 0 : (s.fs.get(e.path)?.type === 'folder' ? 1 : 2);
-        return kind(a) - kind(b) || a.name.localeCompare(b.name);
+        const ext = e => kind(e) === 2 && baseName(e.path).includes('.') ? baseName(e.path).split('.').pop().toLowerCase() : '';
+        return kind(a) - kind(b) || ext(a).localeCompare(ext(b)) || a.name.localeCompare(b.name);
     }
     return a.name.localeCompare(b.name);
 };

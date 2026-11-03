@@ -28,6 +28,7 @@ export const displayName = (node, hideExtensions = false) => {
 export const NAME_LIMIT = 255;
 
 const key = p => normalizePath(p).toLowerCase();
+const encoder = new TextEncoder();
 export function nameError(name) {
     const n = String(name ?? '');
     if (!n.trim())
@@ -277,7 +278,7 @@ export class VirtualFileSystem extends EventTarget {
             return inFolder && !inRecycleBin && re.test(baseName(node.path));
         });
     }
-    size(path) { const n = this.get(path); return n?.type === 'file' ? new TextEncoder().encode(n.content || '').length : [...this.nodes.values()].filter(n => key(n.path).startsWith(key(path).replace(/\\$/, '') + '\\') && n.type === 'file').reduce((s, n) => s + new TextEncoder().encode(n.content || '').length, 0); }
+    size(path) { const n = this.get(path); return n?.type === 'file' ? encoder.encode(n.content || '').length : [...this.nodes.values()].filter(n => key(n.path).startsWith(key(path).replace(/\\$/, '') + '\\') && n.type === 'file').reduce((s, n) => s + encoder.encode(n.content || '').length, 0); }
     changed() {
         this.revision++;
         try {

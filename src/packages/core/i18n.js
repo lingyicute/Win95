@@ -415,6 +415,8 @@ function applyPatterns(core) {
     if ((m = /^(.+): (\d+) \(\+(\d+)\)$/.exec(core))) return `${name(m[1])}：${m[2]}（+${m[3]}）`;
     if ((m = /^Cannot find '(.+)'\. Make sure the name is correct and try again\.$/.exec(core))) return `找不到“${m[1]}”。请确认名称正确后重试。`;
     if ((m = /^Cannot find "(.+)"$/.exec(core))) return `找不到“${m[1]}”`;
+    if ((m = /^The file could not be found: (.+)$/.exec(core))) return `找不到此文件：${m[1]}`;
+    if ((m = /^File not found: (.+)$/.exec(core))) return `找不到文件：${m[1]}`;
     if ((m = /^Cannot open "(.+)": the shortcut points to a shortcut chain that is too deep\.$/.exec(core))) return `无法打开“${m[1]}”：快捷方式指向的快捷方式链过深。`;
     if ((m = /^Exploring - (.+)$/.exec(core))) return `正在浏览 - ${m[1]}`;
     if ((m = /^The text in the (.+) file has changed\.$/.exec(core))) return `“${m[1]}”文件中的文本已更改。`;
