@@ -394,12 +394,19 @@ export class WindowManager extends EventTarget {
         target.addEventListener('lostpointercapture', up);
     }
     systemMenu(w, x = w.rect.x + 3, y = w.rect.y + 21) { popup([{ label: 'Restore', disabled: !w.maximized && !w.minimized, action: () => w.restore() }, { label: 'Move', disabled: w.maximized, action: () => { w.element.focus(); w.moveKeys = true; } }, { label: 'Size', disabled: w.maximized || !w.options.resizable, action: () => { w.element.focus(); w.sizeKeys = true; } }, { label: 'Minimize', disabled: !!w.options.modal, action: () => w.minimize() }, { label: 'Maximize', disabled: w.maximized || !w.options.resizable, action: () => w.maximize() }, null, { label: 'Close', shortcut: 'Alt+F4', disabled: w.options.closable === false, action: () => w.close() }], x, y); }
+    unmaximize(w) {
+        w.maximized = false;
+        w.element.classList.remove('maximized');
+        const button = w.element.querySelector('.caption-button.maximize');
+        button?.classList.remove('restore');
+        button?.setAttribute('aria-label', 'Maximize');
+    }
     cascade() {
         let i = 0;
         for (const w of this.windows.filter(w => !w.options.modal)) {
             w.motion?.cancel();
             w.motion = null;
-            w.maximized = false;
+            this.unmaximize(w);
             w.minimized = false;
             w.element.hidden = false;
             w.rect = { ...w.rect, x: 100 + i * 24, y: 35 + i * 24 };
@@ -408,7 +415,7 @@ export class WindowManager extends EventTarget {
             i++;
         }
     }
-    tile(vertical = true) { const wins = this.windows.filter(w => !w.minimized && !w.options.modal); wins.forEach((w, i) => { w.motion?.cancel(); w.motion = null; w.maximized = false; w.rect = vertical ? { x: i * innerWidth / wins.length, y: 0, width: innerWidth / wins.length, height: innerHeight - taskbarHeight() } : { x: 0, y: i * (innerHeight - taskbarHeight()) / wins.length, width: innerWidth, height: (innerHeight - taskbarHeight()) / wins.length }; this.layout(w); }); }
+    tile(vertical = true) { const wins = this.windows.filter(w => !w.minimized && !w.options.modal); wins.forEach((w, i) => { w.motion?.cancel(); w.motion = null; this.unmaximize(w); w.rect = vertical ? { x: i * innerWidth / wins.length, y: 0, width: innerWidth / wins.length, height: innerHeight - taskbarHeight() } : { x: 0, y: i * (innerHeight - taskbarHeight()) / wins.length, width: innerWidth, height: (innerHeight - taskbarHeight()) / wins.length }; this.layout(w); }); }
     fit() {
         for (const w of this.windows) {
             if (!w.options.allowOverflow) {
