@@ -292,6 +292,10 @@ export function soundRecorder(s) {
     const canvas = el('canvas', { class: 'sound-wave', width: 380, height: 75 }), ctx = canvas.getContext('2d'), info = el('div', { class: 'row' }, el('span', { text: 'Position: 0.00 sec.' }), el('span', { class: 'spacer' }), el('span', { text: 'Length: 0.00 sec.' }));
     let recording = null, stream = null, chunks = [], url = null, blob = null, started = 0, frame = 0, analyser = null, audioContext = null;
     const audio = el('audio');
+    audio.ontimeupdate = () => {
+        if (Number.isFinite(audio.currentTime))
+            info.firstChild.textContent = 'Position: ' + audio.currentTime.toFixed(2) + ' sec.';
+    };
     s.mixer?.attach(audio, 'wave');
     const draw = () => {
         ctx.fillStyle = '#000';
@@ -339,6 +343,11 @@ export function soundRecorder(s) {
             chunks = [];
             recording.ondataavailable = e => chunks.push(e.data);
             recording.onstop = () => {
+                stream?.getTracks().forEach(t => t.stop());
+                analyser = null;
+                audioContext?.close();
+                cancelAnimationFrame(frame);
+                draw();
                 blob = new Blob(chunks, { type: recording.mimeType || 'audio/webm' });
                 if (url)
                     URL.revokeObjectURL(url);
@@ -404,7 +413,7 @@ export function internet(s, args = {}) {
             }
         }
         const finalUrl = parsed ? parsed.href : (url || 'about:home');
-        if (push) {
+        if (push && history[index] !== finalUrl) {
             history = history.slice(0, index + 1);
             history.push(finalUrl);
             index++;
@@ -436,7 +445,7 @@ export function internet(s, args = {}) {
             const notice = el('div', { style: { padding: '5px 8px', background: '#ffffe1', font: '12px var(--ui-font)' } }, 'If the website does not allow embedded viewing, ', el('a', { href: parsed.href, target: '_blank', rel: 'noopener noreferrer', text: 'open it in a browser tab' }), '.');
             page.append(notice, el('iframe', { title: 'Website', src: parsed.href, sandbox: 'allow-scripts allow-forms allow-popups', referrerPolicy: 'no-referrer', style: { width: '100%', height: 'calc(100% - 34px)', border: 0, background: '#fff' } }));
         }
-        w.status(url === 'about:home' ? 'Done' : url);
+        w.status(finalUrl === 'about:home' ? 'Done' : finalUrl);
     };
     toolbar.append(button('Back', () => {
         if (index > 0)
@@ -489,10 +498,10 @@ export function inbox(s) {
             folders.append(el('button', { class: 'tree-item' + (f === folder ? ' selected' : ''), onclick: () => { folder = f; selected = null; render(); } }, icon('folder', 16), f));
         list.replaceChildren();
         const items = messages.filter(m => m.folder === folder);
-        for (const m of items)
-            list.append(button(`${m.from || m.to}    ${m.subject}`, () => { selected = m; render(); }, { class: selected === m ? 'pressed' : '' }));
         if (!selected && items.length)
             selected = items[0];
+        for (const m of items)
+            list.append(button(`${m.from || m.to}    ${m.subject}`, () => { selected = m; render(); }, { class: selected === m ? 'pressed' : '' }));
         preview.replaceChildren();
         if (selected)
             preview.append(el('p', {}, el('b', { text: mailLabel('From:') }), selected.from || 'Windows User'), el('p', {}, el('b', { text: mailLabel('To:') }), selected.to), el('p', {}, el('b', { text: mailLabel('Subject:') }), selected.subject), el('div', { class: 'separator' }), el('div', { text: selected.body, style: { whiteSpace: 'pre-wrap' } }));
@@ -540,7 +549,7 @@ export function inbox(s) {
             selected = null;
             save();
         }
-    }), button('Reply', () => compose(selected)), button('Address Book', () => s.launch('addressbook')));
+    }), button('Reply', () => { if (selected) compose(selected); }), button('Address Book', () => s.launch('addressbook')));
     content.append(list, preview);
     layout.append(folders, content);
     w.body.append(toolbar, layout);
