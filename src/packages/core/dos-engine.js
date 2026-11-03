@@ -52,6 +52,8 @@ const isFolder = node => !!node && (['folder', 'directory', 'dir'].includes(node
 const bytes = value => new TextEncoder().encode(String(value ?? '')).length;
 const pad = (value, length) => String(value).padEnd(length, ' ');
 const error = message => Object.assign(new Error(message), { dosError: true });
+/** NUL and CON are devices in every directory, with or without an extension or colon. */
+const deviceName = path => /^(NUL|CON)(?:\.[^.]*)?:?$/i.exec(baseName(String(path).trim().replace(/\//g, '\\')))?.[1].toUpperCase() || null;
 /** Normalize a DOS path, retaining C:\\ and clamping .. at the drive root. */
 export function normalizeDosPath(value, cwd = 'C:\\') {
     let input = String(value ?? '').trim().replace(/^"(.*)"$/, '$1').replace(/\//g, '\\');
@@ -315,10 +317,15 @@ export class DosEngine {
             if (!parsed.words.length)
                 return { output: '' };
             if (parsed.input)
-                parsed.stdin = await this._read(parsed.input);
+                parsed.stdin = deviceName(parsed.input) ? '' : await this._read(parsed.input);
             const result = await this._dispatch(parsed, context);
             this.errorlevel = result.errorlevel ?? 0;
-            if (parsed.redirect) {
+            /* > NUL throws the output away and > CON leaves it on the screen;
+               neither is a file to create. */
+            const device = parsed.redirect && deviceName(parsed.redirect.path);
+            if (device === 'NUL')
+                result.output = '';
+            else if (parsed.redirect && !device) {
                 const path = this.normalize(parsed.redirect.path);
                 const old = parsed.redirect.append && await this._exists(path) ? await this._read(path) : '';
                 const output = String(result.output ?? '');
@@ -333,7 +340,15 @@ export class DosEngine {
         }
     }
     async _dispatch(parsed, context) {
-        const [typed, ...args] = parsed.words;
+        let [typed, ...args] = parsed.words;
+        /* COMMAND.COM ends a built-in name at a backslash, a switch or a lone
+           . / .., so CD.., CD\ and DIR/W need no space. */
+        const glued = /^([A-Za-z]+)(\.\.?(?:\\.*)?|[\\/].*)$/.exec(typed);
+        if (glued && key(glued[1]) !== 'ECHO' && HELP[COMMAND_ALIASES[key(glued[1])] || key(glued[1])]) {
+            [, typed] = glued;
+            args = [glued[2], ...args];
+            parsed.tail = glued[2] + (parsed.tail ? ' ' + parsed.tail : '');
+        }
         let command = key(typed);
         command = COMMAND_ALIASES[command] || command;
         if (args.includes('/?'))
@@ -632,11 +647,15 @@ export class DosEngine {
                 const split = node.name.lastIndexOf('.');
                 const stem = split > 0 ? node.name.slice(0, split) : node.name;
                 const extension = split > 0 ? node.name.slice(split + 1) : '';
-                let index = 0;
-                targetName = targetName.replace(/\*/g, () => index++ === 0 ? stem : extension);
+                /* A star copies the part of the old name it stands in: the stem
+                   before the new name's dot, the extension after it (b.* keeps .TXT). */
+                const dot = targetName.lastIndexOf('.');
+                targetName = dot < 0 ? targetName.replaceAll('*', stem)
+                    : targetName.slice(0, dot).replaceAll('*', stem) + '.' + targetName.slice(dot + 1).replaceAll('*', extension);
             }
             let position = 0;
-            targetName = [...targetName].map(c => c === '?' ? node.name[position++] || '' : (position++, c)).join('');
+            /* A dot with nothing after it ends the name, as it does in DOS: *.* keeps NOEXT as NOEXT. */
+            targetName = [...targetName].map(c => c === '?' ? node.name[position++] || '' : (position++, c)).join('').replace(/\.+$/, '');
             if (!targetName || targetName === '.' || targetName === '..')
                 throw error('Invalid file name.');
             const target = join(parentOf(node.path), targetName);
@@ -904,6 +923,18 @@ export class DosEngine {
         return null;
     }
     async _runBatch(path, args, parentContext) {
+        /* A batch file started from the prompt gives ECHO back as it found it,
+           so its @ECHO OFF does not silence the next batch file or ECHO. */
+        const echo = this.echo;
+        try {
+            return await this._batch(path, args, parentContext);
+        }
+        finally {
+            if (!parentContext.depth)
+                this.echo = echo;
+        }
+    }
+    async _batch(path, args, parentContext) {
         if (parentContext.depth >= this.maxBatchDepth)
             throw error('Batch execution stopped: nesting limit exceeded.');
         const source = await this._read(path), lines = source.replace(/^\uFEFF/, '').split(/\r?\n/);
