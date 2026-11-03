@@ -274,12 +274,12 @@ s.run = command => {
     if (!match)
         return;
     let name = (match[1] || match[2]).toLowerCase(), rest = match[3] || '';
+    if (name.endsWith('.exe'))
+        name = name.slice(0, -4);
     if (name === 'control' && rest) {
         const cpl = rest.toLowerCase().split(' ')[0];
         return s.launch(({ 'desk.cpl': 'display', 'timedate.cpl': 'datetime', 'sysdm.cpl': 'system', 'main.cpl': 'mouse', 'mmsys.cpl': 'multimedia', 'intl.cpl': 'regional', 'appwiz.cpl': 'addremove', 'access.cpl': 'accessibility', 'netcpl.cpl': 'network', 'password.cpl': 'passwords', 'modem.cpl': 'modems', 'joy.cpl': 'joystick' })[cpl] || rest.toLowerCase());
     }
-    if (name.endsWith('.exe'))
-        name = name.slice(0, -4);
     const id = aliases[name] || name;
     if (id === 'about')
         return s.about();
@@ -475,7 +475,7 @@ s.updateClock = () => {
     const now = new Date(Date.now() + s.settings.get('clockOffset', 0));
     try {
         document.querySelector('#clock').textContent = now.toLocaleTimeString(locale, options);
-        document.querySelector('#clock').title = now.toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        document.querySelector('#clock').title = now.toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', ...(zone !== 'Local time' ? { timeZone: zone } : {}) });
     }
     catch {
         document.querySelector('#clock').textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -552,9 +552,9 @@ function renderDesktop() {
         b.oncontextmenu = event => {
             event.preventDefault();
             event.stopPropagation();
-            popup(e.path ? s.files.menu([e.path], 'C:\\Windows\\Desktop') : [{ label: 'Open', action: open }, ...(e.app === 'recycle' ? [{ label: 'Empty Recycle Bin', action: async () => {
+            popup(e.path ? s.files.menu([e.path], 'C:\\Windows\\Desktop') : [{ label: 'Open', action: open }, ...(e.app === 'recycle' ? [{ label: 'Empty Recycle Bin', disabled: !shellFolder(s.fs, 'C:\\Recycled').length, action: async () => {
                             if (await s.ui.message('Are you sure you want to permanently delete all items in the Recycle Bin?', 'Confirm File Delete', ['Yes', 'No']) === 'Yes')
-                                for (const n of s.fs.list('C:\\Recycled'))
+                                for (const n of shellFolder(s.fs, 'C:\\Recycled'))
                                     s.fs.remove(n.path, true);
                         } }] : []), null, { label: 'Properties', action: () => s.launch(e.app === 'computer' ? 'system' : e.app === 'network-neighborhood' ? 'network' : 'display') }], event.clientX, event.clientY);
         };
