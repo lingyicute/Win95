@@ -61,7 +61,7 @@ export function mediaPlayer(s, args = {}) {
         refresh();
     };
     const play = () => media.play().catch(() => s.ui.message('This media cannot be played. Choose an audio or video file supported by your browser.', 'Media Player', ['OK'], { owner: w }));
-    const stop = () => { media.pause(); media.currentTime = 0; };
+    const stop = () => { media.pause(); media.currentTime = 0; media.ontimeupdate(); };
     const open = async () => {
         const p = await s.ui.file({ owner: w, type: 'Media files (*.wav, *.mp3, *.mp4, *.webm)' });
         if (p) {
@@ -130,12 +130,12 @@ export function mediaPlayer(s, args = {}) {
     });
     const stopB = tbtn('stop', 'Stop', stop);
     const ejectB = tbtn('eject', 'Eject', () => { });
-    const prevB = tbtn('prev', 'Previous', () => { media.currentTime = 0; });
+    const prevB = tbtn('prev', 'Previous', () => { media.currentTime = 0; media.ontimeupdate(); });
     const rewB = tbtn('rew', 'Rewind', () => { });
     const ffB = tbtn('ff', 'Fast forward', () => { });
     holdSeek(rewB, -1);
     holdSeek(ffB, 1);
-    const nextB = tbtn('next', 'Next', () => { if (Number.isFinite(media.duration)) media.currentTime = media.duration; });
+    const nextB = tbtn('next', 'Next', () => { if (Number.isFinite(media.duration)) { media.currentTime = media.duration; media.ontimeupdate(); } });
     const selSB = tbtn('selStart', 'Start selection', () => {
         selStart = media.currentTime;
         if (selEnd != null && selEnd <= selStart)
@@ -154,6 +154,7 @@ export function mediaPlayer(s, args = {}) {
         b.addEventListener('click', () => {
             const dur = Number.isFinite(media.duration) ? media.duration : 0;
             media.currentTime = Math.min(dur, Math.max(0, media.currentTime + dir / 30));
+            media.ontimeupdate();
         });
         return b;
     };
