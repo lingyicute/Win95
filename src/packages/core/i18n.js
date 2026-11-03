@@ -448,7 +448,8 @@ function applyPatterns(core) {
     if ((m = /^(.+) balance$/.exec(core))) return `${name(m[1])} 平衡`;
     if ((m = /^(.+) volume$/.exec(core))) return `${name(m[1])} 音量`;
     if ((m = /^(.+) mute$/.exec(core))) return `${name(m[1])} 静音`;
-    if ((m = /^Color \(#[0-9a-fA-F]{6}\)$/.exec(core))) return `颜色 ${core.slice(7, -1)}`;
+    if ((m = /^Color \(?(#[0-9a-fA-F]{6})\)?$/.exec(core))) return `颜色 ${m[1]}`;
+    if ((m = /^Desktop color (#[0-9a-fA-F]{6})$/.exec(core))) return `桌面颜色 ${m[1]}`;
     if ((m = /^Foundation (\d+)$/.exec(core))) return `回收堆 ${m[1]}`;
     if ((m = /^Free cell (\d+)$/.exec(core))) return `空闲单元 ${m[1]}`;
     if ((m = /^Tableau column (\d+)$/.exec(core))) return `纸牌列 ${m[1]}`;

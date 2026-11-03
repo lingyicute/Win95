@@ -43,5 +43,7 @@ test('the colour pattern still matches what Paint prints', () => {
     // The regression this guards: the swatch label is built as 'Color ' + hex.
     const css = readFileSync(path.join(root, 'src/packages/apps/paint.js'), 'utf8');
     assert.match(css, /'aria-label': 'Color ' \+ color/, 'Paint still prints the colour this way');
-    assert.equal(translateText('Color (#000080)', 'zh'), '颜色 #000080', 'and the pattern still answers it');
+    assert.equal(translateText('Color #000080', 'zh'), '颜色 #000080', 'matches the bare hex Paint prints');
+    assert.equal(translateText('Color (#000080)', 'zh'), '颜色 #000080', 'and the bracketed form too');
+    assert.equal(translateText('Desktop color #008080', 'zh'), '桌面颜色 #008080', 'Display Properties swatches translate too');
 });
