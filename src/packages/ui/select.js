@@ -102,6 +102,8 @@ export function combo(options = {}) {
             highlighted = match.value;
             if (popup)
                 highlightRow();
+            else
+                choose(match.value);
         }
     };
 
@@ -203,7 +205,7 @@ export function combo(options = {}) {
     };
 
     node.addEventListener('keydown', event => {
-        if (state.disabled)
+        if (state.disabled || editable)
             return;
         const open = !!popup;
         if (event.key === 'Escape' && open) {
