@@ -219,12 +219,13 @@ export class VirtualFileSystem extends EventTarget {
                 return candidate;
         }
     }
-    transfer(from, to, copy = false) {
+    transfer(from, to, copy = false, { overwrite = false } = {}) {
         from = normalizePath(from);
         to = normalizePath(to);
         if (from.length <= 3 || key(from) === 'c:\\recycled')
             throw new Error('This system folder cannot be moved.');
-        if (!this.exists(from))
+        const source = this.get(from);
+        if (!source)
             throw new Error('The source no longer exists.');
         if (key(to) === key(from)) {
             /* Only a move may differ in letter case; a copy named like its source is a clash. */
@@ -232,7 +233,7 @@ export class VirtualFileSystem extends EventTarget {
                 throw new Error('A file or folder with that name already exists.');
             if (copy)
                 return to;
-            const actualFrom = this.get(from).path;
+            const actualFrom = source.path;
             /* Only the last name changes case; the folders above it keep the case
                they are stored with, whatever case the caller spelled them in. */
             const target = actualFrom.slice(0, actualFrom.lastIndexOf('\\') + 1) + to.slice(to.lastIndexOf('\\') + 1);
@@ -250,25 +251,41 @@ export class VirtualFileSystem extends EventTarget {
         validName(baseName(to));
         if (key(to).startsWith(key(from) + '\\'))
             throw new Error('A folder cannot be placed inside itself.');
-        if (this.exists(to))
-            throw new Error('A file or folder with that name already exists.');
+        const destination = this.get(to);
+        if (destination) {
+            if (!overwrite)
+                throw new Error('A file or folder with that name already exists.');
+            if (source.type !== 'file' || destination.type !== 'file')
+                throw new Error('Only a file can replace another file.');
+            if (destination.readOnly || destination.attributes?.includes?.('R'))
+                throw new Error('Access denied: the file is read-only.');
+        }
         const parent = this.get(parentPath(to));
         if (parent?.type !== 'folder')
             throw new Error('The destination folder does not exist.');
-        const actualFrom = this.get(from).path;
+        const actualFrom = source.path;
         to = parent.path.replace(/\\?$/, '\\') + baseName(to);
-        const changes = [...this.nodes.values()].filter(n => key(n.path) === key(from) || key(n.path).startsWith(key(from) + '\\')).map(n => [n, to + n.path.slice(actualFrom.length)]);
-        for (const [n, path] of changes) {
+        /* Clone everything before touching either name: a failed copy or move must
+           never publish a missing destination or a partially transferred tree. */
+        const changes = [...this.nodes.values()]
+            .filter(n => key(n.path) === key(from) || key(n.path).startsWith(key(from) + '\\'))
+            .map(n => {
+                const path = to + n.path.slice(actualFrom.length);
+                return [n.path, path, { ...structuredClone(n), path, modified: Date.now(), ...(copy ? { originalPath: undefined } : {}) }];
+            });
+        if (destination)
+            this.nodes.delete(key(destination.path));
+        for (const [oldPath, path, node] of changes) {
             if (!copy)
-                this.nodes.delete(key(n.path));
-            this.nodes.set(key(path), { ...structuredClone(n), path, modified: Date.now(), ...(copy ? { originalPath: undefined } : {}) });
+                this.nodes.delete(key(oldPath));
+            this.nodes.set(key(path), node);
         }
         this.changed();
         return to;
     }
     rename(path, name) { return this.transfer(path, normalizePath(parentPath(path) + '\\' + validName(name))); }
-    copy(from, to) { return this.transfer(from, to, true); }
-    move(from, to) { return this.transfer(from, to, false); }
+    copy(from, to, options) { return this.transfer(from, to, true, options); }
+    move(from, to, options) { return this.transfer(from, to, false, options); }
     remove(path, permanent = false) {
         const node = this.get(path);
         if (!node)
