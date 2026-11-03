@@ -313,7 +313,7 @@ export function backup(s) {
             const data = JSON.parse(await f.text());
             if (data.format !== 'win95-volume' || data.version !== 1 || !Array.isArray(data.nodes))
                 throw new Error('This is not a Windows 95 desktop backup.');
-            if (data.currentNodes.length > 50000)
+            if (data.nodes.length > 50000)
                 throw new Error('This backup has too many entries.');
             const nodes = new Map();
             for (const pair of data.nodes) {
