@@ -303,6 +303,8 @@ const ZH = {
     'This is not a Windows 95 desktop backup.': '这不是 Windows 95 桌面备份。',
     'This backup has too many entries.': '此备份的条目过多。', 'Invalid backup entry.': '无效的备份条目。',
     'Invalid backup path.': '无效的备份路径。', 'The C: drive is missing.': '缺少 C: 驱动器。',
+    'Duplicate path in backup.': '备份中包含重复路径。', 'A drive root must be a folder.': '驱动器根目录必须是文件夹。',
+    'Invalid original path in backup.': '备份中的原始路径无效。',
     'A parent directory is missing.': '缺少父目录。',
     'Replace the virtual drive with this backup? Open documents should be saved first.': '用此备份替换虚拟驱动器吗？应先保存打开的文档。',
     'Restore Backup': '还原备份',

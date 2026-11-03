@@ -2,7 +2,7 @@ import { dataText, el, button, field, download, fileInput, formatSize } from '@w
 import { icon, fileIcon } from '@win95/ui/icons.js';
 import { menuBar, popup } from '@win95/ui/menu.js';
 import { combo } from '@win95/ui/select.js';
-import { baseName, normalizePath, parentPath } from '@win95/core/filesystem.js';
+import { baseName, parentPath, parseVolumeBackup } from '@win95/core/filesystem.js';
 import { uiLang } from '@win95/core/i18n.js';
 /** The title and body of a topic, in the language the desktop is running. */
 /** Every topic, in the order the Contents list shows them. */
@@ -309,28 +309,7 @@ export function backup(s) {
     renderList();
     const restore = () => fileInput('.json', async (f) => {
         try {
-            const data = JSON.parse(await f.text());
-            if (data.format !== 'win95-volume' || data.version !== 1 || !Array.isArray(data.nodes))
-                throw new Error('This is not a Windows 95 desktop backup.');
-            if (data.nodes.length > 50000)
-                throw new Error('This backup has too many entries.');
-            const nodes = new Map();
-            for (const pair of data.nodes) {
-                if (!Array.isArray(pair) || pair.length !== 2)
-                    throw new Error('Invalid backup entry.');
-                const n = pair[1];
-                if (!n || !['file', 'folder'].includes(n.type) || typeof n.path !== 'string' || !/^C:\\|^A:\\|^D:\\/.test(n.path) || n.type === 'file' && typeof n.content !== 'string')
-                    throw new Error('Invalid backup entry.');
-                const path = normalizePath(n.path);
-                if (path !== n.path)
-                    throw new Error('Invalid backup path.');
-                nodes.set(path.toLowerCase(), { path, type: n.type, content: n.content, mime: n.mime, created: Number(n.created) || Date.now(), modified: Number(n.modified) || Date.now(), originalPath: n.originalPath, ...(n.readOnly ? { readOnly: true } : {}), ...(n.hidden ? { hidden: true } : {}), ...(n.system ? { system: true } : {}), ...(typeof n.attributes === 'string' ? { attributes: n.attributes } : {}) });
-            }
-            if (!nodes.has('c:\\'))
-                throw new Error('The C: drive is missing.');
-            for (const n of nodes.values())
-                if (n.path.length > 3 && nodes.get(normalizePath(parentPath(n.path)).toLowerCase())?.type !== 'folder')
-                    throw new Error('A parent directory is missing.');
+            const nodes = parseVolumeBackup(JSON.parse(await f.text()));
             if (await s.ui.message('Replace the virtual drive with this backup? Open documents should be saved first.', 'Restore Backup', ['Yes', 'No'], { owner: w, height: 190 }) !== 'Yes')
                 return;
             s.fs.nodes = nodes;
