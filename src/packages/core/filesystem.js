@@ -227,6 +227,7 @@ export class VirtualFileSystem extends EventTarget {
         if (path.length <= 3 || ['c:\\recycled', 'c:\\windows'].includes(key(path)))
             throw new Error('This system folder cannot be deleted.');
         if (!permanent && !key(path).startsWith('c:\\recycled\\')) {
+            this.ensureFolders('C:\\Recycled');
             const dest = this.unique('C:\\Recycled\\' + baseName(path), node.type === 'folder');
             this.move(path, dest);
             this.get(dest).originalPath = path;
