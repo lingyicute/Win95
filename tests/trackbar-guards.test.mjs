@@ -28,3 +28,9 @@ test('a trackbar drag ends when the capture is lost', () => {
     bar.dispatchEvent({ type: 'pointermove', buttons: 0, clientX: 200 });
     assert.equal(bar.value, 0, 'a bare move after a lost capture does not slide');
 });
+
+test('a zero-span trackbar positions the thumb at 0% instead of NaN%', () => {
+    const bar = trackbar({ label: 'Seek', min: 0, max: 0, value: 0 });
+    const thumb = bar.querySelector('.win95-trackbar-thumb');
+    assert.equal(thumb.style.left, '0%');
+});
