@@ -34,6 +34,7 @@ export function installSuspend(s) {
         swallowClick = null;
     };
     const guardClick = () => {
+        releaseClick();
         let timer = 0;
         swallowClick = event => {
             stop(event);
