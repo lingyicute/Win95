@@ -1,4 +1,4 @@
-import { el, button, field, download, fileInput, formatSize } from '@win95/ui/dom.js';
+import { dataText, el, button, field, download, fileInput, formatSize } from '@win95/ui/dom.js';
 import { icon, fileIcon } from '@win95/ui/icons.js';
 import { menuBar, popup } from '@win95/ui/menu.js';
 import { combo } from '@win95/ui/select.js';
@@ -24,9 +24,9 @@ export function findFiles(s) {
         if (containing.value)
             nodes = nodes.filter(n => n.type === 'file' && (n.content || '').toLowerCase().includes(containing.value.toLowerCase()));
         for (const n of nodes)
-            results.append(el('button', { class: 'find-result', ondblclick: () => s.open(n.path), onclick: e => { results.querySelectorAll('button').forEach(b => b.classList.remove('pressed')); e.currentTarget.classList.add('pressed'); }, oncontextmenu: e => { e.preventDefault(); popup(s.files.menu([n.path], parentPath(n.path)), e.clientX, e.clientY); } }, icon(fileIcon(n), 16), baseName(n.path), el('span', { text: parentPath(n.path) })));
-        w.status(`${nodes.length} file(s) found`);
-        if (!nodes.length)
+            results.append(el('button', { class: 'find-result', ondblclick: () => s.open(n.path), onclick: e => { results.querySelectorAll('button').forEach(b => b.classList.remove('pressed')); e.currentTarget.classList.add('pressed'); }, oncontextmenu: e => { e.preventDefault(); popup(s.files.menu([n.path], parentPath(n.path)), e.clientX, e.clientY); } }, icon(fileIcon(n), 16), dataText(baseName(n.path)), dataText(parentPath(n.path))));
+        w.status(`${currentNodes.length} file(s) found`);
+        if (!currentNodes.length)
             results.append(el('p', { style: { padding: '12px' }, text: 'No files matched your search.' }));
     };
     w.body.append(el('div', { class: 'tab-strip' }, button('Name & Location', () => { }, { class: 'active' })), el('div', { class: 'row', style: { alignItems: 'flex-start' } }, el('div', { class: 'stack', style: { flex: 1 } }, field('Named:', name), field('Containing text:', containing), field('Look in:', folder)), el('div', { class: 'stack' }, button('Find Now', search, { class: 'default-button' }), button('New Search', () => { name.value = ''; containing.value = ''; folder.value = 'C:\\'; results.replaceChildren(); w.status('Ready'); }))), results);
@@ -180,7 +180,8 @@ export function registryEditor(s) {
                             } }, { label: 'String Value', action: async () => {
                                 const n = await s.ui.prompt('Value name:', 'New Value', 'Registry Editor', { owner: w });
                                 if (n) {
-                                    Object.defineProperty(data[key], n, { value: '', writable: true, enumerable: true, configurable: true });
+                                    if (!Object.prototype.hasOwnProperty.call(data[key], n))
+                                        Object.defineProperty(data[key], n, { value: '', writable: true, enumerable: true, configurable: true });
                                     selected = n;
                                     persist();
                                     await edit(n);
@@ -260,31 +261,35 @@ export function diskUtility(s, args = {}) {
         map.append(el('span', { class: 'disk-block' + (i < nodes.length * 3 ? ' used' : '') }));
     let timer;
     const start = () => {
+        const currentNodes = [...s.fs.nodes.values()].filter(n => n.path.startsWith('C:'));
         let index = 0, errors = [];
         startButton.disabled = true;
+        progress.firstChild.style.width = '0%';
+        for (let i = 0; i < 256; i++)
+            map.children[i].className = 'disk-block' + (i < currentNodes.length * 3 ? ' used' : '');
         result.textContent = defrag ? 'Organizing the virtual directory…' : 'Checking files and folders…';
         timer = setInterval(async () => {
             if (w.closed)
                 return;
-            const n = nodes[index];
+            const n = currentNodes[index];
             if (n && n.path.length > 3 && s.fs.get(parentPath(n.path))?.type !== 'folder')
                 errors.push(n.path);
-            const end = Math.min(256, Math.round((index + 1) / nodes.length * 256));
+            const end = Math.min(256, Math.round((index + 1) / currentNodes.length * 256));
             for (let i = 0; i < end; i++)
                 map.children[i].classList.add('scanned');
-            progress.firstChild.style.width = Math.min(100, (index + 1) / nodes.length * 100) + '%';
+            progress.firstChild.style.width = Math.min(100, (index + 1) / currentNodes.length * 100) + '%';
             index++;
-            if (index >= nodes.length) {
+            if (index >= currentNodes.length) {
                 clearInterval(timer);
                 if (defrag) {
                     s.fs.nodes = new Map([...s.fs.nodes].sort(([a], [b]) => a.localeCompare(b)));
                     s.fs.changed();
                     await s.fs.flush();
                 }
-                result.textContent = errors.length ? `${errors.length} invalid directory references found.` : defrag ? 'Virtual directory order optimized and saved.' : `ScanDisk found no errors in ${nodes.length} files and folders.`;
+                result.textContent = errors.length ? `${errors.length} invalid directory references found.` : defrag ? 'Virtual directory order optimized and saved.' : `ScanDisk found no errors in ${currentNodes.length} files and folders.`;
                 startButton.disabled = false;
             }
-        }, Math.max(25, 1200 / nodes.length));
+        }, Math.max(25, 1200 / currentNodes.length));
     };
     const startButton = button('Start', start);
     w.body.append(el('div', { class: 'row' }, icon('disk', 32), el('div', {}, el('b', { text: 'Drive (C:)' }), el('p', { text: `${nodes.length} objects · ${formatSize(s.fs.size('C:\\'))}` }))), result, map, progress, el('p', { class: 'muted', text: defrag ? 'This map represents virtual files. Physical disk placement is managed by your browser.' : 'Checks that each virtual file has a valid parent directory.' }), el('div', { class: 'dialog-buttons' }, startButton, button('Close', () => w.close())));
@@ -308,7 +313,7 @@ export function backup(s) {
             const data = JSON.parse(await f.text());
             if (data.format !== 'win95-volume' || data.version !== 1 || !Array.isArray(data.nodes))
                 throw new Error('This is not a Windows 95 desktop backup.');
-            if (data.nodes.length > 50000)
+            if (data.currentNodes.length > 50000)
                 throw new Error('This backup has too many entries.');
             const nodes = new Map();
             for (const pair of data.nodes) {

@@ -106,6 +106,7 @@ export function mediaPlayer(s, args = {}) {
                 stamp = now;
                 const dur = Number.isFinite(media.duration) ? media.duration : 0;
                 media.currentTime = Math.min(dur, Math.max(0, media.currentTime + dir * 6 * delta / 1000));
+                media.ontimeupdate();
             }
             frame = requestAnimationFrame(loop);
         };
@@ -372,14 +373,23 @@ export function soundRecorder(s) {
         }
         const p = await s.ui.file({ save: true, name: 'Sound.webm', extension: '.webm', type: 'Recorded Audio (*.webm)', owner: w });
         if (p) {
-            const data = await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(blob); });
-            s.fs.write(p, data, blob.type);
-            w.setTitle(baseName(p) + ' - Sound Recorder');
+            try {
+                const data = await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(blob); });
+                s.fs.write(p, data, blob.type);
+                await s.fs.flush();
+                s.recent(p);
+                w.setTitle(baseName(p) + ' - Sound Recorder');
+            }
+            catch (e) {
+                s.ui.error(e, w);
+            }
         }
     };
-    w.body.append(canvas, info, el('div', { class: 'media-controls' }, button('◀◀', () => { audio.currentTime = 0; }, { 'aria-label': 'Rewind' }), button('▶▶', () => {
-        if (Number.isFinite(audio.duration))
+    w.body.append(canvas, info, el('div', { class: 'media-controls' }, button('◀◀', () => { audio.currentTime = 0; audio.ontimeupdate(); }, { 'aria-label': 'Rewind' }), button('▶▶', () => {
+        if (Number.isFinite(audio.duration)) {
             audio.currentTime = audio.duration;
+            audio.ontimeupdate();
+        }
     }, { 'aria-label': 'Go to end' }), button('▶', () => {
         if (url)
             audio.play().catch(() => { });
@@ -401,9 +411,14 @@ export function internet(s, args = {}) {
     const toolbar = el('div', { class: 'internet-toolbar' }), address = el('input', { 'aria-label': 'Address', value: 'about:home' }), page = el('div', { class: 'internet-page' });
     let history = [], index = -1;
     const navigate = (url, push = true) => {
+        url = String(url || '').trim();
+        const localNode = url && url !== 'about:home' ? s.fs.get(url) : null;
+        const localFile = localNode?.type === 'file' ? localNode.path : null;
         let parsed = null;
-        if (url !== 'about:home' && url && !s.fs.exists(url)) {
+        if (url !== 'about:home' && url && !localFile) {
             try {
+                if (localNode)
+                    throw new Error();
                 parsed = new URL(url.includes('://') ? url : 'https://' + url);
                 if (!['https:', 'http:'].includes(parsed.protocol))
                     throw new Error();
@@ -413,7 +428,7 @@ export function internet(s, args = {}) {
                 return;
             }
         }
-        const finalUrl = parsed ? parsed.href : (url || 'about:home');
+        const finalUrl = parsed ? parsed.href : (localFile || 'about:home');
         if (push && history[index] !== finalUrl) {
             history = history.slice(0, index + 1);
             history.push(finalUrl);
@@ -430,7 +445,7 @@ export function internet(s, args = {}) {
             }
             page.append(el('p', {}, el('a', { href: '#', text: 'Browse your documents', onclick: e => { e.preventDefault(); s.launch('explorer', { path: 'C:\\My Documents' }); } })));
         }
-        else if (s.fs.exists(finalUrl)) {
+        else if (localFile) {
             /* The frame keeps its scripts switched off, but stays readable from
                here - that is the only way to keep the browser's own menu out of
                a document that is shown inside the desktop. */
@@ -466,7 +481,7 @@ export function internet(s, args = {}) {
                         if (a)
                             navigate(a);
                     } }, { label: 'Close', action: () => w.close() }] }, { label: 'View', items: [{ label: 'Refresh', action: () => navigate(address.value, false) }, { label: 'Source', action: () => {
-                        if (s.fs.exists(address.value))
+                        if (s.fs.get(address.value)?.type === 'file')
                             s.launch('notepad', { path: address.value });
                     } }] }, { label: 'Favorites', items: () => [{ label: 'Add to Favorites…', action: () => {
                         const fav = s.settings.get('favorites', []);
@@ -474,7 +489,7 @@ export function internet(s, args = {}) {
                             fav.push(address.value);
                             s.settings.set('favorites', fav);
                         }
-                    } }, null, ...s.settings.get('favorites', []).map(url => ({ label: url, action: () => navigate(url) }))] }, { label: 'Help', items: [{ label: 'About Internet Explorer', action: () => s.about('Internet Explorer', 'internet') }] }]));
+                    } }, null, ...s.settings.get('favorites', []).map(url => ({ label: url, raw: true, action: () => navigate(url) }))] }, { label: 'Help', items: [{ label: 'About Internet Explorer', action: () => s.about('Internet Explorer', 'internet') }] }]));
     navigate(args.path || 'about:home');
     return w;
 }
