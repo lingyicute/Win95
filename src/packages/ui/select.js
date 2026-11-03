@@ -193,7 +193,7 @@ export function combo(options = {}) {
         if (listMode) {
             node.replaceChildren(...state.items.map(item => {
                 const row = el('div', { class: 'win95-combo-option', role: 'option', 'data-value': item.value }, item.label);
-                row.onclick = () => { highlighted = item.value; choose(item.value); };
+                row.onclick = () => { if (!state.disabled) { highlighted = item.value; choose(item.value); } };
                 return row;
             }));
         }
