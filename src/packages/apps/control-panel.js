@@ -167,8 +167,16 @@ export function dateTime(s) {
                     for (let i = 1; i <= days; i++)
                         grid.append(button(String(i), () => { date = new Date(+year.value, +month.value, i); chosen = `${year.value}-${String(+month.value + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`; dateTimeEdited = true; draw(); }, { class: i === date.getDate() ? 'today' : '' }));
                 };
-                year.oninput = draw;
-                month.onchange = draw;
+                const changeMonthYear = () => {
+                    const days = new Date(+year.value, +month.value + 1, 0).getDate();
+                    const day = Math.min(date.getDate(), days);
+                    date = new Date(+year.value, +month.value, day);
+                    chosen = `${year.value}-${pad(+month.value + 1)}-${pad(day)}`;
+                    dateTimeEdited = true;
+                    draw();
+                };
+                year.oninput = changeMonthYear;
+                month.onchange = changeMonthYear;
                 calendar.append(el('div', { class: 'calendar-head' }, month, year), grid, el('p', { class: 'muted', style: { marginTop: '10px' }, text: 'Calendar' }));
                 for (let i = 1; i <= 12; i++) {
                     const a = i * Math.PI / 6;
@@ -424,7 +432,7 @@ export function settingsApplet(s, id) {
             }], ['Recording', p => p.append(el('p', { text: 'Record sound through the microphone selected by your browser.' }), button('Sound Recorder…', () => s.launch('recorder')))]);
     }
     else if (id === 'accessibility') {
-        pages.push(['Keyboard', p => { check(p, 'Use StickyKeys', 'sticky'); check(p, 'Use ToggleKeys', 'toggle'); p.append(el('p', { text: 'ToggleKeys plays a tone when Caps Lock changes.' })); commits.push(() => s.settings.set('toggleKeys', !!draft.toggle)); }], ['Display', p => { check(p, 'Use High Contrast', 'highContrast'); select(p, 'Scheme:', 'contrast', ['High Contrast Black', 'High Contrast White'], 'High Contrast Black'); commits.push(() => { s.settings.set('scheme', draft.highContrast ? (draft.contrast || 'High Contrast Black') : 'Windows Standard'); s.applyAppearance(); }); }], ['Sound', p => { check(p, 'Show captions for system sounds', 'captions'); commits.push(() => s.settings.set('soundCaptions', !!draft.captions)); }]);
+        pages.push(['Keyboard', p => { check(p, 'Use StickyKeys', 'sticky'); check(p, 'Use ToggleKeys', 'toggle'); p.append(el('p', { text: 'ToggleKeys plays a tone when Caps Lock changes.' })); commits.push(() => s.settings.set('toggleKeys', !!draft.toggle)); }], ['Display', p => { check(p, 'Use High Contrast', 'highContrast'); select(p, 'Scheme:', 'contrast', ['High Contrast Black', 'High Contrast White'], 'High Contrast Black'); commits.push(() => { if (draft.highContrast) { s.settings.set('scheme', draft.contrast || 'High Contrast Black'); s.applyAppearance(); } else if (String(s.settings.get('scheme', '')).startsWith('High Contrast')) { s.settings.set('scheme', 'Windows Standard'); s.applyAppearance(); } }); }], ['Sound', p => { check(p, 'Show captions for system sounds', 'captions'); commits.push(() => s.settings.set('soundCaptions', !!draft.captions)); }]);
     }
     else if (id === 'addremove') {
         pages.push(['Install/Uninstall', p => {

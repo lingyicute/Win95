@@ -78,3 +78,15 @@ test('picking a day pins the clock to that local date', async () => {
     assert.equal(shown.getDate(), 15, 'the offset targets the chosen day, not the UTC one');
     teardown(sheet);
 });
+
+test('changing the year or month pins the clock to that year and month', async () => {
+    const s = makeSystem();
+    const sheet = settingsApplet(s, 'datetime');
+    const yearInput = sheet.body.children[1].querySelector('input');
+    yearInput.value = '2001';
+    yearInput.dispatchEvent({ type: 'input' });
+    await sheet.apply();
+    const shown = new Date(Date.now() + s.settings.get('clockOffset'));
+    assert.equal(shown.getFullYear(), 2001);
+    teardown(sheet);
+});
