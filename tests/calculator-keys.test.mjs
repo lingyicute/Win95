@@ -90,3 +90,9 @@ test('a division by zero mid-expression clears the pending operator and M+ ends 
     assert.equal(press(sheet, 'C', '4', 'M+', '7').value, '7', 'typing after M+ starts a new entry');
     assert.equal(press(sheet, 'MR').value, '4');
 });
+
+test('unary and scientific errors also clear pending operators', () => {
+    const sheet = calculator(makeSystem());
+    assert.equal(press(sheet, '5', '+', '0', '1/x').value, 'Error');
+    assert.equal(press(sheet, '3', '=').value, '3');
+});

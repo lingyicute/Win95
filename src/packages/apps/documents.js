@@ -78,7 +78,7 @@ export function notepad(s, args = {}) {
         if (!(await confirm()))
             return;
         if (!p)
-            p = await s.ui.file({ owner: w, type: 'Text Documents (*.txt)' });
+            p = await s.ui.file({ directory: path ? parentPath(path) : 'C:\\My Documents', owner: w, type: 'Text Documents (*.txt)' });
         if (p) {
             try {
                 const content = s.fs.read(p);
@@ -201,7 +201,7 @@ export function notepad(s, args = {}) {
         }
         if (e.key === 'F5') {
             e.preventDefault();
-            insert(new Date().toLocaleString(uiLocale));
+            insert(new Date().toLocaleTimeString(uiLocale, { hour: 'numeric', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString(uiLocale));
         }
     });
     w.onClose = confirm;
@@ -241,7 +241,7 @@ export function wordpad(s, args = {}) {
         try {
             let next = path;
             if (as || !next)
-                next = await s.ui.file({ save: true, name: path ? baseName(path) : 'Document.rtf', extension: '.rtf', owner: w, type: 'Rich Text Format (*.rtf)' });
+                next = await s.ui.file({ save: true, name: path ? baseName(path) : 'Document.rtf', directory: path ? parentPath(path) : 'C:\\My Documents', extension: '.rtf', owner: w, type: 'Rich Text Format (*.rtf)' });
             if (!next)
                 return false;
             const savedGeneration = generation;
@@ -280,7 +280,7 @@ export function wordpad(s, args = {}) {
     const open = async () => {
         if (!await confirm())
             return;
-        const p = await s.ui.file({ owner: w, type: 'Rich Text Documents (*.rtf)' });
+        const p = await s.ui.file({ directory: path ? parentPath(path) : 'C:\\My Documents', owner: w, type: 'Rich Text Documents (*.rtf)' });
         if (p) {
             try {
                 const content = decode(s.fs.read(p));
@@ -526,6 +526,13 @@ export function calculator(s) {
                 newEntry = true;
             }
         }
+        if (value === 'Error') {
+            acc = null;
+            op = null;
+            lastOp = null;
+            lastArg = null;
+            newEntry = true;
+        }
         update();
     };
     const actions = el('div', { class: 'calculator-memory' }, mem, button('Backspace', () => apply('Back'), { style: { color: '#800000' } }), button('CE', () => apply('CE'), { style: { color: '#f00' } }), button('C', () => apply('C'), { style: { color: '#f00' } }));
@@ -545,6 +552,24 @@ export function calculator(s) {
                         }
                     } }] }, { label: 'View', items: () => [{ label: 'Standard', checked: !scientific, action: () => setMode(false) }, { label: 'Scientific', checked: scientific, action: () => setMode(true) }, null, { label: 'Degrees', checked: degrees, action: () => degrees = true }, { label: 'Radians', checked: !degrees, action: () => degrees = false }] }, { label: 'Help', items: [{ label: 'Help Topics', action: () => s.launch('help', { topic: 'calculator' }) }, { label: 'About Calculator', action: () => s.about('Calculator', 'calculator') }] }]));
     w.element.addEventListener('keydown', e => {
+        if (e.ctrlKey || e.metaKey) {
+            const c = e.key.toLowerCase();
+            if (c === 'c') {
+                e.preventDefault();
+                s.copyText(value);
+            }
+            else if (c === 'v') {
+                e.preventDefault();
+                void s.pasteText().then(v => {
+                    if (v !== null && v.trim() !== '' && Number.isFinite(Number(v))) {
+                        value = format(Number(v));
+                        newEntry = true;
+                        update();
+                    }
+                });
+            }
+            return;
+        }
         const k = ({ 'Enter': '=', 'Escape': 'C', 'Backspace': 'Back', 'Delete': 'CE', '*': '×', '/': '÷', '-': '−' })[e.key] || e.key;
         if (/^[0-9.+−×÷=%]$/.test(k) || ['C', 'CE', 'Back'].includes(k)) {
             e.preventDefault();
