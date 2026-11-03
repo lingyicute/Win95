@@ -78,6 +78,10 @@ test('Chinese UI strings come from the dictionary, English is untouched', () => 
 
 test('dynamic UI strings are translated by pattern', () => {
     assert.equal(translateText('3 object(s)', 'zh'), '3 个对象');
+    assert.equal(translateText('5 objects', 'zh'), '5 个对象');
+    assert.equal(translateText('2 file(s)', 'zh'), '2 个文件');
+    assert.equal(translateText('4 file(s) found', 'zh'), '找到 4 个文件');
+    assert.equal(translateText('2 Players', 'zh'), '2 位玩家');
     assert.equal(translateText('12.5 bytes', 'zh'), '12.5 字节');
     assert.equal(translateText("Cannot find 'solitaire'. Make sure the name is correct and try again.", 'zh'), '找不到“solitaire”。请确认名称正确后重试。');
     assert.equal(translateText('Are you sure you want to send to the Recycle Bin these 4 items?', 'zh'), '确实要将这 4 个项目发送到回收站吗？');

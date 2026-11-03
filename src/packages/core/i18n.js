@@ -94,7 +94,7 @@ const ZH = {
     'Time/Date': '时间/日期', 'Word Wrap': '自动换行', 'Font…': '字体…', 'Toolbar': '工具栏',
     'Format Bar': '格式栏', 'Print…': '打印…', 'Page Setup…': '页面设置…', 'Page Setup': '页面设置',
     'About Notepad': '关于记事本', 'About WordPad': '关于写字板', 'About Paint': '关于画图',
-    'About Calculator': '关于计算器', 'About Media Player': '关于媒体播放机',
+    'About Calculator': '关于计算器', 'About Media Player': '关于媒体播放机', 'About CD Player': '关于 CD 播放机',
     'About Volume Control': '关于音量控制', 'About Sound Recorder': '关于录音机',
     'About Internet Explorer': '关于 Internet Explorer', 'About Microsoft Exchange': '关于 Microsoft Exchange',
     'About Windows 95': '关于 Windows 95', 'About Help': '关于帮助',
@@ -386,7 +386,11 @@ function name(name) {
 
 function applyPatterns(core) {
     let m;
+    if ((m = /^(\d+) objects?$/.exec(core))) return `${m[1]} 个对象`;
     if ((m = /^(\d+) object\(s\)$/.exec(core))) return `${m[1]} 个对象`;
+    if ((m = /^(\d+) file\(s\)$/.exec(core))) return `${m[1]} 个文件`;
+    if ((m = /^(\d+) file\(s\) found$/.exec(core))) return `找到 ${m[1]} 个文件`;
+    if ((m = /^(\d+) Players?$/.exec(core))) return `${m[1]} 位玩家`;
     if ((m = /^(\d+) object\(s\) selected\s+(.+)$/.exec(core))) return `已选 ${m[1]} 个对象    ${translateText(m[2], 'zh')}`;
     if ((m = /^(\d+) object\(s\) (.+)$/.exec(core))) return `${m[1]} 个对象 ${translateText(m[2], 'zh')}`;
     if ((m = /^(\d+) objects · (.+)$/.exec(core))) return `${m[1]} 个对象 · ${translateText(m[2], 'zh')}`;
