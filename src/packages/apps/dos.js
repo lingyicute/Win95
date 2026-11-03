@@ -6,7 +6,7 @@ export function dosPrompt(s, args = {}) {
     w.body.classList.add('dos-body');
     const output = el('pre', { class: 'dos-output', text: 'Microsoft(R) Windows 95\n   (C)Copyright Microsoft Corp 1981-1995.\n\n' }), prompt = el('span'), input = el('input', { class: 'dos-input', spellcheck: false, autocomplete: 'off', 'aria-label': 'Command' }), line = el('form', { class: 'dos-line' }, prompt, input);
     w.body.append(output, line);
-    const engine = new DosEngine(s.fs, { launch: (alias, params, cwd) => s.run(alias + (params?.length ? ' "' + (['notepad', 'wordpad', 'write', 'mspaint', 'pbrush', 'paint', 'explorer', 'media', 'media-player', 'internet'].includes(alias.toLowerCase()) ? normalizePath(params.join(' '), cwd) : params.join(' ')) + '"' : '')), open: path => s.open(path) });
+    const engine = new DosEngine(s.fs, { launch: (alias, params, cwd) => { const arg = params?.join(' ') || ''; const isUrl = alias.toLowerCase() === 'internet' && (/^(?:https?:\/\/|about:)/i.test(arg) || !s.fs.exists(normalizePath(arg, cwd))); return s.run(alias + (arg ? ' "' + (!isUrl && ['notepad', 'wordpad', 'write', 'mspaint', 'pbrush', 'paint', 'explorer', 'media', 'media-player', 'internet'].includes(alias.toLowerCase()) ? normalizePath(arg, cwd) : arg) + '"' : '')); }, open: path => s.open(path) });
     let history = [], historyIndex = 0, running = false;
     const update = () => { prompt.textContent = engine.prompt || engine.cwd + '>'; w.setTitle('MS-DOS Prompt'); w.body.scrollTop = w.body.scrollHeight; };
     line.onsubmit = async (e) => {
@@ -72,7 +72,8 @@ export function dosPrompt(s, args = {}) {
             catch { }
             const matches = here.filter(n => n.path.split('\\').at(-1).toLowerCase().startsWith(prefix.toLowerCase()));
             if (matches.length === 1) {
-                tokens[tokens.length - 1] = matches[0].path.split('\\').at(-1);
+                const completed = matches[0].path.split('\\').at(-1);
+                tokens[tokens.length - 1] = completed.includes(' ') ? `"${completed}"` : completed;
                 input.value = tokens.join(' ');
             }
         }
