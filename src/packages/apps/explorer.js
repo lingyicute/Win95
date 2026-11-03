@@ -36,11 +36,18 @@ export function createFileActions(s) {
         const w = s.ui.modal(baseName(n.path) + ' Properties', { width: 385, height: 340 });
         const size = paths.reduce((a, p) => a + s.fs.size(p), 0);
         const name = el('input', { value: baseName(n.path), 'aria-label': 'File name' });
-        w.body.append(el('div', { class: 'tab-strip' }, button('General', () => { }, { class: 'active' })), el('div', { class: 'tab-panel' }, el('div', { class: 'row', style: { gap: '20px', marginBottom: '15px' } }, icon(fileIcon(n), 32), name), el('div', { class: 'separator' }), infoGrid([['Type:', n.type === 'folder' ? 'File Folder' : (n.mime || 'File')], ['Location:', parentPath(n.path)], ['Size:', formatSize(size)], ['Contains:', n.type === 'folder' ? `${s.fs.list(n.path).length} objects` : `${paths.length} file(s)`], ['Created:', new Date(n.created).toLocaleString(uiLocale)], ['Modified:', new Date(n.modified).toLocaleString(uiLocale)]]), el('div', { class: 'separator' }), el('label', { class: 'checkbox-label' }, el('input', { type: 'checkbox', checked: !!n.readOnly, onchange: e => { n.readOnly = e.target.checked; s.fs.changed(); } }), 'Read-only')));
+        const readOnly = el('input', { type: 'checkbox', checked: !!n.readOnly });
+        w.body.append(el('div', { class: 'tab-strip' }, button('General', () => { }, { class: 'active' })), el('div', { class: 'tab-panel' }, el('div', { class: 'row', style: { gap: '20px', marginBottom: '15px' } }, icon(fileIcon(n), 32), name), el('div', { class: 'separator' }), infoGrid([['Type:', n.type === 'folder' ? 'File Folder' : (n.mime || 'File')], ['Location:', parentPath(n.path)], ['Size:', formatSize(size)], ['Contains:', n.type === 'folder' ? `${s.fs.list(n.path).length} objects` : `${paths.length} file(s)`], ['Created:', new Date(n.created).toLocaleString(uiLocale)], ['Modified:', new Date(n.modified).toLocaleString(uiLocale)]]), el('div', { class: 'separator' }), el('label', { class: 'checkbox-label' }, readOnly, 'Read-only')));
         w.body.append(el('div', { class: 'dialog-buttons' }, button('OK', () => {
             try {
+                let target = n.path;
                 if (name.value !== baseName(n.path))
-                    s.fs.rename(n.path, name.value);
+                    target = s.fs.rename(n.path, name.value);
+                const updated = s.fs.get(target);
+                if (updated && !!updated.readOnly !== readOnly.checked) {
+                    updated.readOnly = readOnly.checked;
+                    s.fs.changed();
+                }
                 w.close();
             }
             catch (e) {
@@ -221,7 +228,7 @@ export function explorer(s, args = {}) {
             if (drive === 'C:\\')
                 for (const n of s.fs.list(drive).filter(n => n.type === 'folder' && !n.path.toLowerCase().includes('recycled'))) {
                     addTree(dataText(baseName(n.path)), 'folder', n.path, 3);
-                    if (path.toLowerCase().startsWith(n.path.toLowerCase()))
+                    if (path.toLowerCase() === n.path.toLowerCase() || path.toLowerCase().startsWith(n.path.toLowerCase() + '\\'))
                         for (const c of s.fs.list(n.path).filter(n => n.type === 'folder'))
                             addTree(dataText(baseName(c.path)), 'folder', c.path, 4);
                 }
