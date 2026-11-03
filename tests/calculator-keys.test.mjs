@@ -96,3 +96,20 @@ test('unary and scientific errors also clear pending operators', () => {
     assert.equal(press(sheet, '5', '+', '0', '1/x').value, 'Error');
     assert.equal(press(sheet, '3', '=').value, '3');
 });
+
+test('keys that need a number leave an Error, and the memory, alone', () => {
+    const sheet = calculator(makeSystem());
+    assert.equal(press(sheet, '7', 'MS', 'C', '1', '÷', '0', '=').value, 'Error');
+    for (const key of ['MS', 'M+', '±', '√', '1/x', '%', '+', '=', 'sin', 'x²'])
+        assert.equal(press(sheet, key).value, 'Error', `${key} does not turn Error into 0`);
+    assert.equal(press(sheet, 'MR').value, '7', 'MS did not overwrite the memory with 0');
+});
+
+test('digits, C, CE and MR clear an Error', () => {
+    const sheet = calculator(makeSystem());
+    for (const key of ['3', 'C', 'CE', 'MR', 'π']) {
+        assert.equal(press(sheet, '1', '÷', '0', '=').value, 'Error');
+        assert.notEqual(press(sheet, key).value, 'Error', `${key} clears the error`);
+    }
+    assert.equal(press(sheet, '1', '÷', '0', '=', 'MC').value, 'Error', 'MC leaves the display alone');
+});
