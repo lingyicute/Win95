@@ -55,7 +55,7 @@ export function trackbar({ label, orientation = 'horizontal', min = 0, max = 100
     // How far the thumb centre stays in from each end: half the thumb, so the
     // thumb never hangs off the bar.
     const EDGE = channel ? 5 : balance ? 8 : 11;
-    const ratio = () => (current - min) / (max - min);
+    const ratio = () => max > min ? (current - min) / (max - min) : 0;
     // The original media player puts a ruled scale under its seek bar: a tick and
     // its number at every step of a scale it chooses to fit, plus the total at
     // the far end.
