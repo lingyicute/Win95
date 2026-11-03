@@ -135,3 +135,25 @@ test('the desktop shortcut dialog resolves commands', () => {
     assert.match(block, /JSON\.stringify\(rest \? \{ app: id, args: rest \} : \{ app: id \}\)/);
     assert.doesNotMatch(block, /aliases\[command\.toLowerCase\(\)\]/, 'the raw command no longer lands in app');
 });
+
+test('DOS REN applies case-only renames instead of skipping them', async () => {
+    const { VirtualFileSystem } = await import('../src/packages/core/filesystem.js');
+    const { DosEngine } = await import('../src/packages/core/dos-engine.js');
+    const fs = await new VirtualFileSystem().init();
+    const dos = new DosEngine(fs);
+    await dos.execute('CD "C:\\My Documents"');
+    await dos.execute('REN "Read Me.txt" "READ ME.TXT"');
+    assert.equal(fs.get('C:\\My Documents\\ Read Me.txt'.replace('\\ ', '\\')).path, 'C:\\My Documents\\READ ME.TXT');
+});
+
+test('Explorer tree only expands the matching folder and Properties commits Read-only on OK', () => {
+    assert.match(explorer, /path\.toLowerCase\(\) === n\.path\.toLowerCase\(\) \|\| path\.toLowerCase\(\)\.startsWith\(n\.path\.toLowerCase\(\) \+ '\\\\'\)/);
+    assert.doesNotMatch(explorer, /onchange: e => \{ n\.readOnly = e\.target\.checked/);
+    assert.match(explorer, /updated\.readOnly = readOnly\.checked/);
+});
+
+test('cascading or tiling windows clears maximized state and restores the Maximize button', () => {
+    assert.match(wm, /unmaximize\(w\)/);
+    assert.match(wm, /w\.element\.classList\.remove\('maximized'\)/);
+    assert.match(wm, /button\?\.classList\.remove\('restore'\)/);
+});
