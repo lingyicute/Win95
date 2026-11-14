@@ -82,9 +82,14 @@ export function normalizeDosPath(value, cwd = 'C:\\') {
     return drive + segments.join('\\');
 }
 function wildcard(pattern) {
-    if (pattern === '*.*')
-        pattern = '*';
-    return new RegExp('^' + [...pattern].map(c => c === '*' ? '.*' : c === '?' ? '.' : c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('') + '$', 'i');
+    const source = (text, any, one) => [...text].map(c => c === '*' ? any : c === '?' ? one : c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('');
+    /* DOS pads names to 8.3 fields: a closing .* also takes names with no extension (AB*.* finds AB),
+       and a closing dot takes only those (*. finds AB but not AB.TXT). */
+    if (pattern.length > 2 && pattern.endsWith('.*'))
+        return new RegExp('^' + source(pattern.slice(0, -2), '.*', '.') + '(?:\\..*)?$', 'i');
+    if (pattern.length > 1 && pattern.endsWith('.'))
+        return new RegExp('^' + source(pattern.slice(0, -1), '[^.]*', '[^.]') + '$', 'i');
+    return new RegExp('^' + source(pattern, '.*', '.') + '$', 'i');
 }
 function lex(source) {
     const tokens = [];
