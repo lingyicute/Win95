@@ -107,6 +107,9 @@ export function minesweeper(s) {
             clearInterval(timer);
             if (!ended) {
                 ended = true;
+                /* The interval can lag, or be throttled in a background tab; settle the clock before it is shown or recorded. */
+                if (startTime)
+                    seconds = Math.floor((Date.now() - startTime) / 1000);
                 if (game.state === 'won') {
                     const key = `${rows}x${cols}:${mines}`;
                     if (best[key] === undefined || seconds < best[key]) {
