@@ -81,6 +81,21 @@ export function normalizeDosPath(value, cwd = 'C:\\') {
     }
     return drive + segments.join('\\');
 }
+/** ^ escapes the next character, except between double quotes, where it is an ordinary character. */
+function unescapeCarets(text) {
+    let quoted = false, result = '';
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (c === '^' && !quoted && i + 1 < text.length)
+            result += text[++i];
+        else {
+            if (c === '"')
+                quoted = !quoted;
+            result += c;
+        }
+    }
+    return result;
+}
 function wildcard(pattern) {
     const source = (text, any, one) => [...text].map(c => c === '*' ? any : c === '?' ? one : c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('');
     /* DOS pads names to 8.3 fields: a closing .* also takes names with no extension (AB*.* finds AB),
@@ -103,7 +118,7 @@ function lex(source) {
     };
     for (let i = 0; i < source.length; i++) {
         const c = source[i];
-        if (c === '^' && i + 1 < source.length) {
+        if (c === '^' && !quoted && i + 1 < source.length) {
             if (start < 0)
                 start = i;
             text += source[++i];
@@ -364,7 +379,7 @@ export class DosEngine {
         const paths = args.filter(a => !/^\/[A-Za-z?]/.test(a));
         const out = output => ({ output });
         if (/^ECHO[.:/]/i.test(typed) && typed.length > 5)
-            return out(typed.slice(5) + (parsed.tail ? ' ' + parsed.tail.replace(/\^(.)/g, '$1') : ''));
+            return out(typed.slice(5) + (parsed.tail ? ' ' + unescapeCarets(parsed.tail) : ''));
         if (/^[A-Z]:$/.test(command)) {
             const destination = this.driveDirectories.get(command) || command + '\\';
             const node = await this._require(destination, 'folder');
@@ -395,7 +410,7 @@ export class DosEngine {
                     this.echo = key(args[0]) === 'ON';
                     return out('');
                 }
-                return out(parsed.tail.replace(/\^(.)/g, '$1'));
+                return out(unescapeCarets(parsed.tail));
             case 'ECHO.':
             case 'ECHO:':
             case 'ECHO/': return out('\n');
